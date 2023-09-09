@@ -1,0 +1,107 @@
+openapi: 3.0.3
+info:
+  title: Ontology Manager
+  description: 'This is the microservice responsible to manage user-defined types and instances'
+  version: '__VERSION__'
+servers:
+#__URL__
+tags:
+  - name: OntologyManager
+    description: All the ontology related operations
+paths:
+  /ontology/entity-type:
+    post:
+      tags:
+        - OntologyManager
+      summary: Create a user-defined type
+      operationId: create
+      requestBody:
+        description: An EntityType spec
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntityType'
+        required: true
+      responses:
+        200:
+          description: If successful returns a provisioning deployment task token that can be used for polling the request status
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+components:
+  schemas:
+    EntityType:
+      required:
+        - name
+        - schema
+      type: object
+      properties:
+        name:
+          type: string
+        traits:
+          type: array
+          items:
+            type: string
+        schema:
+          $ref: '#/components/schemas/Schema'
+    Schema:
+      type: array
+      items:
+        $ref: '#/components/schemas/AttributeType'
+    AttributeType:
+      type: object
+      required:
+        - name
+        - typeName
+      properties:
+        name:
+          type: string
+        typeName:
+          $ref: '#/components/schemas/AttributeTypeName'
+        mode:
+          $ref: '#/components/schemas/Mode'
+        attributeTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeType'
+    AttributeTypeName:
+      type: string
+      enum:
+        - String
+        - Integer
+        - Struct
+    Mode:
+      type: string
+      enum:
+        - Required
+        - Repeated
+        - Nullable
+    ValidationError:
+      required:
+        - errors
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: string
+    SystemError:
+      required:
+        - error
+      type: object
+      properties:
+        error:
+          type: string

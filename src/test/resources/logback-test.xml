@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration>
+
+<configuration>
+    <import class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"/>
+    <import class="ch.qos.logback.core.rolling.RollingFileAppender"/>
+    <import class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy"/>
+    <import class="ch.qos.logback.core.ConsoleAppender"/>
+
+    <appender name="CONSOLE" class="ConsoleAppender">
+        <target>System.out</target>
+        <encoder>
+            <pattern>[%date{ISO8601}] [%level] [%t] [%logger{15}] [%X{traceId}] - %msg %n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>8192</queueSize>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="CONSOLE"/>
+    </appender>
+
+    <logger name="it.agilelab.witboost.ontology.manager.domain.service.interpreter.TypeManagementServiceInterpreter" level="TRACE" />
+    <logger name="it.agilelab.witboost.ontology.manager.domain.service.interpreter.InstanceManagementServiceInterpreter" level="TRACE" />
+    <logger name="it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.Session" level="TRACE" />
+
+    <root level="ERROR">
+        <appender-ref ref="ASYNC"/>
+    </root>
+
+</configuration>
