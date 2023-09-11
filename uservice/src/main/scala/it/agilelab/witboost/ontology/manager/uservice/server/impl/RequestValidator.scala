@@ -15,14 +15,6 @@ import org.http4s.{HttpRoutes, MediaType, Request, Response, Status}
 
 import scala.jdk.CollectionConverters.*
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.AsInstanceOf",
-    "org.wartremover.warts.OptionPartial",
-    "org.wartremover.warts.ToString",
-    "org.wartremover.warts.Var"
-  )
-)
 object RequestValidator:
 
   def apply[F[_]: Async](

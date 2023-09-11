@@ -3,11 +3,6 @@ package it.agilelab.witboost.ontology.manager.domain.knowledgegraph
 import org.eclipse.rdf4j.model.{IRI, Resource, Statement, Value}
 import org.eclipse.rdf4j.query.BindingSet
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.DefaultArguments"
-  )
-)
 trait KnowledgeGraph[F[_]]:
   def removeAndInsertStatements(
       statement: List[Statement],

@@ -3,7 +3,6 @@ package it.agilelab.witboost.ontology.manager.domain.service
 import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
 
-@SuppressWarnings(Array("org.wartremover.warts.Overloading"))
 trait TypeManagementService[F[_]]:
 
   val repository: KnowledgeGraph[F]

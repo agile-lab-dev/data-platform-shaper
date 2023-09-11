@@ -17,7 +17,6 @@ import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 
 import scala.jdk.CollectionConverters.*
 
-@SuppressWarnings(Array("org.wartremover.warts.Null"))
 object TestMain1 extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
     val session = Session[IO]("localhost", 7200, "repo1", false)

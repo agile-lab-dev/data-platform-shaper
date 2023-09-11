@@ -40,7 +40,6 @@ object Server:
     )
     .mkString("\n")
 
-  @SuppressWarnings(Array("org.wartremover.warts.OptionPartial"))
   def server[F[_]: Async: Network](
       session: Session,
       typeCache: Ref[F, Map[String, EntityType]]

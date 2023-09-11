@@ -75,17 +75,14 @@ object Dependencies {
     lazy val sdk          = namespace % "opentelemetry-sdk" % opentelemetryVersion
     lazy val exporterOtlp = namespace % "opentelemetry-exporter-otlp" % opentelemetryVersion
   }
+
   object Jars {
 
     lazy val overrides: Seq[ModuleID] = Seq(
      )
 
-    lazy val `server`: Seq[ModuleID] = Seq(
+    lazy val domain: Seq[ModuleID] = Seq(
       rdf4j.client                 % Compile,
-      http4s.emberServer           % Compile,
-      http4s.emberClient           % Compile,
-      http4s.dsl                   % Compile,
-      http4s.circe                 % Compile,
       cats.core                    % Compile,
       cats.effect                  % Compile,
       cats.loggingCore             % Compile,
@@ -94,15 +91,26 @@ object Dependencies {
       circe.generic                % Compile,
       circe.parser                 % Compile,
       circe.yaml                   % Compile,
-      atlassian.openapiValidator   % Compile,
-      typesafe.config              % Compile,
       logging.scala                % Compile,
       logback.classic              % Compile,
+      dataTools.dataTypesCore      % Compile,
+      http4s.emberClient           % Test,
+      testcontainers.core          % Test,
+      cats.effectScalatest         % Test,
+      scalatest.core               % Test
+    )
+
+    lazy val uservice: Seq[ModuleID] = Seq(
+      http4s.emberServer           % Compile,
+      http4s.emberClient           % Compile,
+      http4s.dsl                   % Compile,
+      http4s.circe                 % Compile,
+      atlassian.openapiValidator   % Compile,
+      typesafe.config              % Compile,
       opentelemetry.api            % Compile,
       opentelemetry.annotations    % Compile,
       opentelemetry.sdk            % Compile,
       opentelemetry.exporterOtlp   % Compile,
-      dataTools.dataTypesCore      % Compile,
       testcontainers.core          % Test,
       cats.effectScalatest         % Test,
       scalatest.core               % Test,

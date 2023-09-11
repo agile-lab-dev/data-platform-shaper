@@ -8,13 +8,6 @@ import it.agilelab.witboost.ontology.manager.domain.model.schema.Mode.*
 import scala.language.{dynamics, postfixOps}
 import scala.util.{Failure, Success, Try}
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.Recursion",
-    "org.wartremover.warts.IsInstanceOf",
-    "org.wartremover.warts.AsInstanceOf"
-  )
-)
 private def unfoldPrimitive(
     name: String,
     value: Any,
@@ -90,14 +83,6 @@ private def unfoldPrimitive(
   end match
 end unfoldPrimitive
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.AsInstanceOf",
-    "org.wartremover.warts.IsInstanceOf",
-    "org.wartremover.warts.Var",
-    "org.wartremover.warts.Recursion"
-  )
-)
 private def unfoldStruct(
     name: String,
     tuple: Any,
@@ -202,7 +187,6 @@ private def unfoldStruct(
   end match
 end unfoldStruct
 
-@SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
 private def unfoldDataType(
     tuple: Tuple,
     schema: DataType,
@@ -224,13 +208,6 @@ private def unfoldDataType(
   end match
 end unfoldDataType
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.AsInstanceOf",
-    "org.wartremover.warts.Var",
-    "org.wartremover.warts.Any"
-  )
-)
 def unfoldTuple(
     tuple: Tuple,
     schema: Schema,

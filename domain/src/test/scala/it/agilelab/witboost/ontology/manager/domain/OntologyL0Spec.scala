@@ -31,15 +31,6 @@ import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 import scala.util.Right
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.Null",
-    "org.wartremover.warts.Any",
-    "org.wartremover.warts.OptionPartial",
-    "org.wartremover.warts.Nothing",
-    "org.wartremover.warts.ThreadSleep"
-  )
-)
 class OntologyL0Spec
     extends AsyncFreeSpec
     with AsyncIOSpec

@@ -8,7 +8,6 @@ import it.agilelab.witboost.ontology.manager.domain.model.l0.Trait
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
 import it.agilelab.witboost.ontology.manager.domain.model.schema.Schema
 
-@SuppressWarnings(Array("org.wartremover.warts.DefaultArguments"))
 enum GenericTrait(
     val schema: Schema = StructType(List.empty[(String, DataType)])
 ) extends Trait:

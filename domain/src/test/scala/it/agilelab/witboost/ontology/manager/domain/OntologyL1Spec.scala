@@ -28,15 +28,6 @@ import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.Null",
-    "org.wartremover.warts.Any",
-    "org.wartremover.warts.OptionPartial",
-    "org.wartremover.warts.Nothing",
-    "org.wartremover.warts.ThreadSleep"
-  )
-)
 class OntologyL1Spec
     extends AsyncFreeSpec
     with AsyncIOSpec

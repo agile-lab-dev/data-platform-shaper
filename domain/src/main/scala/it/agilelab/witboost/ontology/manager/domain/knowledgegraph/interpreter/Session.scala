@@ -35,11 +35,6 @@ final case class Session(connection: RepositoryConnection):
 
 end Session
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.Overloading"
-  )
-)
 object Session:
 
   def getSession(

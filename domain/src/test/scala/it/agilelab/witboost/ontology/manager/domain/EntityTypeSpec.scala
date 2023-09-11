@@ -7,14 +7,6 @@ import it.agilelab.witboost.ontology.manager.domain.model.schema.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.Var",
-    "org.wartremover.warts.Any",
-    "org.wartremover.warts.Nothing",
-    "org.wartremover.warts.AsInstanceOf"
-  )
-)
 class EntityTypeSpec extends AnyFlatSpec with Matchers:
 
   behavior of "EntityType"

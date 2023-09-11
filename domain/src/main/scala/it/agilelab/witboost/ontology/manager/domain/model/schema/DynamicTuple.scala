@@ -17,17 +17,10 @@ import scala.language.{
 import scala.reflect.Typeable
 import scala.util.Try
 
-@SuppressWarnings(Array("org.wartremover.warts.Any"))
 final case class DynamicTuple(tuple: Any) extends Dynamic:
 
   given CanEqual[Tuple, Tuple] = CanEqual.derived
-
-  @SuppressWarnings(
-    Array(
-      "org.wartremover.warts.AsInstanceOf",
-      "org.wartremover.warts.SeqApply"
-    )
-  )
+  
   def selectDynamic(method: String): DynamicTuple =
     tuple match
       case t: Tuple =>
@@ -38,10 +31,7 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
       case t: List[_] if method.forall(_.isDigit) =>
         DynamicTuple(t(method))
   end selectDynamic
-
-  @SuppressWarnings(
-    Array("org.wartremover.warts.AsInstanceOf", "org.wartremover.warts.Var")
-  )
+  
   def updateDynamic(method: String)(value: Any): DynamicTuple =
     tuple match
       case t: Tuple =>
@@ -69,12 +59,6 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
         this
   end updateDynamic
 
-  @SuppressWarnings(
-    Array(
-      "org.wartremover.warts.AsInstanceOf",
-      "org.wartremover.warts.SeqApply"
-    )
-  )
   @unused
   def applyDynamic(method: String)(arg: Int): DynamicTuple =
     val w = selectDynamic(method)
@@ -87,9 +71,7 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
     end match
   end value
 
-  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
   def replace(path: String, value: Any): Either[String, DynamicTuple] =
-    @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
     @tailrec
     def recursiveReplace(
         tuple: DynamicTuple,
@@ -117,12 +99,6 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
 end DynamicTuple
 
 extension (tuple: Tuple)
-  @SuppressWarnings(
-    Array(
-      "org.wartremover.warts.AsInstanceOf",
-      "org.wartremover.warts.DefaultArguments"
-    )
-  )
   def replace(
       path: String,
       value: Any,

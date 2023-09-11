@@ -7,7 +7,6 @@ import org.eclipse.rdf4j.query.BindingSet
 
 import scala.jdk.CollectionConverters.*
 
-@SuppressWarnings(Array("org.wartremover.warts.DefaultArguments"))
 class Rdf4jKnowledgeGraph[F[_]: Sync](session: Session)
     extends KnowledgeGraph[F]:
   override def removeAndInsertStatements(

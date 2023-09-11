@@ -1,42 +1,29 @@
 import ProjectSettings.ProjectFrom
-import sbt.Test
 
-ThisBuild / scalaVersion         := "3.3.0"
+ThisBuild / scalaVersion         := "3.3.1"
 ThisBuild / organization         := "it.agilelab"
 ThisBuild / organizationName     := "AgileLab S.r.L."
-ThisBuild / libraryDependencies  := Dependencies.Jars.`server`
 ThisBuild / dependencyOverrides ++= Dependencies.Jars.overrides
 ThisBuild / version              := ComputeVersion.version
 
 val specFile = file("uservice/src/main/resources/interface-specification.yml")
 
 lazy val domain = (project in file("domain")).settings(
-  name                                   := "witboost.ontology.manager.domain",
-  wartremoverExcluded                    += sourceManaged.value,
-  Compile / scalacOptions               ++= Seq(
-    "-Wunused:imports",
-    "-Wvalue-discard",
-    "-encoding", "utf8",
-    "-feature"),
-  Compile / compile / wartremoverErrors ++= Warts.all,
-  Test / parallelExecution                := false,
+  name                                     := "witboost.ontology.manager.domain",
+  libraryDependencies                      := Dependencies.Jars.domain,
+  Test / parallelExecution               := false
 )
 
 lazy val userviceGenerated = (project in file("uservice-generated")).settings(
   name                      := "witboost.ontology.manager.uservice-generated",
-  Compile / scalacOptions  ++= Seq(),
+  libraryDependencies       := Dependencies.Jars.uservice,
+  Compile / scalacOptions   := Seq(),
   Compile / guardrailTasks  += ScalaServer(specFile, pkg=s"it.agilelab.witboost.ontology.manager.uservice", framework="http4s"),
 )
 
 lazy val uservice = (project in file("uservice")).settings(
   name                                    := "witboost.ontology.manager.uservice",
-  wartremoverExcluded                     += sourceManaged.value,
-  Compile / scalacOptions                ++= Seq(
-    "-Wunused:imports",
-    "-Wvalue-discard",
-    "-encoding", "utf8",
-    "-feature"),
-  Compile / compile / wartremoverErrors  ++= Warts.all,
+  libraryDependencies                     := Dependencies.Jars.uservice,
   Test / parallelExecution                := false,
   dockerBuildOptions                     ++= Seq("--network=host"),
   dockerBaseImage                         := "adoptopenjdk:11-jdk-hotspot",

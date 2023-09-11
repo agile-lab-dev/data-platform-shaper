@@ -12,9 +12,7 @@ final case class EntityType(
     baseSchema: Schema,
     father: Option[EntityType]
 ):
-  @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
   def schema: Schema =
-    @SuppressWarnings(Array("org.wartremover.warts.Var"))
     var sc = baseSchema
     father.foreach(et =>
       val scSchemaFieldNames = sc.records.map(_(0)).toSet
@@ -39,7 +37,6 @@ final case class EntityType(
 
 end EntityType
 
-@SuppressWarnings(Array("org.wartremover.warts.Overloading"))
 object EntityType:
   def apply(
       name: String,

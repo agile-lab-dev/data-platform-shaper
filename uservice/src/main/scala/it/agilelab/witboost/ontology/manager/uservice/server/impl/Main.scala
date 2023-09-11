@@ -10,7 +10,6 @@ import it.agilelab.witboost.ontology.manager.uservice.system.ApplicationConfigur
   graphdbRepositoryTls
 }
 
-@SuppressWarnings(Array("org.wartremover.warts.Nothing"))
 object Main extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
     val session = Session.getSession(

@@ -68,7 +68,6 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     end match
   end modeToStatement
 
-  @SuppressWarnings(Array("org.wartremover.warts.DefaultArguments"))
   private def stringToDataType(
       stringType: String,
       stringMode: String,
@@ -96,10 +95,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       case "StringAttributeType" | "IntAttributeType" => false
       case _                                          => true
   end isStructType
-
-  @SuppressWarnings(
-    Array("org.wartremover.warts.Recursion", "org.wartremover.warts.ToString")
-  )
+  
   private def emitStatements(
       fatherEntity: IRI,
       dataType: DataType,
@@ -173,7 +169,6 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
        |""".stripMargin
   end queryForType
 
-  @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
   private def getStructTypeRecords(
       structIri: IRI
   ): F[List[(String, DataType)]] =
@@ -400,7 +395,6 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     } yield ()).value
   end create
 
-  @SuppressWarnings(Array("org.wartremover.warts.OptionPartial"))
   override def read(
       instanceTypeName: String
   ): F[Either[ManagementServiceError, EntityType]] =

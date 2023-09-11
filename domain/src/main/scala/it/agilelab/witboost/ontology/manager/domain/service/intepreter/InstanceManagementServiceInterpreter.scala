@@ -51,7 +51,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
     val entity = iri(ns, entityId)
 
-    @SuppressWarnings(Array("org.wartremover.warts.Var"))
     var statements = List.empty[Statement]
 
     statements = statement(
@@ -60,16 +59,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     ) :: statements
     statements =
       statement(triple(entity, RDF.TYPE, NS.ENTITY), L3) :: statements
-
-    @SuppressWarnings(
-      Array(
-        "org.wartremover.warts.AsInstanceOf",
-        "org.wartremover.warts.Any",
-        "org.wartremover.warts.ToString",
-        "org.wartremover.warts.OptionPartial",
-        "org.wartremover.warts.Recursion"
-      )
-    )
+    
     def emitStatement(
         currentEntityIri: IRI,
         currentPath: String,
@@ -174,10 +164,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
     } yield id).value
   end createInstanceNoCheck
-
-  @SuppressWarnings(
-    Array("org.wartremover.warts.Recursion", "org.wartremover.warts.Equals")
-  )
+  
   private def fetchStatementsForInstance(
       instanceId: String
   ): F[List[Statement]] =
@@ -247,7 +234,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       instanceTypeName: String,
       values: Tuple
   ): F[Either[ManagementServiceError, String]] =
-    @SuppressWarnings(Array("org.wartremover.warts.ToString"))
     val entityId = UUID.randomUUID().toString
     (for {
       exist <- EitherT(typeManagementService.exist(instanceTypeName))
@@ -324,7 +310,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         )
     }
 
-    @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
     def handlePrimitiveDataTypes(
         fieldName: String,
         dataType: DataType,
@@ -361,13 +346,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         case _ => EmptyTuple
       Applicative[F].pure(tuple)
     end handlePrimitiveDataTypes
-
-    @SuppressWarnings(
-      Array(
-        "org.wartremover.warts.IterableOps",
-        "org.wartremover.warts.SeqApply"
-      )
-    )
+    
     def handleStructDataType(
         fieldName: String,
         dataType: StructType,
@@ -459,10 +438,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <- traceT(s"About to return the entity $entity")
     } yield entity).value
   end read
-
-  @SuppressWarnings(
-    Array("org.wartremover.warts.Equals", "org.wartremover.warts.IterableOps")
-  )
+  
   override def update(
       instanceId: String,
       values: Tuple
@@ -506,7 +482,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     } yield ()).map(_ => Right[ManagementServiceError, Unit](()))
   end delete
 
-  @SuppressWarnings(Array("org.wartremover.warts.TripleQuestionMark"))
   override def exist(
       instanceId: String
   ): F[Either[ManagementServiceError, Boolean]] =
@@ -527,7 +502,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     })
   end exist
 
-  @SuppressWarnings(Array("org.wartremover.warts.TripleQuestionMark"))
   override def link(
       instanceId1: String,
       linkType: Relationship,
@@ -621,7 +595,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     } yield link).value
   end link
 
-  @SuppressWarnings(Array("org.wartremover.warts.TripleQuestionMark"))
   override def unlink(
       instanceId1: String,
       linkType: Relationship,

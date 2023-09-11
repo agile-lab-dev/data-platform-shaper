@@ -7,14 +7,6 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.language.{dynamics, implicitConversions}
 
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.Var",
-    "org.wartremover.warts.Any",
-    "org.wartremover.warts.Nothing",
-    "org.wartremover.warts.AsInstanceOf"
-  )
-)
 class DataTypeSpec extends AnyFlatSpec with Matchers:
 
   behavior of "DataType"
