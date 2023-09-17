@@ -8,6 +8,12 @@ import it.agilelab.witboost.ontology.manager.domain.model.schema.Mode.*
 import scala.language.{dynamics, postfixOps}
 import scala.util.{Failure, Success, Try}
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.asInstanceOf",
+    "scalafix:DisableSyntax.isInstanceOf"
+  )
+)
 private def unfoldPrimitive(
     name: String,
     value: Any,
@@ -83,6 +89,14 @@ private def unfoldPrimitive(
   end match
 end unfoldPrimitive
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.isInstanceOf",
+    "scalafix:DisableSyntax.asInstanceOf",
+    "scalafix:DisableSyntax.var",
+    "scalafix:DisableSyntax.=="
+  )
+)
 private def unfoldStruct(
     name: String,
     tuple: Any,
@@ -187,6 +201,11 @@ private def unfoldStruct(
   end match
 end unfoldStruct
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.asInstanceOf"
+  )
+)
 private def unfoldDataType(
     tuple: Tuple,
     schema: DataType,
@@ -208,6 +227,13 @@ private def unfoldDataType(
   end match
 end unfoldDataType
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.asInstanceOf",
+    "scalafix:DisableSyntax.var",
+    "scalafix:DisableSyntax.=="
+  )
+)
 def unfoldTuple(
     tuple: Tuple,
     schema: Schema,

@@ -35,7 +35,7 @@ object Server:
     .map(
       _.replaceAll(
         "#__URL__",
-        s"- url: /${BuildInfo.name}/${BuildInfo.interfaceVersion}"
+        s"url: /${BuildInfo.name}/${BuildInfo.interfaceVersion}"
       )
     )
     .mkString("\n")

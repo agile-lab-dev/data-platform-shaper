@@ -5,7 +5,10 @@ import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.effect.{IO, Ref}
 import fs2.io.file.Path
-import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.witboost.ontology.manager.domain.model.NS.*
 import it.agilelab.witboost.ontology.manager.domain.model.l0
 import it.agilelab.witboost.ontology.manager.domain.model.l0.*
@@ -13,7 +16,10 @@ import it.agilelab.witboost.ontology.manager.domain.model.l1.*
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
 import it.agilelab.witboost.ontology.manager.domain.model.schema.Mode.*
 import it.agilelab.witboost.ontology.manager.domain.service.ManagementServiceError
-import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{
+  InstanceManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 import org.eclipse.rdf4j.model.*
 import org.eclipse.rdf4j.model.util.Values
 import org.eclipse.rdf4j.model.util.Values.iri
@@ -31,6 +37,11 @@ import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 import scala.util.Right
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.null"
+  )
+)
 class OntologyL0Spec
     extends AsyncFreeSpec
     with AsyncIOSpec

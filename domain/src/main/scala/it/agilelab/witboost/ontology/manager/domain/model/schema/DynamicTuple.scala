@@ -20,7 +20,12 @@ import scala.util.Try
 final case class DynamicTuple(tuple: Any) extends Dynamic:
 
   given CanEqual[Tuple, Tuple] = CanEqual.derived
-  
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf"
+    )
+  )
   def selectDynamic(method: String): DynamicTuple =
     tuple match
       case t: Tuple =>
@@ -31,7 +36,13 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
       case t: List[_] if method.forall(_.isDigit) =>
         DynamicTuple(t(method))
   end selectDynamic
-  
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf",
+      "scalafix:DisableSyntax.var"
+    )
+  )
   def updateDynamic(method: String)(value: Any): DynamicTuple =
     tuple match
       case t: Tuple =>
@@ -60,6 +71,11 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
   end updateDynamic
 
   @unused
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf"
+    )
+  )
   def applyDynamic(method: String)(arg: Int): DynamicTuple =
     val w = selectDynamic(method)
     DynamicTuple(w.tuple.asInstanceOf[List[Tuple]](arg))
@@ -71,6 +87,11 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
     end match
   end value
 
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf"
+    )
+  )
   def replace(path: String, value: Any): Either[String, DynamicTuple] =
     @tailrec
     def recursiveReplace(
@@ -99,6 +120,12 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
 end DynamicTuple
 
 extension (tuple: Tuple)
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf",
+      "scalafix:DisableSyntax.defaultArgs"
+    )
+  )
   def replace(
       path: String,
       value: Any,

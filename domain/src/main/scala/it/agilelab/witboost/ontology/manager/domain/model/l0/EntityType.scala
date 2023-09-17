@@ -6,6 +6,11 @@ import it.agilelab.witboost.ontology.manager.domain.model.l1.{
 }
 import it.agilelab.witboost.ontology.manager.domain.model.schema.Schema
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.var"
+  )
+)
 final case class EntityType(
     name: String,
     traits: Set[SpecificTrait],

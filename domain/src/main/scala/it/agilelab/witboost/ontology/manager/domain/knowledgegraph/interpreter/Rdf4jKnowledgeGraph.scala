@@ -9,6 +9,11 @@ import scala.jdk.CollectionConverters.*
 
 class Rdf4jKnowledgeGraph[F[_]: Sync](session: Session)
     extends KnowledgeGraph[F]:
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.defaultArgs"
+    )
+  )
   override def removeAndInsertStatements(
       statements: List[Statement],
       deleteStatements: List[(Resource, IRI, Value)] =

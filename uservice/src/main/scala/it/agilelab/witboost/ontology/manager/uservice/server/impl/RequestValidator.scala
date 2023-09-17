@@ -17,6 +17,12 @@ import scala.jdk.CollectionConverters.*
 
 object RequestValidator:
 
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf",
+      "scalafix:DisableSyntax.var"
+    )
+  )
   def apply[F[_]: Async](
       service: HttpRoutes[F],
       interfaceString: String

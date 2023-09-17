@@ -7,11 +7,20 @@ import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
 import it.agilelab.witboost.ontology.manager.domain.model.l0
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
-import it.agilelab.witboost.ontology.manager.domain.model.l1.{SpecificTrait, given}
+import it.agilelab.witboost.ontology.manager.domain.model.l1.{
+  SpecificTrait,
+  given
+}
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
-import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{
+  InstanceManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 import it.agilelab.witboost.ontology.manager.uservice.Resource.CreateResponse
-import it.agilelab.witboost.ontology.manager.uservice.definitions.{ValidationError, EntityType as IEntityType}
+import it.agilelab.witboost.ontology.manager.uservice.definitions.{
+  ValidationError,
+  EntityType as IEntityType
+}
 import it.agilelab.witboost.ontology.manager.uservice.{Handler, Resource}
 
 import scala.annotation.unused
@@ -29,7 +38,6 @@ class OntologyManagerHandler[F[_]: Async](
   )(body: IEntityType): F[CreateResponse] =
 
     val schema: Schema = body.schema: Schema
-
 
     val traits =
       summon[Applicative[F]].pure(

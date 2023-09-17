@@ -68,6 +68,11 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     end match
   end modeToStatement
 
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.defaultArgs"
+    )
+  )
   private def stringToDataType(
       stringType: String,
       stringMode: String,
@@ -95,7 +100,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       case "StringAttributeType" | "IntAttributeType" => false
       case _                                          => true
   end isStructType
-  
+
   private def emitStatements(
       fatherEntity: IRI,
       dataType: DataType,

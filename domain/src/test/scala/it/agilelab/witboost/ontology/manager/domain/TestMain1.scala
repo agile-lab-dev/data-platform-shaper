@@ -3,11 +3,17 @@ package it.agilelab.witboost.ontology.manager.domain
 import cats.data.EitherT
 import cats.effect.{ExitCode, IO, IOApp, Ref}
 import cats.syntax.all.*
-import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
 import it.agilelab.witboost.ontology.manager.domain.model.NS.*
 import it.agilelab.witboost.ontology.manager.domain.service.ManagementServiceError
-import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{
+  InstanceManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 import it.agilelab.witboost.ontology.manager.domain.model.l0
 import it.agilelab.witboost.ontology.manager.domain.model.l0.*
 import it.agilelab.witboost.ontology.manager.domain.model.l1.*
@@ -17,6 +23,11 @@ import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 
 import scala.jdk.CollectionConverters.*
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.null"
+  )
+)
 object TestMain1 extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
     val session = Session[IO]("localhost", 7200, "repo1", false)

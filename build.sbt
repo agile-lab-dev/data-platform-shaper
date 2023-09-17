@@ -5,6 +5,7 @@ ThisBuild / organization         := "it.agilelab"
 ThisBuild / organizationName     := "AgileLab S.r.L."
 ThisBuild / dependencyOverrides ++= Dependencies.Jars.overrides
 ThisBuild / version              := ComputeVersion.version
+ThisBuild / semanticdbEnabled    := true
 
 val specFile = file("uservice/src/main/resources/interface-specification.yml")
 

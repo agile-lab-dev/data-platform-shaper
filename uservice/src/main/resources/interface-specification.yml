@@ -4,7 +4,7 @@ info:
   description: 'This is the microservice responsible to manage user-defined types and instances'
   version: '__VERSION__'
 servers:
-#__URL__
+  - #__URL__
 tags:
   - name: OntologyManager
     description: All the ontology related operations

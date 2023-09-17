@@ -42,6 +42,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
   val repository: KnowledgeGraph[F] = typeManagementService.repository
 
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.var"
+    )
+  )
   private def createInstanceNoCheck(
       entityId: String,
       instanceTypeName: String,
@@ -59,7 +64,12 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     ) :: statements
     statements =
       statement(triple(entity, RDF.TYPE, NS.ENTITY), L3) :: statements
-    
+
+    @SuppressWarnings(
+      Array(
+        "scalafix:DisableSyntax.asInstanceOf"
+      )
+    )
     def emitStatement(
         currentEntityIri: IRI,
         currentPath: String,
@@ -164,7 +174,13 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
     } yield id).value
   end createInstanceNoCheck
-  
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf",
+      "scalafix:DisableSyntax.=="
+    )
+  )
   private def fetchStatementsForInstance(
       instanceId: String
   ): F[List[Statement]] =
@@ -346,7 +362,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         case _ => EmptyTuple
       Applicative[F].pure(tuple)
     end handlePrimitiveDataTypes
-    
+
     def handleStructDataType(
         fieldName: String,
         dataType: StructType,
@@ -438,7 +454,12 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <- traceT(s"About to return the entity $entity")
     } yield entity).value
   end read
-  
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.=="
+    )
+  )
   override def update(
       instanceId: String,
       values: Tuple

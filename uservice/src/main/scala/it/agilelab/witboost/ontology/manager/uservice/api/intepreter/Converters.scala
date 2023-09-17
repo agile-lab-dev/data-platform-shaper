@@ -37,10 +37,16 @@ given OpenApiAttributeTypeToAttributeType
           oaAttributeType.name,
           IntType(oaAttributeType.mode.getOrElse(OpenApiMode.members.Required))
         )
-      case AttributeTypeName.members.Struct => //TODO
+      case AttributeTypeName.members.Struct =>
         (
           oaAttributeType.name,
-          IntType(oaAttributeType.mode.getOrElse(OpenApiMode.members.Required))
+          StructType(
+            oaAttributeType.attributeTypes
+              .getOrElse(List.empty[OpenApiAttributeType])
+              .map(apply)
+              .toList,
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+          )
         )
     end match
   end apply
