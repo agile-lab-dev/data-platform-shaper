@@ -16,7 +16,7 @@ import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{
   InstanceManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
-import it.agilelab.witboost.ontology.manager.uservice.Resource.CreateResponse
+import it.agilelab.witboost.ontology.manager.uservice.Resource.CreateTypeResponse
 import it.agilelab.witboost.ontology.manager.uservice.definitions.{
   ValidationError,
   EntityType as IEntityType
@@ -33,9 +33,9 @@ class OntologyManagerHandler[F[_]: Async](
 ) extends Handler[F]
     with StrictLogging:
 
-  override def create(
-      respond: Resource.CreateResponse.type
-  )(body: IEntityType): F[CreateResponse] =
+  override def createType(
+      respond: Resource.CreateTypeResponse.type
+  )(body: IEntityType): F[CreateTypeResponse] =
 
     val schema: Schema = body.schema
 
@@ -89,21 +89,19 @@ class OntologyManagerHandler[F[_]: Async](
       .onError(t =>
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
-  end create
+  end createType
 
-  override def read(respond: Resource.ReadResponse.type)(
+  override def readType(respond: Resource.ReadTypeResponse.type)(
       name: String
-  ): F[Resource.ReadResponse] =
+  ): F[Resource.ReadTypeResponse] =
 
     val res = for {
-      et <- EitherT(
-        tms
-          .read(name)
-          .map(_.leftMap(_.getMessage))
-      )
+      et <- tms
+        .read(name)
+        .map(_.leftMap(_.getMessage))
     } yield et
 
-    res.value
+    res
       .map {
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
         case Right(entityType) => respond.Ok(entityType)
@@ -111,5 +109,5 @@ class OntologyManagerHandler[F[_]: Async](
       .onError(t =>
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
-  end read
+  end readType
 end OntologyManagerHandler

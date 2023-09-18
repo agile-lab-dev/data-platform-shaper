@@ -14,7 +14,7 @@ paths:
       tags:
         - OntologyManager
       summary: Create a user-defined type
-      operationId: create
+      operationId: createType
       requestBody:
         description: An EntityType spec
         content:
@@ -45,7 +45,7 @@ paths:
       tags:
         - OntologyManager
       summary: Get a user-defined type
-      operationId: read
+      operationId: readType
       parameters:
         - in: query
           name: name
