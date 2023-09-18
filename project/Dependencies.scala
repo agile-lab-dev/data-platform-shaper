@@ -105,7 +105,6 @@ object Dependencies {
       http4s.emberClient           % Compile,
       http4s.dsl                   % Compile,
       http4s.circe                 % Compile,
-      atlassian.openapiValidator   % Compile,
       typesafe.config              % Compile,
       opentelemetry.api            % Compile,
       opentelemetry.annotations    % Compile,

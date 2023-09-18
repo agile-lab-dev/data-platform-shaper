@@ -1,9 +1,12 @@
 package it.agilelab.witboost.ontology.manager.uservice.api.intepreter
 
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
+import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
+import it.agilelab.witboost.ontology.manager.domain.model.l1.given
 import it.agilelab.witboost.ontology.manager.uservice.definitions.{
   AttributeTypeName,
   AttributeType as OpenApiAttributeType,
+  EntityType as OpenApiEntityType,
   Mode as OpenApiMode
 }
 import org.datatools.bigdatatypes.basictypes.SqlType
@@ -18,6 +21,15 @@ given OpenApiModeToMode: Conversion[OpenApiMode, Mode] with
       case OpenApiMode.members.Nullable => Mode.Nullable
       case OpenApiMode.members.Repeated => Mode.Repeated
       case OpenApiMode.members.Required => Mode.Required
+    end match
+  end apply
+
+given ModeToOpenApiMode: Conversion[Mode, OpenApiMode] with
+  def apply(mode: Mode): OpenApiMode =
+    mode match
+      case Mode.Nullable => OpenApiMode.members.Nullable
+      case Mode.Repeated => OpenApiMode.members.Repeated
+      case Mode.Required => OpenApiMode.members.Required
     end match
   end apply
 
@@ -51,6 +63,19 @@ given OpenApiAttributeTypeToAttributeType
     end match
   end apply
 
+given AttributeTypeToOpenApiAttributeType: Conversion[(String, DataType), OpenApiAttributeType] with
+  def apply(pair: (String, DataType)): OpenApiAttributeType =
+    val name = pair(0)
+    val oaAttributeType =
+      pair(1) match
+        case StringType(mode) => OpenApiAttributeType(name, AttributeTypeName.String, Some(mode), None)
+        case IntType(mode) => OpenApiAttributeType(name, AttributeTypeName.Integer, Some(mode), None)
+        case StructType(attributes, mode) => OpenApiAttributeType(name,AttributeTypeName.Struct, Some(mode),Some(attributes.map(apply).toVector))
+        case _ => OpenApiAttributeType(name, AttributeTypeName.String, Some(OpenApiMode.Required), None)
+      end match
+    oaAttributeType
+  end apply
+
 given OpenApiSchemaToSchema: Conversion[OpenApiSchema, Schema] with
   def apply(oaSchema: OpenApiSchema): Schema =
     StructType(
@@ -58,4 +83,18 @@ given OpenApiSchemaToSchema: Conversion[OpenApiSchema, Schema] with
         .map(oaAttributeType => oaAttributeType: (String, DataType))
         .toList
     )
+  end apply
+
+given SchemaToOpenApiSchema: Conversion[Schema, OpenApiSchema] with
+  def apply(schema: Schema): OpenApiSchema =
+    schema.records.map(pair => pair: OpenApiAttributeType).toVector
+  end apply
+
+given EntityTypeToOpenApiEntityType: Conversion[EntityType, OpenApiEntityType] with
+  def apply(entityType: EntityType): OpenApiEntityType =
+    val name: String = entityType.name
+    val traits: Vector[String] = entityType.traits.toVector.map(t => t: String)
+    val schema: OpenApiSchema = entityType.schema
+    val fatherName: Option[String] = entityType.father.map(_.name)
+    OpenApiEntityType(name, Some(traits), schema, fatherName)
   end apply

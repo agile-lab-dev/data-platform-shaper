@@ -63,10 +63,7 @@ object Server:
     val allRoutes =
       interfaceFileRoute <+>
         assetsRoutes <+>
-        RequestValidator(
-          new GenResource[F]().routes(new OntologyManagerHandler[F](tms, ims)),
-          interfaceString
-        )
+        GenResource[F]().routes(new OntologyManagerHandler[F](tms, ims))
 
     for _ <- EmberServerBuilder
         .default[F]

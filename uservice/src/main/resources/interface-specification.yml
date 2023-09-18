@@ -24,11 +24,42 @@ paths:
         required: true
       responses:
         200:
-          description: If successful returns a provisioning deployment task token that can be used for polling the request status
+          description: If successful returns "OK"
           content:
             application/text:
               schema:
                 type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+    get:
+      tags:
+        - OntologyManager
+      summary: Get a user-defined type
+      operationId: read
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+            description: user-defined type name
+      responses:
+        200:
+          description: If successful return an EntityType object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityType'
         400:
           description: Invalid input
           content:
@@ -57,6 +88,8 @@ components:
             type: string
         schema:
           $ref: '#/components/schemas/Schema'
+        fatherName:
+          type: string
     Schema:
       type: array
       items:

@@ -7,20 +7,11 @@ import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
 import it.agilelab.witboost.ontology.manager.domain.model.l0
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
-import it.agilelab.witboost.ontology.manager.domain.model.l1.{
-  SpecificTrait,
-  given
-}
+import it.agilelab.witboost.ontology.manager.domain.model.l1.{SpecificTrait, given}
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
-import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{
-  InstanceManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
+import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
 import it.agilelab.witboost.ontology.manager.uservice.Resource.CreateResponse
-import it.agilelab.witboost.ontology.manager.uservice.definitions.{
-  ValidationError,
-  EntityType as IEntityType
-}
+import it.agilelab.witboost.ontology.manager.uservice.definitions.{ValidationError, EntityType as IEntityType}
 import it.agilelab.witboost.ontology.manager.uservice.{Handler, Resource}
 
 import scala.annotation.unused
@@ -37,7 +28,9 @@ class OntologyManagerHandler[F[_]: Async](
       respond: Resource.CreateResponse.type
   )(body: IEntityType): F[CreateResponse] =
 
-    val schema: Schema = body.schema: Schema
+    val schema: Schema = body.schema
+
+    val fatherName = body.fatherName
 
     val traits =
       summon[Applicative[F]].pure(
@@ -52,7 +45,7 @@ class OntologyManagerHandler[F[_]: Async](
     val res = for {
       ts <- EitherT(traits)
       res <- EitherT(
-        tms
+        fatherName.fold(tms
           .create(
             l0.EntityType(
               body.name,
@@ -60,7 +53,16 @@ class OntologyManagerHandler[F[_]: Async](
               schema,
               None
             )
-          )
+          ))(fn => tms
+          .create(
+            l0.EntityType(
+              body.name,
+              ts,
+              schema,
+              None
+            ),
+            fn
+          ))
           .map(_.leftMap(_.getMessage))
       )
     } yield res
@@ -74,4 +76,23 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end create
+
+  override def read(respond: Resource.ReadResponse.type)(
+      name: String
+  ): F[Resource.ReadResponse] =
+
+    val res = for {
+      et <- EitherT(tms.read(name)
+      .map(_.leftMap(_.getMessage)))
+    } yield et
+
+    res.value
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(entityType) => respond.Ok(entityType)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end read
 end OntologyManagerHandler
