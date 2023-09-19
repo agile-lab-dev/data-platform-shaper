@@ -171,7 +171,12 @@ class ApiSpec
         name = "childrenEntityType",
         Some(Vector("DataCollection")),
         Vector(
-          OpenApiAttributeType("name", AttributeTypeName.String, None, None)
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
         ),
         Some("father")
       )
@@ -191,25 +196,7 @@ class ApiSpec
         .asserting(resp =>
           resp should be(
             ReadTypeResponse.Ok(
-              OpenApiEntityType(
-                name = "childrenEntityType",
-                Some(Vector("DataCollection")),
-                Vector(
-                  OpenApiAttributeType(
-                    "id",
-                    AttributeTypeName.String,
-                    Some(OpenApiMode.Required),
-                    None
-                  ),
-                  OpenApiAttributeType(
-                    "name",
-                    AttributeTypeName.String,
-                    Some(OpenApiMode.Required),
-                    None
-                  )
-                ),
-                Some("father")
-              )
+              childrenEntityType
             )
           )
         )

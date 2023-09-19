@@ -11,7 +11,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 final case class Session(connection: RepositoryConnection):
 
   def withTx[F[_]: Sync, T](func: RepositoryConnection => T): F[T] =
-    given logger: Logger[F] = Slf4jLogger.getLogger[F]
+    val logger: Logger[F] = Slf4jLogger.getLogger[F]
     Resource
       .makeCase(Sync[F].delay {
         this.connection.begin()
@@ -67,7 +67,7 @@ object Session:
           Session(manager.getRepository(repositoryId).getConnection)
         }
         _ <- logger.trace(s"Session acquired for endpoint $rdf4jServer")
-      } yield res).onError(t => logger.error(s"Error in $rdf4jServer")))(
+      } yield res).onError(* => logger.error(s"Error in $rdf4jServer")))(
         session =>
           Sync[F].delay {
             session.connection.close()

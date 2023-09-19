@@ -1,4 +1,4 @@
-package it.agilelab.witboost.ontology.manager.domain.service.intepreter
+package it.agilelab.witboost.ontology.manager.domain.service.interpreter
 
 import cats.*
 import cats.data.*

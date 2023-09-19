@@ -10,7 +10,7 @@ import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
 import it.agilelab.witboost.ontology.manager.domain.model.NS.*
 import it.agilelab.witboost.ontology.manager.domain.service.ManagementServiceError
-import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{
+import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }

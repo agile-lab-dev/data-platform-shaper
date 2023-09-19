@@ -16,7 +16,7 @@ import it.agilelab.witboost.ontology.manager.domain.model.l1.*
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
 import it.agilelab.witboost.ontology.manager.domain.model.schema.Mode.*
 import it.agilelab.witboost.ontology.manager.domain.service.ManagementServiceError
-import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{
+import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }

@@ -12,7 +12,7 @@ import it.agilelab.witboost.ontology.manager.domain.model.l1.{
   given
 }
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
-import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{
+import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }

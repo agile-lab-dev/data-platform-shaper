@@ -115,7 +115,7 @@ with
   def apply(entityType: EntityType): OpenApiEntityType =
     val name: String = entityType.name
     val traits: Vector[String] = entityType.traits.toVector.map(t => t: String)
-    val schema: OpenApiSchema = entityType.schema
+    val schema: OpenApiSchema = entityType.baseSchema
     val fatherName: Option[String] = entityType.father.map(_.name)
     OpenApiEntityType(name, Some(traits), schema, fatherName)
   end apply

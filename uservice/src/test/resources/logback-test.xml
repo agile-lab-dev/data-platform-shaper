@@ -21,8 +21,8 @@
     </appender>
 
     <logger name="it.agilelab.witboost.ontology.manager.domain.service.interpreter.TypeManagementServiceInterpreter" level="TRACE" />
-    <logger name="it.agilelab.witboost.ontology.manager.domain.service.interpreter.InstanceManagementServiceInterpreter" level="ERROR" />
-    <logger name="it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.Session" level="ERROR" />
+    <logger name="it.agilelab.witboost.ontology.manager.domain.service.interpreter.InstanceManagementServiceInterpreter" level="TRACE" />
+    <logger name="it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.Session" level="TRACE" />
 
     <root level="ERROR">
         <appender-ref ref="ASYNC"/>

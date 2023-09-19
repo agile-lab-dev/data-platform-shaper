@@ -10,7 +10,7 @@ import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{
   Session
 }
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
-import it.agilelab.witboost.ontology.manager.domain.service.intepreter.{
+import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
