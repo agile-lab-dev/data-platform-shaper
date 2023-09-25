@@ -7,20 +7,11 @@ import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
 import it.agilelab.witboost.ontology.manager.domain.model.l0
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
-import it.agilelab.witboost.ontology.manager.domain.model.l1.{
-  SpecificTrait,
-  given
-}
+import it.agilelab.witboost.ontology.manager.domain.model.l1.{SpecificTrait, given}
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
-import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{
-  InstanceManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
+import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
 import it.agilelab.witboost.ontology.manager.uservice.Resource.CreateTypeResponse
-import it.agilelab.witboost.ontology.manager.uservice.definitions.{
-  ValidationError,
-  EntityType as IEntityType
-}
+import it.agilelab.witboost.ontology.manager.uservice.definitions.{Entity, ValidationError, EntityType as IEntityType}
 import it.agilelab.witboost.ontology.manager.uservice.{Handler, Resource}
 
 import scala.annotation.unused
@@ -110,4 +101,12 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end readType
+
+  override def createEntity(respond: Resource.CreateEntityResponse.type)(body: Entity): F[Resource.CreateEntityResponse] =
+    for {
+      schema <- EitherT(tms.read(body.entityTypeName).map(_.map(_.schema)))
+    } yield schema
+
+    ???
+  end createEntity
 end OntologyManagerHandler

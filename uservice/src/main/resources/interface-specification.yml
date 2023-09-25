@@ -72,8 +72,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/entity:
+    post:
+      tags:
+        - OntologyManager
+      summary: Create a user-defined type instance
+      operationId: createEntity
+      requestBody:
+        description: An Entity spec
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Entity'
+        required: true
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
 components:
   schemas:
+    Entity:
+      required:
+        - entityId
+        - entityTypeName
+        - values
+      type: object
+      properties:
+        entityId:
+          type: string
+        entityTypeName:
+          type: string
+        values:
+          $ref: '#/components/schemas/Values'
     EntityType:
       required:
         - name
@@ -90,6 +135,8 @@ components:
           $ref: '#/components/schemas/Schema'
         fatherName:
           type: string
+    Values:
+      type: object
     Schema:
       type: array
       items:

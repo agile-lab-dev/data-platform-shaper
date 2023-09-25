@@ -32,7 +32,6 @@ def clientInterfaceFile: File = {
   val bufferedPrintWriter = new BufferedWriter(new PrintWriter(tmpFilePath.toFile))
   bufferedPrintWriter.write(interfaceString)
   bufferedPrintWriter.flush()
-  println(tmpFilePath)
   tmpFilePath.toFile
 }
 

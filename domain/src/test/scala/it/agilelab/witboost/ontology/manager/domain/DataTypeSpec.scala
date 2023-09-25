@@ -1,5 +1,7 @@
 package it.agilelab.witboost.ontology.manager.domain
 
+import io.circe.*
+import io.circe.parser.*
 import it.agilelab.witboost.ontology.manager.domain.model.schema.Mode.*
 import it.agilelab.witboost.ontology.manager.domain.model.schema.{*, given}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -83,6 +85,76 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
     val res = unfoldTuple(tuple, schema, (_, _, _) => ())
 
     res should matchPattern { case Right(()) => }
+  }
+
+  "Converting a json document into a schema conforming tuple " should "work" in {
+
+    val schema: Schema = StructType(
+      List(
+        "organization" -> StringType(),
+        "sub-organization" -> StringType(),
+        "domain" -> StringType(),
+        "sub-domain" -> StringType(),
+        "labels" -> StringType(Repeated),
+        "version" -> IntType(),
+        "aStruct" -> StructType(
+          List(
+            "nest1" -> StringType(),
+            "nest2" -> StringType()
+          )
+        ),
+        "aNullable" -> StringType(Nullable)
+      )
+    )
+
+
+    val rawJson: String = """
+    {
+      "organization": "HR",
+      "sub-organization": "Italy",
+      "domain": "Registration",
+      "sub-domain": "Person",
+      "labels": ["label1", "label2", "label3"],
+      "version": 1,
+      "aStruct": {
+        "nest1": "ciccio1",
+        "nest2": "ciccio2"
+      },
+      "aNullable": "notNull"
+    }
+    """
+
+    val parseResult1 = parse(rawJson)
+
+    val result1 = parseResult1.flatMap(json => jsonToTuple(json, schema)).flatMap(tuple => parseTuple(tuple, schema))
+
+    result1 should matchPattern({
+      case Right(_) =>
+    })
+
+    val wrongRawJson: String =
+      """
+        {
+          "organization": "HR",
+          "sub-organization": "Italy",
+          "domain": "Registration",
+          "sub-domain": "Person",
+          "labels": ["label1", "label2", "label3"],
+          "version": 1,
+          "aStruct": {
+            "nest1": "ciccio1"
+          },
+          "aNullable": "notNull"
+        }
+      """
+
+    val parseResult2 = parse(wrongRawJson)
+
+    val result2 = parseResult2.flatMap(json => jsonToTuple(json, schema))
+
+    result2 should matchPattern({
+      case Left(_) =>
+    })
   }
 
 end DataTypeSpec
