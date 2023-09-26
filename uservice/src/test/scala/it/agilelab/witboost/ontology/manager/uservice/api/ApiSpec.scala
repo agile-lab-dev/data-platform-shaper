@@ -1,28 +1,19 @@
 package it.agilelab.witboost.ontology.manager.uservice.api
 
+//import cats.syntax.either._
 import cats.effect
 import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
-import cats.effect.{FiberIO, IO, Ref, Resource, kernel}
+import cats.effect.*
 import fs2.io.file.Path
-import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import io.circe.*
+import io.circe.parser.*
+import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
 import it.agilelab.witboost.ontology.manager.domain.model.NS.*
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
-import it.agilelab.witboost.ontology.manager.uservice.{
-  Client,
-  CreateTypeResponse,
-  ReadTypeResponse
-}
+import it.agilelab.witboost.ontology.manager.uservice.definitions.{AttributeTypeName, AttributeType as OpenApiAttributeType, EntityType as OpenApiEntityType, Mode as OpenApiMode, Entity as OpenApiEntity}
 import it.agilelab.witboost.ontology.manager.uservice.server.impl.Server
-import it.agilelab.witboost.ontology.manager.uservice.definitions.{
-  AttributeTypeName,
-  AttributeType as OpenApiAttributeType,
-  EntityType as OpenApiEntityType,
-  Mode as OpenApiMode
-}
+import it.agilelab.witboost.ontology.manager.uservice.{Client, CreateEntityResponse, CreateTypeResponse, ReadTypeResponse}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.http4s.ember.client.EmberClientBuilder
@@ -155,7 +146,7 @@ class ApiSpec
       .unsafeRunSync()
   end createServer
 
-  "Loading the base ontology" - {
+  "Creating a user defined type" - {
     "works" in {
 
       val fatherEntityType = OpenApiEntityType(
@@ -199,6 +190,48 @@ class ApiSpec
               childrenEntityType
             )
           )
+        )
+    }
+  }
+
+  "Creating a user defined type instance" - {
+    "works" in {
+
+      val entityType = OpenApiEntityType(
+        name = "DataCollectionType",
+        Some(Vector("DataCollection")),
+        Vector(
+          OpenApiAttributeType("name",AttributeTypeName.String,Some(OpenApiMode.Required),None),
+        ),
+        None
+      )
+
+      val rawJson: String = """
+      {
+        "name": "dc1"
+      }
+      """
+
+      val entityJson = parse(rawJson).getOrElse(Json.Null)
+
+      val entity = OpenApiEntity("", "DataCollectionType", entityJson)
+
+      val resp: Resource[IO, CreateEntityResponse] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(entityType))
+        resp <- Resource.liftK(client.createEntity(entity))
+      } yield resp
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          println(resp)
+          resp should matchPattern {
+            case CreateEntityResponse.Ok(_) =>
+          }
         )
     }
   }

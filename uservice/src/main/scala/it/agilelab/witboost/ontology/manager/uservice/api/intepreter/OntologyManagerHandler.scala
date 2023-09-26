@@ -103,10 +103,19 @@ class OntologyManagerHandler[F[_]: Async](
   end readType
 
   override def createEntity(respond: Resource.CreateEntityResponse.type)(body: Entity): F[Resource.CreateEntityResponse] =
-    for {
-      schema <- EitherT(tms.read(body.entityTypeName).map(_.map(_.schema)))
-    } yield schema
+    val res = (for {
+      schema <- EitherT(tms.read(body.entityTypeName).map(_.map(_.schema)).map(_.leftMap(_.getMessage)))
+      tuple <- EitherT(summon[Applicative[F]].pure(jsonToTuple(body.values, schema).leftMap(_.getMessage)))
+      entityId <- EitherT(ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage)))
+    } yield entityId).value
 
-    ???
+    res
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(entityType) => respond.Ok(entityType)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
   end createEntity
 end OntologyManagerHandler

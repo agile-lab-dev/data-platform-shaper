@@ -6,12 +6,12 @@ set -o xtrace # trace what gets executed
 
 # This script calculates the current version based on the current branch and on the existing tags:
 # - For tags (in the form v1.0.2) the version returned is always a stable one; in the previous example it would return 1.0.2.
-# - For release branches (in the form relelase/3.1) it will return a SNAPSHOT version with the patch number increased by 1. The current patch number
-#   is extracted from the highest tag with the same major.minor version as the release branch. The relelase branches will be updated only to backport
+# - For release branches (in the form release/3.1) it will return a SNAPSHOT version with the patch number increased by 1. The current patch number
+#   is extracted from the highest tag with the same major.minor version as the release branch. The release branches will be updated only to backport
 #   small functionalities or hotfixes, so they will just increase the patch number. In this example it could return 3.1.1-SNAPSHOT.bb67482.381-test.
 # - For all other branches, it will find the highest tag available and return a SNAPSHOT version with patch 0 and the minor increased by 1.
 #   So in case the highest tag is 1.2.4 it would return 1.3.0-SNAPSHOT.bb67482.381-test.
-# Since artifacts are built from the master branch, relelase branches, and tags, we should not worry about feature/hotfix branches, but it any case
+# Since artifacts are built from the master branch, release branches, and tags, we should not worry about feature/hotfix branches, but it any case
 # they will behave exactly like the master branch.
 
 # calculate the snapshot suffix by adding an extract from the commit message and the commit SHA
