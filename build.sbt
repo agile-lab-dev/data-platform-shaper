@@ -5,12 +5,14 @@ import java.nio.file.Files
 import scala.io.Codec.UTF8
 import scala.io.Source
 
-ThisBuild / scalaVersion         := "3.3.1"
-ThisBuild / organization         := "it.agilelab"
-ThisBuild / organizationName     := "AgileLab S.r.L."
-ThisBuild / dependencyOverrides ++= Dependencies.Jars.overrides
-ThisBuild / version              := ComputeVersion.version
-ThisBuild / semanticdbEnabled    := true
+ThisBuild / scalaVersion             := "3.3.1"
+ThisBuild / organization             := "it.agilelab"
+ThisBuild / organizationName         := "AgileLab S.r.L."
+ThisBuild / dependencyOverrides     ++= Dependencies.Jars.overrides
+ThisBuild / version                  := ComputeVersion.version
+ThisBuild / semanticdbEnabled        := true
+ThisBuild / Test / parallelExecution := false
+
 
 val serviceName       = "witboost.ontology.manager.uservice"
 val interfaceSpecFile = "uservice/src/main/resources/interface-specification.yml"
@@ -38,7 +40,6 @@ def clientInterfaceFile: File = {
 lazy val domain = (project in file("domain")).settings(
   name                     := "witboost.ontology.manager.domain",
   libraryDependencies      := Dependencies.Jars.domain,
-  Test / parallelExecution := false
 )
 
 lazy val userviceClientGenerated = (project in file("uservice-client-generated")).settings(
@@ -58,7 +59,6 @@ lazy val userviceGenerated = (project in file("uservice-generated")).settings(
 lazy val uservice = (project in file("uservice")).settings(
   name                                    := serviceName,
   libraryDependencies                     := Dependencies.Jars.uservice,
-  Test / parallelExecution                := false,
   dockerBuildOptions                     ++= Seq("--network=host"),
   dockerBaseImage                         := "adoptopenjdk:11-jdk-hotspot",
   dockerUpdateLatest                      := true,

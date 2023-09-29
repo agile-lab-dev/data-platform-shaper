@@ -104,6 +104,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/entity/yaml:
+    post:
+      tags:
+        - OntologyManager
+      summary: Create a user-defined type instance
+      operationId: createEntityByYaml
+      requestBody:
+        description: An YAML file containing an Entity spec
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
 components:
   schemas:
     Entity:

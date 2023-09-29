@@ -11,9 +11,9 @@ import io.circe.parser.*
 import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
 import it.agilelab.witboost.ontology.manager.domain.model.NS.*
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
-import it.agilelab.witboost.ontology.manager.uservice.definitions.{AttributeTypeName, AttributeType as OpenApiAttributeType, EntityType as OpenApiEntityType, Mode as OpenApiMode, Entity as OpenApiEntity}
+import it.agilelab.witboost.ontology.manager.uservice.definitions.{AttributeTypeName, AttributeType as OpenApiAttributeType, Entity as OpenApiEntity, EntityType as OpenApiEntityType, Mode as OpenApiMode}
 import it.agilelab.witboost.ontology.manager.uservice.server.impl.Server
-import it.agilelab.witboost.ontology.manager.uservice.{Client, CreateEntityResponse, CreateTypeResponse, ReadTypeResponse}
+import it.agilelab.witboost.ontology.manager.uservice.{Client, CreateEntityByYamlResponse, CreateEntityResponse, CreateTypeResponse, ReadTypeResponse}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.http4s.ember.client.EmberClientBuilder
@@ -228,9 +228,32 @@ class ApiSpec
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          println(resp)
           resp should matchPattern {
             case CreateEntityResponse.Ok(_) =>
+          }
+        )
+    }
+  }
+
+  "Creating a user defined type instance using a file yaml" - {
+    "works" in {
+
+      val stream = fs2.io.readClassLoaderResource[IO]("entity.yaml")
+
+      val resp: Resource[IO, CreateEntityByYamlResponse] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        //_ <- Resource.liftK(client.createType(entityType))
+        resp <- Resource.liftK(client.createEntityByYaml(stream))
+      } yield resp
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          resp should matchPattern {
+            case CreateEntityByYamlResponse.Ok(_) =>
           }
         )
     }

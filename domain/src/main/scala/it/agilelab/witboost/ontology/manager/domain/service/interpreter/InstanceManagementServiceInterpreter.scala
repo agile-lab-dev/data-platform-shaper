@@ -432,7 +432,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         (String, List[(String, String)])
       ](
         summon[Functor[F]].map(fetchEntityFieldsAndTypeName(instanceId))(
-          Right[ManagementServiceError, (String, List[(String, String)])](_)
+          Right[ManagementServiceError, (String, List[(String, String)])] _
         )
       )
       _ <- traceT(s"Retrieved fields and type name $fe")

@@ -5,6 +5,8 @@ import cats.data.*
 import cats.effect.*
 import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
+import fs2.{Stream, text}
+import io.circe.yaml.parser
 import it.agilelab.witboost.ontology.manager.domain.model.l0
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
 import it.agilelab.witboost.ontology.manager.domain.model.l1.{SpecificTrait, given}
@@ -14,13 +16,12 @@ import it.agilelab.witboost.ontology.manager.uservice.Resource.CreateTypeRespons
 import it.agilelab.witboost.ontology.manager.uservice.definitions.{Entity, ValidationError, EntityType as IEntityType}
 import it.agilelab.witboost.ontology.manager.uservice.{Handler, Resource}
 
-import scala.annotation.unused
 import scala.language.implicitConversions
 import scala.util.Try
 
 class OntologyManagerHandler[F[_]: Async](
     tms: TypeManagementServiceInterpreter[F],
-    @unused ims: InstanceManagementServiceInterpreter[F]
+    ims: InstanceManagementServiceInterpreter[F]
 ) extends Handler[F]
     with StrictLogging:
 
@@ -112,10 +113,37 @@ class OntologyManagerHandler[F[_]: Async](
     res
       .map {
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
-        case Right(entityType) => respond.Ok(entityType)
+        case Right(entityId) => respond.Ok(entityId)
       }
       .onError(t =>
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createEntity
+
+  override def createEntityByYaml(respond: Resource.CreateEntityByYamlResponse.type)(body: fs2.Stream[F, Byte]): F[Resource.CreateEntityByYamlResponse] =
+    val getEntity = body
+      .through(text.utf8.decode)
+      .fold("")(_ + _)
+      .compile
+      .toList
+      .map(_.head)
+      .map(parser.parse(_).leftMap(_.getMessage))
+      .map(_.flatMap(json => Entity.decodeEntity(json.hcursor).leftMap(_.getMessage)))
+
+    val res = (for {
+      body <- EitherT(getEntity)
+      schema <- EitherT(tms.read(body.entityTypeName).map(_.map(_.schema)).map(_.leftMap(_.getMessage)))
+      tuple <- EitherT(summon[Applicative[F]].pure(jsonToTuple(body.values, schema).leftMap(_.getMessage)))
+      entityId <- EitherT(ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage)))
+    } yield entityId).value
+    
+    res
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(entityId) => respond.Ok(entityId)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end createEntityByYaml
 end OntologyManagerHandler
