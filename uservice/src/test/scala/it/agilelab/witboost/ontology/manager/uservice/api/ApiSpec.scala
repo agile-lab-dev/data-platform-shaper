@@ -1,10 +1,9 @@
 package it.agilelab.witboost.ontology.manager.uservice.api
 
-//import cats.syntax.either._
 import cats.effect
+import cats.effect.*
 import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
-import cats.effect.*
 import fs2.io.file.Path
 import io.circe.*
 import io.circe.parser.*
@@ -13,7 +12,7 @@ import it.agilelab.witboost.ontology.manager.domain.model.NS.*
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
 import it.agilelab.witboost.ontology.manager.uservice.definitions.{AttributeTypeName, AttributeType as OpenApiAttributeType, Entity as OpenApiEntity, EntityType as OpenApiEntityType, Mode as OpenApiMode}
 import it.agilelab.witboost.ontology.manager.uservice.server.impl.Server
-import it.agilelab.witboost.ontology.manager.uservice.{Client, CreateEntityByYamlResponse, CreateEntityResponse, CreateTypeResponse, ReadTypeResponse}
+import it.agilelab.witboost.ontology.manager.uservice.{Client, CreateEntityByYamlResponse, CreateEntityResponse, CreateTypeByYamlResponse, ReadTypeResponse}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.http4s.ember.client.EmberClientBuilder
@@ -194,6 +193,46 @@ class ApiSpec
     }
   }
 
+  "Creating a user defined type using a YAML file" - {
+    "works" in {
+      /*
+      val childrenEntityType = OpenApiEntityType(
+        name = "childrenEntityType",
+        Some(Vector("DataCollection")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        Some("father")
+      )
+*/
+      val stream = fs2.io.readClassLoaderResource[IO]("entity-type.yaml")
+
+      val resp: Resource[IO, CreateTypeByYamlResponse] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        resp <- Resource.liftK(client.createTypeByYaml(stream))
+        //resp <- Resource.liftK(client.readType("newChildrenEntityType"))
+      } yield resp
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          resp should be(
+            CreateTypeByYamlResponse.Ok(
+              "OK"
+            )
+          )
+        )
+    }
+  }
+
   "Creating a user defined type instance" - {
     "works" in {
 
@@ -235,7 +274,7 @@ class ApiSpec
     }
   }
 
-  "Creating a user defined type instance using a file yaml" - {
+  "Creating a user defined type instance using a YAML file" - {
     "works" in {
 
       val stream = fs2.io.readClassLoaderResource[IO]("entity.yaml")
@@ -245,7 +284,6 @@ class ApiSpec
           .default[IO]
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
-        //_ <- Resource.liftK(client.createType(entityType))
         resp <- Resource.liftK(client.createEntityByYaml(stream))
       } yield resp
 

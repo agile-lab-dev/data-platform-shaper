@@ -1,0 +1,8 @@
+name: newChildrenEntityType
+traits:
+- DataCollection
+schema:
+- name: name
+  typeName: String
+  mode: Required
+fatherName: father

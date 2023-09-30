@@ -13,7 +13,7 @@ import it.agilelab.witboost.ontology.manager.domain.model.l1.{SpecificTrait, giv
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
 import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
 import it.agilelab.witboost.ontology.manager.uservice.Resource.CreateTypeResponse
-import it.agilelab.witboost.ontology.manager.uservice.definitions.{Entity, ValidationError, EntityType as IEntityType}
+import it.agilelab.witboost.ontology.manager.uservice.definitions.{Entity, ValidationError, EntityType as OpenApiEntityType}
 import it.agilelab.witboost.ontology.manager.uservice.{Handler, Resource}
 
 import scala.language.implicitConversions
@@ -27,7 +27,7 @@ class OntologyManagerHandler[F[_]: Async](
 
   override def createType(
       respond: Resource.CreateTypeResponse.type
-  )(body: IEntityType): F[CreateTypeResponse] =
+  )(body: OpenApiEntityType): F[CreateTypeResponse] =
 
     val schema: Schema = body.schema
 
@@ -83,6 +83,56 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createType
 
+  override def createTypeByYaml(respond: Resource.CreateTypeByYamlResponse.type)(body: Stream[F, Byte]): F[Resource.CreateTypeByYamlResponse] =
+    val getEntityType = body
+      .through(text.utf8.decode)
+      .fold("")(_ + _)
+      .compile
+      .toList
+      .map(_.head)
+      .map(parser.parse(_).leftMap(_.getMessage))
+      .map(_.flatMap(json => OpenApiEntityType.decodeEntityType(json.hcursor).leftMap(_.getMessage)))
+
+    val res = for {
+      entityType <- EitherT(getEntityType)
+      ts = entityType.traits.fold(Set.empty[SpecificTrait])(x => x.map(str => str: SpecificTrait).toSet)
+      res <- EitherT(
+        entityType.fatherName
+          .fold(
+            tms
+              .create(
+                l0.EntityType(
+                  entityType.name,
+                  ts,
+                  entityType.schema,
+                  None
+                )
+              )
+          )(fn =>
+            tms
+              .create(
+                l0.EntityType(
+                  entityType.name,
+                  ts,
+                  entityType.schema,
+                  None
+                ),
+                fn
+              )
+          )
+          .map(_.leftMap(_.getMessage)))
+    } yield res
+
+    res.value
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(_) => respond.Ok("OK")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end createTypeByYaml
+
   override def readType(respond: Resource.ReadTypeResponse.type)(
       name: String
   ): F[Resource.ReadTypeResponse] =
@@ -136,7 +186,7 @@ class OntologyManagerHandler[F[_]: Async](
       tuple <- EitherT(summon[Applicative[F]].pure(jsonToTuple(body.values, schema).leftMap(_.getMessage)))
       entityId <- EitherT(ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage)))
     } yield entityId).value
-    
+
     res
       .map {
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
@@ -146,4 +196,5 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createEntityByYaml
+
 end OntologyManagerHandler
