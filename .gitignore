@@ -134,3 +134,4 @@ repositories
 .metals
 .vscode
 metals.sbt
+*.semanticdb
