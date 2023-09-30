@@ -509,7 +509,7 @@ class OntologyL0Spec
 
   "Using a service when there is no connection with the knowledge graph" - {
     "fails" in {
-      val session = Session[IO]("localhost", 7202, "repo1", false)
+      val session = Session[IO]("localhost", 7210, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val service = new TypeManagementServiceInterpreter[IO](repository)
