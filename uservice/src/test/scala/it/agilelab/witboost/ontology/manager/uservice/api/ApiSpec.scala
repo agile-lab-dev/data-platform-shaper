@@ -7,12 +7,27 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
 import io.circe.*
 import io.circe.parser.*
-import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.witboost.ontology.manager.domain.model.NS.*
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
-import it.agilelab.witboost.ontology.manager.uservice.definitions.{AttributeTypeName, AttributeType as OpenApiAttributeType, Entity as OpenApiEntity, EntityType as OpenApiEntityType, Mode as OpenApiMode}
+import it.agilelab.witboost.ontology.manager.uservice.definitions.{
+  AttributeTypeName,
+  AttributeType as OpenApiAttributeType,
+  Entity as OpenApiEntity,
+  EntityType as OpenApiEntityType,
+  Mode as OpenApiMode
+}
 import it.agilelab.witboost.ontology.manager.uservice.server.impl.Server
-import it.agilelab.witboost.ontology.manager.uservice.{Client, CreateEntityByYamlResponse, CreateEntityResponse, CreateTypeByYamlResponse, ReadTypeResponse}
+import it.agilelab.witboost.ontology.manager.uservice.{
+  Client,
+  CreateEntityByYamlResponse,
+  CreateEntityResponse,
+  CreateTypeByYamlResponse,
+  ReadTypeResponse
+}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.http4s.ember.client.EmberClientBuilder
@@ -209,7 +224,7 @@ class ApiSpec
         ),
         Some("father")
       )
-*/
+       */
       val stream = fs2.io.readClassLoaderResource[IO]("entity-type.yaml")
 
       val resp: Resource[IO, CreateTypeByYamlResponse] = for {
@@ -218,7 +233,7 @@ class ApiSpec
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
         resp <- Resource.liftK(client.createTypeByYaml(stream))
-        //resp <- Resource.liftK(client.readType("newChildrenEntityType"))
+        // resp <- Resource.liftK(client.readType("newChildrenEntityType"))
       } yield resp
 
       resp
@@ -240,7 +255,12 @@ class ApiSpec
         name = "DataCollectionType",
         Some(Vector("DataCollection")),
         Vector(
-          OpenApiAttributeType("name",AttributeTypeName.String,Some(OpenApiMode.Required),None),
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
         ),
         None
       )
@@ -267,8 +287,7 @@ class ApiSpec
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          resp should matchPattern {
-            case CreateEntityResponse.Ok(_) =>
+          resp should matchPattern { case CreateEntityResponse.Ok(_) =>
           }
         )
     }
@@ -290,8 +309,7 @@ class ApiSpec
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          resp should matchPattern {
-            case CreateEntityByYamlResponse.Ok(_) =>
+          resp should matchPattern { case CreateEntityByYamlResponse.Ok(_) =>
           }
         )
     }

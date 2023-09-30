@@ -107,7 +107,6 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       )
     )
 
-
     val rawJson: String = """
     {
       "organization": "HR",
@@ -126,10 +125,11 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
 
     val parseResult1 = parse(rawJson)
 
-    val result1 = parseResult1.flatMap(json => jsonToTuple(json, schema)).flatMap(tuple => parseTuple(tuple, schema))
+    val result1 = parseResult1
+      .flatMap(json => jsonToTuple(json, schema))
+      .flatMap(tuple => parseTuple(tuple, schema))
 
-    result1 should matchPattern({
-      case Right(_) =>
+    result1 should matchPattern({ case Right(_) =>
     })
 
     val wrongRawJson: String =
@@ -152,8 +152,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
 
     val result2 = parseResult2.flatMap(json => jsonToTuple(json, schema))
 
-    result2 should matchPattern({
-      case Left(_) =>
+    result2 should matchPattern({ case Left(_) =>
     })
   }
 

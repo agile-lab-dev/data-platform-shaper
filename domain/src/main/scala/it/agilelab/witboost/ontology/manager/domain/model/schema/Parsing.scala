@@ -276,61 +276,89 @@ def unfoldTuple(
       Left[String, Unit](s"$tuple is not a conform tuple")
 end unfoldTuple
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.throw",
+    "scalafix:DisableSyntax.var"
+  )
+)
 @throws[IllegalArgumentException]
 private def jsonToTupleChecked(
-                 json: Json,
-                 schema: Schema,
-               ): Tuple =
+    json: Json,
+    schema: Schema
+): Tuple =
   var tuple: Tuple = EmptyTuple
-  schema.records.reverse.foreach(
-    pair =>
-      tuple = (pair(0), {
+  schema.records.reverse.foreach(pair =>
+    tuple = (
+      pair(0), {
         val obj: ACursor = json.hcursor.downField(pair(0))
         pair(1) match
           case IntType(mode) =>
-             mode match
-               case Required =>
-                 obj.as[Int].toOption.getOrElse(throw new IllegalArgumentException(s"Wrong value"))
-               case Repeated =>
-                 obj.as[List[Int]].toOption.getOrElse(throw new IllegalArgumentException(s"Wrong value"))
-               case Nullable =>
-                 obj.as[Int].toOption
-             end match
+            mode match
+              case Required =>
+                obj
+                  .as[Int]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Repeated =>
+                obj
+                  .as[List[Int]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Nullable =>
+                obj.as[Int].toOption
+            end match
           case StringType(mode) =>
             mode match
               case Required =>
-                obj.as[String].toOption.getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                obj
+                  .as[String]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
               case Repeated =>
-                obj.as[List[String]].toOption.getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                obj
+                  .as[List[String]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[String].toOption
             end match
-          case schema@StructType(_, mode) =>
+          case schema @ StructType(_, mode) =>
             mode match
               case Required =>
                 jsonToTupleChecked(obj.focus.get, schema)
               case Nullable =>
-                obj.focus.fold(None)(json => Some(jsonToTupleChecked(json, schema)))
+                obj.focus.fold(None)(json =>
+                  Some(jsonToTupleChecked(json, schema))
+                )
               case Repeated =>
-                throw new IllegalArgumentException(s"Repeated struct is not supported")
+                throw new IllegalArgumentException(
+                  s"Repeated struct is not supported"
+                )
             end match
           case tpe =>
             throw new IllegalArgumentException(s"$tpe is not supported")
         end match
-      }) *: tuple
+      }
+    ) *: tuple
   )
   tuple
 end jsonToTupleChecked
 
 def jsonToTuple(
-                 json: Json,
-                 schema: Schema,
-               ): Either[ParsingFailure, Tuple] =
+    json: Json,
+    schema: Schema
+): Either[ParsingFailure, Tuple] =
   Try(
     jsonToTupleChecked(json, schema)
   ) match
     case Failure(ex) =>
-      Left(ParsingFailure(s"the provided json document is not conform to the provided schema", ex))
+      Left(
+        ParsingFailure(
+          s"the provided json document is not conform to the provided schema",
+          ex
+        )
+      )
     case Success(tuple) =>
       Right(tuple)
   end match

@@ -9,11 +9,21 @@ import fs2.{Stream, text}
 import io.circe.yaml.parser
 import it.agilelab.witboost.ontology.manager.domain.model.l0
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
-import it.agilelab.witboost.ontology.manager.domain.model.l1.{SpecificTrait, given}
+import it.agilelab.witboost.ontology.manager.domain.model.l1.{
+  SpecificTrait,
+  given
+}
 import it.agilelab.witboost.ontology.manager.domain.model.schema.*
-import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{
+  InstanceManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 import it.agilelab.witboost.ontology.manager.uservice.Resource.CreateTypeResponse
-import it.agilelab.witboost.ontology.manager.uservice.definitions.{Entity, ValidationError, EntityType as OpenApiEntityType}
+import it.agilelab.witboost.ontology.manager.uservice.definitions.{
+  Entity,
+  ValidationError,
+  EntityType as OpenApiEntityType
+}
 import it.agilelab.witboost.ontology.manager.uservice.{Handler, Resource}
 
 import scala.language.implicitConversions
@@ -83,7 +93,9 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createType
 
-  override def createTypeByYaml(respond: Resource.CreateTypeByYamlResponse.type)(body: Stream[F, Byte]): F[Resource.CreateTypeByYamlResponse] =
+  override def createTypeByYaml(
+      respond: Resource.CreateTypeByYamlResponse.type
+  )(body: Stream[F, Byte]): F[Resource.CreateTypeByYamlResponse] =
     val getEntityType = body
       .through(text.utf8.decode)
       .fold("")(_ + _)
@@ -91,11 +103,17 @@ class OntologyManagerHandler[F[_]: Async](
       .toList
       .map(_.head)
       .map(parser.parse(_).leftMap(_.getMessage))
-      .map(_.flatMap(json => OpenApiEntityType.decodeEntityType(json.hcursor).leftMap(_.getMessage)))
+      .map(
+        _.flatMap(json =>
+          OpenApiEntityType.decodeEntityType(json.hcursor).leftMap(_.getMessage)
+        )
+      )
 
     val res = for {
       entityType <- EitherT(getEntityType)
-      ts = entityType.traits.fold(Set.empty[SpecificTrait])(x => x.map(str => str: SpecificTrait).toSet)
+      ts = entityType.traits.fold(Set.empty[SpecificTrait])(x =>
+        x.map(str => str: SpecificTrait).toSet
+      )
       res <- EitherT(
         entityType.fatherName
           .fold(
@@ -120,13 +138,14 @@ class OntologyManagerHandler[F[_]: Async](
                 fn
               )
           )
-          .map(_.leftMap(_.getMessage)))
+          .map(_.leftMap(_.getMessage))
+      )
     } yield res
 
     res.value
       .map {
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
-        case Right(_) => respond.Ok("OK")
+        case Right(_)    => respond.Ok("OK")
       }
       .onError(t =>
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
@@ -153,11 +172,23 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end readType
 
-  override def createEntity(respond: Resource.CreateEntityResponse.type)(body: Entity): F[Resource.CreateEntityResponse] =
+  override def createEntity(respond: Resource.CreateEntityResponse.type)(
+      body: Entity
+  ): F[Resource.CreateEntityResponse] =
     val res = (for {
-      schema <- EitherT(tms.read(body.entityTypeName).map(_.map(_.schema)).map(_.leftMap(_.getMessage)))
-      tuple <- EitherT(summon[Applicative[F]].pure(jsonToTuple(body.values, schema).leftMap(_.getMessage)))
-      entityId <- EitherT(ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage)))
+      schema <- EitherT(
+        tms
+          .read(body.entityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(_.getMessage))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+      )
+      entityId <- EitherT(
+        ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage))
+      )
     } yield entityId).value
 
     res
@@ -170,7 +201,9 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createEntity
 
-  override def createEntityByYaml(respond: Resource.CreateEntityByYamlResponse.type)(body: fs2.Stream[F, Byte]): F[Resource.CreateEntityByYamlResponse] =
+  override def createEntityByYaml(
+      respond: Resource.CreateEntityByYamlResponse.type
+  )(body: fs2.Stream[F, Byte]): F[Resource.CreateEntityByYamlResponse] =
     val getEntity = body
       .through(text.utf8.decode)
       .fold("")(_ + _)
@@ -178,13 +211,27 @@ class OntologyManagerHandler[F[_]: Async](
       .toList
       .map(_.head)
       .map(parser.parse(_).leftMap(_.getMessage))
-      .map(_.flatMap(json => Entity.decodeEntity(json.hcursor).leftMap(_.getMessage)))
+      .map(
+        _.flatMap(json =>
+          Entity.decodeEntity(json.hcursor).leftMap(_.getMessage)
+        )
+      )
 
     val res = (for {
       body <- EitherT(getEntity)
-      schema <- EitherT(tms.read(body.entityTypeName).map(_.map(_.schema)).map(_.leftMap(_.getMessage)))
-      tuple <- EitherT(summon[Applicative[F]].pure(jsonToTuple(body.values, schema).leftMap(_.getMessage)))
-      entityId <- EitherT(ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage)))
+      schema <- EitherT(
+        tms
+          .read(body.entityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(_.getMessage))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+      )
+      entityId <- EitherT(
+        ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage))
+      )
     } yield entityId).value
 
     res
