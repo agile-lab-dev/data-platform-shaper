@@ -5,8 +5,10 @@ import cats.data.*
 import cats.effect.*
 import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
+import fs2.io.readInputStream
 import fs2.{Stream, text}
 import io.circe.yaml.parser
+import io.circe.yaml.syntax.*
 import it.agilelab.witboost.ontology.manager.domain.model.l0
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
 import it.agilelab.witboost.ontology.manager.domain.model.l1.{
@@ -20,12 +22,13 @@ import it.agilelab.witboost.ontology.manager.domain.service.interpreter.{
 }
 import it.agilelab.witboost.ontology.manager.uservice.Resource.CreateTypeResponse
 import it.agilelab.witboost.ontology.manager.uservice.definitions.{
-  Entity,
   ValidationError,
+  Entity as OpenApiEntity,
   EntityType as OpenApiEntityType
 }
 import it.agilelab.witboost.ontology.manager.uservice.{Handler, Resource}
 
+import java.io.ByteArrayInputStream
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -173,7 +176,7 @@ class OntologyManagerHandler[F[_]: Async](
   end readType
 
   override def createEntity(respond: Resource.CreateEntityResponse.type)(
-      body: Entity
+      body: OpenApiEntity
   ): F[Resource.CreateEntityResponse] =
     val res = (for {
       schema <- EitherT(
@@ -213,7 +216,7 @@ class OntologyManagerHandler[F[_]: Async](
       .map(parser.parse(_).leftMap(_.getMessage))
       .map(
         _.flatMap(json =>
-          Entity.decodeEntity(json.hcursor).leftMap(_.getMessage)
+          OpenApiEntity.decodeEntity(json.hcursor).leftMap(_.getMessage)
         )
       )
 
@@ -244,4 +247,78 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createEntityByYaml
 
+  override def readEntity(respond: Resource.ReadEntityResponse.type)(
+      id: String
+  ): F[Resource.ReadEntityResponse] =
+    val res = (for {
+      et <- EitherT(ims.read(id).map(_.leftMap(_.getMessage)))
+      schema <- EitherT(
+        tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.getMessage))
+      )
+      values <- EitherT(
+        summon[Applicative[F]]
+          .pure(tupleToJson(et.values, schema).leftMap(_.getMessage))
+      )
+      oaEntity <- EitherT(
+        summon[Applicative[F]].pure(
+          Right(
+            OpenApiEntity(et.entityId, et.entityTypeName, values)
+          )
+        )
+      )
+    } yield oaEntity).value
+
+    res
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(oaEntity) => respond.Ok(oaEntity)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end readEntity
+
+  override def readEntityAsYaml(
+      respond: Resource.ReadEntityAsYamlResponse.type
+  )(id: String): F[Resource.ReadEntityAsYamlResponse[F]] =
+    val res = (for {
+      et <- EitherT(ims.read(id).map(_.leftMap(_.getMessage)))
+      schema <- EitherT(
+        tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.getMessage))
+      )
+      values <- EitherT(
+        summon[Applicative[F]]
+          .pure(tupleToJson(et.values, schema).leftMap(_.getMessage))
+      )
+      oaEntity <- EitherT(
+        summon[Applicative[F]].pure(
+          Right(
+            readInputStream(
+              summon[Applicative[F]].pure(
+                new ByteArrayInputStream(
+                  OpenApiEntity
+                    .encodeEntity(
+                      OpenApiEntity(et.entityId, et.entityTypeName, values)
+                    )
+                    .asYaml
+                    .spaces2
+                    .getBytes("UTF8")
+                )
+              ),
+              128
+            )
+          )
+        )
+      )
+    } yield oaEntity).value
+
+    res
+      .map {
+        case Left(error)   => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(stream) => respond.Ok(stream)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end readEntityAsYaml
 end OntologyManagerHandler

@@ -87,7 +87,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
     res should matchPattern { case Right(()) => }
   }
 
-  "Converting a json document into a schema conforming tuple " should "work" in {
+  "Converting back and forth a json document into a schema conforming tuple " should "work" in {
 
     val schema: Schema = StructType(
       List(
@@ -126,6 +126,8 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
     val parseResult1 = parse(rawJson)
 
     val result1 = parseResult1
+      .flatMap(json => jsonToTuple(json, schema))
+      .flatMap(tuple => tupleToJson(tuple, schema))
       .flatMap(json => jsonToTuple(json, schema))
       .flatMap(tuple => parseTuple(tuple, schema))
 

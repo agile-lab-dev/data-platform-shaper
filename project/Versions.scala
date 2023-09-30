@@ -4,7 +4,7 @@ object Versions {
    lazy val dataToolsVersion                 = "1.3.1"
    lazy val typesafeConfig                   = "1.4.2"
    lazy val catsVersion                      = "2.10.0"
-   lazy val catsEffectVersion                = "3.5.1"
+   lazy val catsEffectVersion                = "3.5.2"
    lazy val catEffectTestingVersion          = "1.5.0"
    lazy val catsEffectLoggingVersion         = "2.6.0"
    lazy val circeVersion                     = "0.14.6"

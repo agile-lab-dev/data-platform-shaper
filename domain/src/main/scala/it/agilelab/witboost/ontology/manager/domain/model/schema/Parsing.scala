@@ -345,6 +345,80 @@ private def jsonToTupleChecked(
   tuple
 end jsonToTupleChecked
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.throw",
+    "scalafix:DisableSyntax.asInstanceOf"
+  )
+)
+@throws[IllegalArgumentException]
+def tupleToJsonChecked(
+    tuple: Tuple,
+    schema: Schema
+): Json =
+  val tupleFields = tuple.toArray.map(_.asInstanceOf[(String, Any)]).toMap
+  Json.fromFields(
+    schema.records.reverse.map(pair =>
+      (
+        pair(0), {
+          val tupleFieldValue: Any = tupleFields.getOrElse(
+            pair(0),
+            throw new IllegalArgumentException(s"Wrong value")
+          )
+          pair(1) match
+            case IntType(mode) =>
+              mode match
+                case Required =>
+                  Json.fromInt(tupleFieldValue.asInstanceOf[Int])
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue.asInstanceOf[List[Int]].map(Json.fromInt)
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[Int]]
+                    .fold(Json.Null)(Json.fromInt)
+              end match
+            case StringType(mode) =>
+              mode match
+                case Required =>
+                  Json.fromString(tupleFieldValue.asInstanceOf[String])
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue
+                      .asInstanceOf[List[String]]
+                      .map(Json.fromString)
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[String]]
+                    .fold(Json.Null)(Json.fromString)
+              end match
+            case schema @ StructType(_, mode) =>
+              mode match
+                case Required =>
+                  tupleToJsonChecked(
+                    tupleFieldValue.asInstanceOf[Tuple],
+                    schema
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[Tuple]]
+                    .fold(Json.Null)(tupleToJsonChecked(_, schema))
+                case Repeated =>
+                  throw new IllegalArgumentException(
+                    s"Repeated struct is not supported"
+                  )
+              end match
+            case tpe =>
+              throw new IllegalArgumentException(s"$tpe is not supported")
+          end match
+        }
+      )
+    )
+  )
+end tupleToJsonChecked
+
 def jsonToTuple(
     json: Json,
     schema: Schema
@@ -363,3 +437,22 @@ def jsonToTuple(
       Right(tuple)
   end match
 end jsonToTuple
+
+def tupleToJson(
+    tuple: Tuple,
+    schema: Schema
+): Either[ParsingFailure, Json] =
+  Try(
+    tupleToJsonChecked(tuple, schema)
+  ) match
+    case Failure(ex) =>
+      Left(
+        ParsingFailure(
+          s"the provided json document is not conform to the provided schema",
+          ex
+        )
+      )
+    case Success(json) =>
+      Right(json)
+  end match
+end tupleToJson

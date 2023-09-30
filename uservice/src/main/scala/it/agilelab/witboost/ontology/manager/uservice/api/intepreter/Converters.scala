@@ -1,8 +1,8 @@
 package it.agilelab.witboost.ontology.manager.uservice.api.intepreter
 
-import it.agilelab.witboost.ontology.manager.domain.model.schema.*
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
 import it.agilelab.witboost.ontology.manager.domain.model.l1.given
+import it.agilelab.witboost.ontology.manager.domain.model.schema.*
 import it.agilelab.witboost.ontology.manager.uservice.definitions.{
   AttributeTypeName,
   AttributeType as OpenApiAttributeType,

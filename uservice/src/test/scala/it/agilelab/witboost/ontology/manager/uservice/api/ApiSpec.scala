@@ -26,6 +26,7 @@ import it.agilelab.witboost.ontology.manager.uservice.{
   CreateEntityByYamlResponse,
   CreateEntityResponse,
   CreateTypeByYamlResponse,
+  ReadEntityResponse,
   ReadTypeResponse
 }
 import org.eclipse.rdf4j.model.util.Values.iri
@@ -34,6 +35,7 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.Inside.inside
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.testcontainers.containers.GenericContainer
@@ -210,21 +212,7 @@ class ApiSpec
 
   "Creating a user defined type using a YAML file" - {
     "works" in {
-      /*
-      val childrenEntityType = OpenApiEntityType(
-        name = "childrenEntityType",
-        Some(Vector("DataCollection")),
-        Vector(
-          OpenApiAttributeType(
-            "name",
-            AttributeTypeName.String,
-            Some(OpenApiMode.Required),
-            None
-          )
-        ),
-        Some("father")
-      )
-       */
+
       val stream = fs2.io.readClassLoaderResource[IO]("entity-type.yaml")
 
       val resp: Resource[IO, CreateTypeByYamlResponse] = for {
@@ -298,18 +286,33 @@ class ApiSpec
 
       val stream = fs2.io.readClassLoaderResource[IO]("entity.yaml")
 
-      val resp: Resource[IO, CreateEntityByYamlResponse] = for {
+      val resp: Resource[IO, ReadEntityResponse] = for {
         client <- EmberClientBuilder
           .default[IO]
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
-        resp <- Resource.liftK(client.createEntityByYaml(stream))
-      } yield resp
+        id <- Resource.liftK(client.createEntityByYaml(stream).map {
+          case CreateEntityByYamlResponse.Ok(id) => id
+          case _                                 => ""
+        })
+        reResp <- Resource.liftK(client.readEntity(id))
+      } yield reResp
+
+      val rawJson: String = """
+      {
+        "name": "dc1"
+      }
+      """
+
+      val entityJson = parse(rawJson).getOrElse(Json.Null)
 
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          resp should matchPattern { case CreateEntityByYamlResponse.Ok(_) =>
+          inside(resp) {
+            case ReadEntityResponse
+                  .Ok(OpenApiEntity(_, "DataCollectionType", json)) =>
+              json should be(entityJson)
           }
         )
     }
