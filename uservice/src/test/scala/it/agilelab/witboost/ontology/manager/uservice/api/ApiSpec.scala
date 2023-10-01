@@ -213,23 +213,37 @@ class ApiSpec
   "Creating a user defined type using a YAML file" - {
     "works" in {
 
+      val childrenEntityType = OpenApiEntityType(
+        name = "newChildrenEntityType",
+        Some(Vector("DataCollection")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        Some("father")
+      )
+
       val stream = fs2.io.readClassLoaderResource[IO]("entity-type.yaml")
 
-      val resp: Resource[IO, CreateTypeByYamlResponse] = for {
+      val resp: Resource[IO, ReadTypeResponse] = for {
         client <- EmberClientBuilder
           .default[IO]
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
-        resp <- Resource.liftK(client.createTypeByYaml(stream))
-        // resp <- Resource.liftK(client.readType("newChildrenEntityType"))
+        _ <- Resource.liftK(client.createTypeByYaml(stream))
+        resp <- Resource.liftK(client.readType("newChildrenEntityType"))
       } yield resp
 
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
           resp should be(
-            CreateTypeByYamlResponse.Ok(
-              "OK"
+            ReadTypeResponse.Ok(
+              childrenEntityType
             )
           )
         )
