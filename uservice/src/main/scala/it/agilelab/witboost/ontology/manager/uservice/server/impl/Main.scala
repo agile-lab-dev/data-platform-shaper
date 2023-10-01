@@ -1,7 +1,12 @@
 package it.agilelab.witboost.ontology.manager.uservice.server.impl
 
 import cats.effect.{ExitCode, IO, IOApp, Ref}
-import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.Session
+import it.agilelab.witboost.ontology.manager.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
+import it.agilelab.witboost.ontology.manager.domain.model.NS
+import it.agilelab.witboost.ontology.manager.domain.model.NS.{L0, L1, ns}
 import it.agilelab.witboost.ontology.manager.domain.model.l0.EntityType
 import it.agilelab.witboost.ontology.manager.uservice.system.ApplicationConfiguration.{
   graphdbHost,
@@ -9,6 +14,10 @@ import it.agilelab.witboost.ontology.manager.uservice.system.ApplicationConfigur
   graphdbRepositoryId,
   graphdbRepositoryTls
 }
+import org.eclipse.rdf4j.model.util.Values.iri
+import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
+
+import scala.jdk.CollectionConverters.*
 
 object Main extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
@@ -25,7 +34,35 @@ object Main extends IOApp:
     } yield {
       Server.server[IO](session, typeCache)
     }
-    server.flatMap(_.use(_ => IO.never).as(ExitCode.Success))
+    loadInitialOntologies(session) *>
+      server.flatMap(_.use(_ => IO.never).as(ExitCode.Success))
   end run
+
+  private def loadInitialOntologies(session: Session) = {
+    val repository = Rdf4jKnowledgeGraph[IO](session)
+
+    val model1 = Rio.parse(
+      Thread.currentThread.getContextClassLoader
+        .getResourceAsStream("dp-ontology-l0.ttl"),
+      ns.getName,
+      RDFFormat.TURTLE,
+      L0
+    )
+
+    val model2 = Rio.parse(
+      Thread.currentThread.getContextClassLoader
+        .getResourceAsStream("dp-ontology-l1.ttl"),
+      ns.getName,
+      RDFFormat.TURTLE,
+      L1
+    )
+    val statements1 = model1.getStatements(null, null, null, iri(ns, "L0"))
+    val statements2 = model2.getStatements(null, null, null, iri(ns, "L1"))
+
+    val loadInitialOntologies = repository.removeAndInsertStatements(
+      statements1.asScala.toList ++ statements2.asScala.toList
+    )
+    loadInitialOntologies
+  }
 
 end Main
