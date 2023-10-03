@@ -14,7 +14,7 @@ ThisBuild / semanticdbEnabled        := true
 ThisBuild / Test / parallelExecution := false
 
 
-val serviceName       = "witboost.ontology.manager.uservice"
+val serviceName       = "dataplatform.shaper.uservice"
 val interfaceSpecFile = "uservice/src/main/resources/interface-specification.yml"
 
 def clientInterfaceFile: File = {
@@ -38,7 +38,7 @@ def clientInterfaceFile: File = {
 }
 
 lazy val domain = (project in file("domain")).settings(
-  name                     := "witboost.ontology.manager.domain",
+  name                     := "dataplatform.shaper.domain",
   libraryDependencies      := Dependencies.Jars.domain,
 )
 
@@ -46,14 +46,14 @@ lazy val userviceClientGenerated = (project in file("uservice-client-generated")
   name                      := s"$serviceName-client-generated",
   libraryDependencies       := Dependencies.Jars.uservice,
   Compile / scalacOptions   := Seq(),
-  Compile / guardrailTasks  += ScalaClient(clientInterfaceFile, pkg=s"it.agilelab.witboost.ontology.manager.uservice", framework="http4s"),
+  Compile / guardrailTasks  += ScalaClient(clientInterfaceFile, pkg=s"it.agilelab.dataplatformshaper.uservice", framework="http4s"),
 )
 
 lazy val userviceGenerated = (project in file("uservice-generated")).settings(
   name                      := s"$serviceName-generated",
   libraryDependencies       := Dependencies.Jars.uservice,
   Compile / scalacOptions   := Seq(),
-  Compile / guardrailTasks  += ScalaServer(file(interfaceSpecFile), pkg=s"it.agilelab.witboost.ontology.manager.uservice", framework="http4s"),
+  Compile / guardrailTasks  += ScalaServer(file(interfaceSpecFile), pkg=s"it.agilelab.dataplatformshaper.uservice", framework="http4s"),
 )
 
 lazy val uservice = (project in file("uservice")).settings(
