@@ -20,7 +20,7 @@
         <appender-ref ref="CONSOLE"/>
     </appender>
 
-    <logger name="it.agilelab.witboost.ontology.manager.domain.service.interpreter.TypeManagementServiceInterpreter" level="TRACE" />
+    <logger name="it.agilelab.dataplatformshaper.domain.service.interpreter.TypeManagementServiceInterpreter" level="TRACE" />
 
     <root level="ERROR">
         <appender-ref ref="ASYNC"/>
