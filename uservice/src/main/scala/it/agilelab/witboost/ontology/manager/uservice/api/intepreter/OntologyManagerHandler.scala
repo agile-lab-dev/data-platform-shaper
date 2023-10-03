@@ -175,6 +175,47 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end readType
 
+  override def readTypeAsYaml(respond: Resource.ReadTypeAsYamlResponse.type)(
+      name: String
+  ): F[Resource.ReadTypeAsYamlResponse[F]] =
+    val res = (for {
+      et <- EitherT(
+        tms
+          .read(name)
+          .map(_.leftMap(_.getMessage))
+      )
+      stream <- EitherT(
+        summon[Applicative[F]].pure(
+          Right(
+            readInputStream(
+              summon[Applicative[F]].pure(
+                new ByteArrayInputStream(
+                  OpenApiEntityType
+                    .encodeEntityType(
+                      et
+                    )
+                    .asYaml
+                    .spaces2
+                    .getBytes("UTF8")
+                )
+              ),
+              128
+            )
+          )
+        )
+      )
+    } yield stream).value
+
+    res
+      .map {
+        case Left(error)   => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(stream) => respond.Ok(stream)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end readTypeAsYaml
+
   override def createEntity(respond: Resource.CreateEntityResponse.type)(
       body: OpenApiEntity
   ): F[Resource.CreateEntityResponse] =
@@ -321,4 +362,5 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end readEntityAsYaml
+
 end OntologyManagerHandler

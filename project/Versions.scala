@@ -13,7 +13,7 @@ object Versions {
    lazy val scalaLogging                     = "3.9.5"
    lazy val logbackVersion                   = "1.4.11"
    lazy val scalatestVersion                 = "3.2.17"
-   lazy val testContainersVersion            = "1.19.0"
+   lazy val testContainersVersion            = "1.19.1"
    lazy val opentelemetryVersion             = "1.30.1"
    lazy val opentelemetryAnnotationsVersion  = "1.30.0"
  }

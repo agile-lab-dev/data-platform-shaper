@@ -38,6 +38,11 @@ object Main extends IOApp:
       server.flatMap(_.use(_ => IO.never).as(ExitCode.Success))
   end run
 
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.null"
+    )
+  )
   private def loadInitialOntologies(session: Session) = {
     val repository = Rdf4jKnowledgeGraph[IO](session)
 
