@@ -7,12 +7,27 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
 import io.circe.*
 import io.circe.parser.*
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
-import it.agilelab.dataplatformshaper.uservice.definitions.{AttributeTypeName, AttributeType as OpenApiAttributeType, Entity as OpenApiEntity, EntityType as OpenApiEntityType, Mode as OpenApiMode}
+import it.agilelab.dataplatformshaper.uservice.definitions.{
+  AttributeTypeName,
+  AttributeType as OpenApiAttributeType,
+  Entity as OpenApiEntity,
+  EntityType as OpenApiEntityType,
+  Mode as OpenApiMode
+}
 import it.agilelab.dataplatformshaper.uservice.server.impl.Server
-import it.agilelab.dataplatformshaper.uservice.{Client, CreateEntityByYamlResponse, CreateEntityResponse, ReadEntityResponse, ReadTypeResponse}
+import it.agilelab.dataplatformshaper.uservice.{
+  Client,
+  CreateEntityByYamlResponse,
+  CreateEntityResponse,
+  ReadEntityResponse,
+  ReadTypeResponse
+}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.http4s.ember.client.EmberClientBuilder

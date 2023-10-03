@@ -1,6 +1,9 @@
 package it.agilelab.dataplatformshaper.domain.model.l0
 
-import it.agilelab.dataplatformshaper.domain.model.l1.{GenericTrait, SpecificTrait}
+import it.agilelab.dataplatformshaper.domain.model.l1.{
+  GenericTrait,
+  SpecificTrait
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.Schema
 
 @SuppressWarnings(

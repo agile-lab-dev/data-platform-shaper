@@ -3,14 +3,20 @@ package it.agilelab.dataplatformshaper.domain
 import cats.data.EitherT
 import cats.effect.{ExitCode, IO, IOApp, Ref}
 import cats.syntax.all.*
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.l1.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+  InstanceManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 

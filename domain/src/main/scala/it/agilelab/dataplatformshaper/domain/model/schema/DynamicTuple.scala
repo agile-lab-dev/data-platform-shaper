@@ -1,10 +1,7 @@
 package it.agilelab.dataplatformshaper.domain.model.schema
 
 import cats.implicits.*
-import it.agilelab.dataplatformshaper.domain.model.schema.{
-  Schema,
-  unfoldTuple
-}
+import it.agilelab.dataplatformshaper.domain.model.schema.{Schema, unfoldTuple}
 
 import scala.Tuple.Union
 import scala.annotation.{tailrec, unused}

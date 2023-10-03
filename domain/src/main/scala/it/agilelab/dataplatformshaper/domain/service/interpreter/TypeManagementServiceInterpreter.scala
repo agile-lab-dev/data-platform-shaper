@@ -13,7 +13,10 @@ import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{
+  ManagementServiceError,
+  TypeManagementService
+}
 import org.datatools.bigdatatypes.basictypes.SqlType
 import org.eclipse.rdf4j.model.impl.DynamicModelFactory
 import org.eclipse.rdf4j.model.util.Statements.statement
@@ -98,10 +101,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
   end isStructType
 
   private def emitStatements(
-                              fatherEntity: IRI,
-                              dataType: SqlType,
-                              childEntity: IRI,
-                              currentPath: String
+      fatherEntity: IRI,
+      dataType: SqlType,
+      childEntity: IRI,
+      currentPath: String
   ): List[Statement] =
     dataType match
       case StructType(records, mode) =>

@@ -1,6 +1,9 @@
 package it.agilelab.dataplatformshaper.domain.model.l1
 
-import it.agilelab.dataplatformshaper.domain.common.{stringEnumDecoder, stringEnumEncoder}
+import it.agilelab.dataplatformshaper.domain.common.{
+  stringEnumDecoder,
+  stringEnumEncoder
+}
 import it.agilelab.dataplatformshaper.domain.model.l0.Trait
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Schema

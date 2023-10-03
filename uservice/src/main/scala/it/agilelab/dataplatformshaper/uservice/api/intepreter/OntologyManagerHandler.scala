@@ -11,10 +11,7 @@ import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
-import it.agilelab.dataplatformshaper.domain.model.l1.{
-  SpecificTrait,
-  given
-}
+import it.agilelab.dataplatformshaper.domain.model.l1.{SpecificTrait, given}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,

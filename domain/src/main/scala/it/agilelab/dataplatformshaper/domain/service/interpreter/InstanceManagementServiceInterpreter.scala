@@ -10,7 +10,11 @@ import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.l1.Relationship
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{
+  InstanceManagementService,
+  ManagementServiceError,
+  TypeManagementService
+}
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.l0.*
@@ -65,10 +69,10 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
     )
     def emitStatement(
-                       currentEntityIri: IRI,
-                       currentPath: String,
-                       tpe: SqlType,
-                       value: Any
+        currentEntityIri: IRI,
+        currentPath: String,
+        tpe: SqlType,
+        value: Any
     ): Unit =
       val lit: Value =
         tpe match
@@ -321,9 +325,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     }
 
     def handlePrimitiveDataTypes(
-                                  fieldName: String,
-                                  dataType: SqlType,
-                                  fieldValue: Option[List[(String, String)]]
+        fieldName: String,
+        dataType: SqlType,
+        fieldValue: Option[List[(String, String)]]
     ): F[Tuple] =
       val tuple = dataType match
         case StringType(mode) =>
