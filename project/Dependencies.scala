@@ -68,14 +68,6 @@ object Dependencies {
     lazy val core      = namespace % "testcontainers" % testContainersVersion
   }
 
-  private[this] object opentelemetry {
-    lazy val namespace    = "io.opentelemetry"
-    lazy val api          = namespace % "opentelemetry-api" % opentelemetryVersion
-    lazy val annotations  = s"$namespace.instrumentation" % "opentelemetry-instrumentation-annotations" % opentelemetryAnnotationsVersion
-    lazy val sdk          = namespace % "opentelemetry-sdk" % opentelemetryVersion
-    lazy val exporterOtlp = namespace % "opentelemetry-exporter-otlp" % opentelemetryVersion
-  }
-
   object Jars {
 
     lazy val overrides: Seq[ModuleID] = Seq(
@@ -108,10 +100,6 @@ object Dependencies {
       http4s.dsl                   % Compile,
       http4s.circe                 % Compile,
       typesafe.config              % Compile,
-      opentelemetry.api            % Compile,
-      opentelemetry.annotations    % Compile,
-      opentelemetry.sdk            % Compile,
-      opentelemetry.exporterOtlp   % Compile,
       testcontainers.core          % Test,
       cats.effectScalatest         % Test,
       scalatest.core               % Test,
