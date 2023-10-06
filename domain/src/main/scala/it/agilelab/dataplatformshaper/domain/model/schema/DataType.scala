@@ -8,6 +8,8 @@ import org.datatools.bigdatatypes.basictypes.SqlTypeMode.*
 export org.datatools.bigdatatypes.basictypes.SqlType as DataType
 export org.datatools.bigdatatypes.basictypes.SqlType.SqlString as StringType
 export org.datatools.bigdatatypes.basictypes.SqlType.SqlInt as IntType
+export org.datatools.bigdatatypes.basictypes.SqlType.SqlDate as DateType
+export org.datatools.bigdatatypes.basictypes.SqlType.SqlTimestamp as TimestampDataType
 export org.datatools.bigdatatypes.basictypes.SqlType.SqlStruct as StructType
 export org.datatools.bigdatatypes.basictypes.SqlTypeMode as Mode
 
