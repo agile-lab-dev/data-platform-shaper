@@ -83,7 +83,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         .value[String] shouldBe "ciccio3"
     )
 
-    val res = unfoldTuple(tuple, schema, (_, _, _) => ())
+    val res = unfoldTuple(tuple, schema, (_, _, _, _) => ())
 
     res should matchPattern { case Right(()) => }
   }
