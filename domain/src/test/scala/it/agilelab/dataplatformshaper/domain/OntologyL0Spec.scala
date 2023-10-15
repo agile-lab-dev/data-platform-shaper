@@ -29,11 +29,13 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.Inside.inside
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 
+import scala.collection.immutable.List
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 import scala.util.Right
@@ -164,7 +166,8 @@ class OntologyL0Spec
       "struct" -> StructType(
         List(
           "nest1" -> StringType(),
-          "nest2" -> StringType()
+          "nest2" -> StringType(),
+          "intList" -> IntType(Repeated)
         )
       ),
       "optionalStruct" -> StructType(
@@ -203,7 +206,8 @@ class OntologyL0Spec
     "emptyRepeatedInt" -> List(),
     "struct" -> (
       "nest1" -> "ciccio1",
-      "nest2" -> "ciccio2"
+      "nest2" -> "ciccio2",
+      "intList" -> List(1, 2, 3)
     ),
     "optionalStruct" -> Some(
       (
@@ -358,41 +362,8 @@ class OntologyL0Spec
           )
         } yield read).value
       } asserting (entity =>
-        entity should matchPattern {
-          case Right(
-                Entity(
-                  _,
-                  "FileBasedDataCollectionType",
-                  (
-                    "version" -> "1.0",
-                    "organization" -> "HR",
-                    "sub-organization" -> "Any",
-                    "domain" -> "Registrations",
-                    "sub-domain" -> "People",
-                    "labels" -> List("label1", "label2", "label3"),
-                    "string" -> "str",
-                    "optionalString" -> Some("str"),
-                    "emptyOptionalString" -> None,
-                    "repeatedString" -> List("str1", "str2", "str3"),
-                    "emptyRepeatedString" -> List(),
-                    "int" -> 10,
-                    "optionalInt" -> Some(10),
-                    "emptyOptionalInt" -> None,
-                    "repeatedInt" -> List(10, 20, 30),
-                    "emptyRepeatedInt" -> List(),
-                    "struct" -> (
-                      "nest1" -> "ciccio1", "nest2" -> "ciccio2"
-                    ),
-                    "optionalStruct" -> Some(
-                      (
-                        "nest1" -> "ciccio1",
-                        "nest2" -> "ciccio2"
-                      )
-                    ),
-                    "emptyOptionalStruct" -> None,
-                  )
-                )
-              ) =>
+        inside(entity) { case Right(entity) =>
+          entity.values should be(fileBasedDataCollectionTuple)
         }
       )
     }
@@ -434,7 +405,8 @@ class OntologyL0Spec
                 "emptyRepeatedInt" -> List(),
                 "struct" -> (
                   "nest1" -> "ciccio3",
-                  "nest2" -> "ciccio4"
+                  "nest2" -> "ciccio4",
+                  "intList" -> List(1, 2, 3)
                 ),
                 "optionalStruct" -> Some(
                   (
@@ -474,7 +446,8 @@ class OntologyL0Spec
                     "repeatedInt" -> List(10, 20, 30),
                     "emptyRepeatedInt" -> List(),
                     "struct" -> (
-                      "nest1" -> "ciccio3", "nest2" -> "ciccio4"
+                      "nest1" -> "ciccio3", "nest2" -> "ciccio4",
+                      "intList" -> List(1, 2, 3)
                     ),
                     "optionalStruct" -> Some(
                       (

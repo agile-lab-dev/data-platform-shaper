@@ -4,28 +4,26 @@ import cats.*
 import cats.data.*
 import cats.effect.*
 import cats.implicits.*
+import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.NS
+import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.NS.*
-import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
-import it.agilelab.dataplatformshaper.domain.model.l1.Relationship
+import it.agilelab.dataplatformshaper.domain.model.l0.*
+import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
+import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
+import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
+import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{
   InstanceManagementService,
   ManagementServiceError,
   TypeManagementService
 }
-import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
-import it.agilelab.dataplatformshaper.domain.model.*
-import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
-import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import org.datatools.bigdatatypes.basictypes.SqlType
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
-import org.eclipse.rdf4j.model.{IRI, Literal, Statement, Value}
+import org.eclipse.rdf4j.model.{IRI, Literal, Statement}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -54,6 +52,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
     val entity = iri(ns, entityId)
 
+    var previousEntityIri = entity
+    var currentEntityIri = entity
     var statements = List.empty[Statement]
 
     statements = statement(
@@ -69,14 +69,14 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
     )
     def emitStatement(
-        currentEntityIri: IRI,
         currentPath: String,
-        tpe: SqlType,
-        value: Any
+        tpe: DataType,
+        value: Any,
+        foldingPhase: FoldingPhase
     ): Unit =
-      val lit: Value =
-        tpe match
-          case StringType(mode) =>
+      tpe match
+        case StringType(mode) =>
+          val lit =
             mode match
               case Required | Repeated => literal(value.asInstanceOf[String])
               case Nullable =>
@@ -84,53 +84,40 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   .asInstanceOf[Option[String]]
                   .fold(literal("null"))(literal)
             end match
-          case IntType(mode) =>
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case IntType(mode) =>
+          val lit =
             mode match
               case Required | Repeated =>
                 literal(value.asInstanceOf[Option[Int]].get)
               case Nullable =>
                 value.asInstanceOf[Option[Int]].fold(literal("null"))(literal)
             end match
-          case StructType(attributes, mode) =>
-            def emitStatementsStruct(structIri: IRI, tuple: Tuple): Value =
-              attributes
-                .zip(tuple.toArray)
-                .foreach(tuplePair =>
-                  val (attribute, tupleElement) = tuplePair
-                  val (fieldNameFromAttribute, dataType) = attribute
-                  val (fieldName, fieldValue) =
-                    tupleElement.asInstanceOf[(String, Any)]
-                  assert(fieldNameFromAttribute === fieldName)
-                  emitStatement(
-                    structIri,
-                    s"$currentPath/$fieldNameFromAttribute",
-                    dataType,
-                    fieldValue
-                  )
-                )
-              structIri
-            end emitStatementsStruct
-
-            val structIri = iri(ns, UUID.randomUUID.toString)
-            statements = statement(
-              triple(structIri, RDF.TYPE, NS.STRUCT),
-              L3
-            ) :: statements
-            mode match
-              case Required | Repeated =>
-                emitStatementsStruct(structIri, value.asInstanceOf[Tuple])
-              case Nullable =>
-                value
-                  .asInstanceOf[Option[Tuple]]
-                  .fold(literal("null"))(emitStatementsStruct(structIri, _))
-          case _ =>
-            literal("")
-        end match
-
-      statements = statement(
-        triple(currentEntityIri, iri(ns, currentPath), lit),
-        L3
-      ) :: statements
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case StructType(attributes, mode) =>
+          foldingPhase match
+            case BeginFoldingStruct =>
+              val structIri = iri(ns, UUID.randomUUID.toString)
+              statements = statement(
+                triple(currentEntityIri, iri(ns, currentPath), structIri),
+                L3
+              ) :: statements
+              previousEntityIri = currentEntityIri
+              currentEntityIri = structIri
+            case EndFoldingStruct =>
+              currentEntityIri = previousEntityIri
+            case _ =>
+              ()
+          end match
+        case _ =>
+          ()
+      end match
     end emitStatement
 
     val getSchema: F[Either[ManagementServiceError, Schema]] =
@@ -146,7 +133,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           unfoldTuple(
             tuple,
             schema,
-            emitStatement(entity, _, _, _)
+            emitStatement(_, _, _, _)
           ) match
             case Left(parsingError) =>
               Left[ManagementServiceError, String](
@@ -326,7 +313,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
     def handlePrimitiveDataTypes(
         fieldName: String,
-        dataType: SqlType,
+        dataType: DataType,
         fieldValue: Option[List[(String, String)]]
     ): F[Tuple] =
       val tuple = dataType match

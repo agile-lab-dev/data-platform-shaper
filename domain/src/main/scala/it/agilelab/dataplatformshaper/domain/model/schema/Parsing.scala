@@ -5,9 +5,20 @@ import cats.implicits.*
 import io.circe.{ACursor, Json, ParsingFailure}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
+import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
 
 import scala.language.{dynamics, postfixOps}
 import scala.util.{Failure, Success, Try}
+
+package parsing {
+  enum FoldingPhase:
+    case FoldingPrimitive
+    case BeginFoldingStruct
+    case EndFoldingStruct
+  end FoldingPhase
+}
+
+import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
 
 @SuppressWarnings(
   Array(
@@ -20,13 +31,13 @@ private def unfoldPrimitive(
     value: Any,
     dataType: DataType,
     currentPath: String,
-    func: (String, DataType, Any) => Unit
+    func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   dataType match
     case tpe @ StringType(mode) =>
       value match
         case value: String if mode === Required =>
-          func(currentPath, tpe, value)
+          func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
         case value if value.isInstanceOf[List[_]] && mode === Repeated =>
           try
@@ -46,10 +57,10 @@ private def unfoldPrimitive(
             case _: Throwable =>
               Left[String, Unit](s"$value is not a List[string]")
         case value @ Some(_: String) if mode === Nullable =>
-          func(currentPath, tpe, value)
+          func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
         case None if mode === Nullable =>
-          func(currentPath, tpe, None: Option[String])
+          func(currentPath, tpe, None: Option[String], FoldingPrimitive)
           Right[String, Unit](())
         case wrong =>
           Left[String, Unit](s"$wrong is not a string")
@@ -57,7 +68,7 @@ private def unfoldPrimitive(
     case tpe @ IntType(mode) =>
       value match
         case value: Int if mode === Required =>
-          func(currentPath, tpe, Some(value))
+          func(currentPath, tpe, Some(value), FoldingPrimitive)
           Right[String, Unit](())
         case value if value.isInstanceOf[List[_]] && mode === Repeated =>
           try
@@ -77,10 +88,10 @@ private def unfoldPrimitive(
             case _: Throwable =>
               Left[String, Unit](s"$value is not a List[Int]")
         case value @ Some(_: Int) if mode === Nullable =>
-          func(currentPath, tpe, value)
+          func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
         case None if mode === Nullable =>
-          func(currentPath, tpe, None: Option[Int])
+          func(currentPath, tpe, None: Option[Int], FoldingPrimitive)
           Right[String, Unit](())
         case wrong =>
           Left[String, Unit](s"$wrong is not an int")
@@ -103,11 +114,10 @@ private def unfoldStruct(
     tuple: Any,
     schema: DataType,
     currentPath: String,
-    func: (String, DataType, Any) => Unit
+    func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   schema match
     case tpe @ StructType(records, mode) =>
-      func(currentPath, tpe, tuple)
       tuple match
         case value: Tuple if mode === Required =>
           val tuples =
@@ -121,6 +131,7 @@ private def unfoldStruct(
                 val indexedRecords: List[((String, DataType), Int)] =
                   records.zipWithIndex
                 if tuples.lengthIs == records.length then
+                  func(currentPath, tpe, tuple, BeginFoldingStruct)
                   var currentRes: Either[String, Unit] = Right[String, Unit](())
                   val managedRecords =
                     indexedRecords.takeWhile(recordWithIndex =>
@@ -128,10 +139,11 @@ private def unfoldStruct(
                         tuples(recordWithIndex(1)),
                         recordWithIndex(0)(1),
                         currentPath,
-                        (_: String, _: DataType, _: Any) => ()
+                        func
                       )
                       currentRes.isRight
                     )
+                  func(currentPath, tpe, tuple, EndFoldingStruct)
                   if managedRecords.lengthIs == records.length then
                     Right[String, Unit](())
                   else currentRes
@@ -211,7 +223,7 @@ private def unfoldDataType(
     tuple: Tuple,
     schema: DataType,
     currentPath: String,
-    func: (String, DataType, Any) => Unit
+    func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   val tuple2 = tuple.asInstanceOf[Tuple2[String, Any]]
   val name = tuple2(0)
@@ -238,7 +250,7 @@ end unfoldDataType
 def unfoldTuple(
     tuple: Tuple,
     schema: Schema,
-    func: (String, DataType, Any) => Unit
+    func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   val tuples =
     try Success(tuple.toArray.map((_: Object).asInstanceOf[(String, Any)]))
