@@ -6,6 +6,10 @@ enum ManagementServiceError(errorMessage: String):
       extends ManagementServiceError(
         s"The type $instanceTypeName has been already defined"
       )
+  case TraitAlreadyDefinedError(traitName: String)
+      extends ManagementServiceError(
+        s"The trait $traitName has been already defined"
+      )
   case NonExistentInstanceTypeError(instanceTypeName: String)
       extends ManagementServiceError(
         s"The instance type with name $instanceTypeName does not exist"

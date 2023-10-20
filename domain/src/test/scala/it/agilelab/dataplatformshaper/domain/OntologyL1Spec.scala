@@ -5,20 +5,13 @@ import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.effect.{IO, Ref}
 import fs2.io.file.Path
-import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.*
-import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{
-  InstanceManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.TraitManagementServiceInterpreter
 import org.eclipse.rdf4j.model.*
 import org.eclipse.rdf4j.model.util.Values
 import org.eclipse.rdf4j.model.util.Values.iri
@@ -34,6 +27,7 @@ import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
+import scala.util.Right
 
 @SuppressWarnings(
   Array(
@@ -141,76 +135,28 @@ class OntologyL1Spec
     }
   }
 
-  "Link with relationship hasPart a DataProduct with DataProductComponents" - {
+  "Checking the existence of a non existing Trait" - {
     "works" in {
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tms = TypeManagementServiceInterpreter[IO](repository)
-        val ims = InstanceManagementServiceInterpreter[IO](tms)
-
-        (for {
-          _ <- EitherT(
-            tms.create(
-              EntityType(
-                "DataProductType",
-                Set(DataProduct),
-                StructType(List("name" -> StringType())): Schema
-              )
-            )
-          )
-          _ <- EitherT(
-            tms.create(
-              EntityType(
-                "OutputPortType",
-                Set(OutputPort),
-                StructType(List("name" -> StringType())): Schema
-              )
-            )
-          )
-          i1 <- EitherT(
-            ims.create("DataProductType", Tuple1("name" -> "dataProduct1"))
-          )
-          i2 <- EitherT(
-            ims.create("OutputPortType", Tuple1("name" -> "outPort1"))
-          )
-          i3 <- EitherT(
-            ims.create("OutputPortType", Tuple1("name" -> "outPort2"))
-          )
-          _ <- EitherT(ims.link(i1, hasPart, i2))
-          _ <- EitherT(ims.link(i1, hasPart, i3))
-          ids <- EitherT(ims.linked(i1, hasPart))
-        } yield (ids, i2, i3)).value
-      } asserting (res =>
-        res.map(r => r(0)) shouldBe res.map(r => List(r(1), r(2)))
-      )
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        trms.exist("NonExistentTrait")
+      } asserting (res => res should be(Right(false)))
     }
   }
 
-  "Unlink with relationship hasPart a DataProduct with DataProductComponents" - {
+  "Creating a trait" - {
     "works" in {
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tms = TypeManagementServiceInterpreter[IO](repository)
-        val ims = InstanceManagementServiceInterpreter[IO](tms)
-
+        val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
-          i1 <- EitherT(
-            ims.create("DataProductType", Tuple1("name" -> "dataProduct2"))
-          )
-          i2 <- EitherT(
-            ims.create("OutputPortType", Tuple1("name" -> "outPort3"))
-          )
-          i3 <- EitherT(
-            ims.create("OutputPortType", Tuple1("name" -> "outPort4"))
-          )
-          _ <- EitherT(ims.link(i1, hasPart, i2))
-          _ <- EitherT(ims.link(i1, hasPart, i3))
-          _ <- EitherT(ims.unlink(i1, hasPart, i2))
-          ids <- EitherT(ims.linked(i1, hasPart))
-        } yield (ids, i2, i3)).value
-      } asserting (res => res.map(r => r(0)) shouldBe res.map(r => List(r(2))))
+          _ <- EitherT(trms.create("ANewTrait", None))
+          res <- EitherT(trms.exist("ANewTrait"))
+        } yield res).value
+      } asserting (res => res should be(Right(true)))
     }
   }
 

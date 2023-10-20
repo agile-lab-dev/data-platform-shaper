@@ -18,7 +18,6 @@ import it.agilelab.dataplatformshaper.domain.service.{
   TypeManagementService
 }
 import org.datatools.bigdatatypes.basictypes.SqlType
-import org.eclipse.rdf4j.model.impl.DynamicModelFactory
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.{OWL, RDF, RDFS}
@@ -380,13 +379,6 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
   override def create(
       entityType: EntityType
   ): F[Either[ManagementServiceError, Unit]] =
-
-    val model = (new DynamicModelFactory).createEmptyModel()
-
-    model.setNamespace(ns)
-    model.setNamespace(OWL.NS)
-    model.setNamespace(RDF.NS)
-    model.setNamespace(RDFS.NS)
 
     val instanceType = iri(ns, entityType.name)
 

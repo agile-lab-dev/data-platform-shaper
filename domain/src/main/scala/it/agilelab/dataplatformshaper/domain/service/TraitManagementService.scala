@@ -7,7 +7,10 @@ trait TraitManagementService[F[_]]:
 
   val repository: KnowledgeGraph[F]
 
-  def create(traitName: String): F[Either[ManagementServiceError, Unit]]
+  def create(
+      traitName: String,
+      inheritsFrom: Option[String]
+  ): F[Either[ManagementServiceError, Unit]]
 
   def exist(
       traitName: String
