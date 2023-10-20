@@ -28,6 +28,7 @@ object NS:
   val NULLABLE = iri(ns, "Nullable")
   val STRUCTTYPE = iri(ns, "StructType")
   val STRUCT = iri(ns, "Struct")
+  val TRAIT = iri(ns, "Trait")
 
   // L1
 
