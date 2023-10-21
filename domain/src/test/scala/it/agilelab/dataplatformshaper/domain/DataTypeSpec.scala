@@ -35,6 +35,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "float" -> FloatType(),
         "floatRepeated" -> FloatType(Repeated),
         "floatNullable" -> FloatType(Nullable),
+        "long" -> LongType(),
+        "longRepeated" -> LongType(Repeated),
+        "longNullable" -> LongType(Nullable),
         "labels" -> StringType(Repeated),
         "nullable" -> IntType(Nullable),
         "nested" -> StructType(
@@ -85,6 +88,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "float" -> 1.23f,
       "floatRepeated" -> List(1.23f, 3.21f),
       "floatNullable" -> Some(1.23f),
+      "long" -> 1L,
+      "longRepeated" -> List(1L, 3L),
+      "longNullable" -> Some(3L),
       "labels" -> List("label1", "label2"),
       "nullable" -> Some(1),
       "nested" -> ("nest1" -> "ciccio1", "nest2" -> "ciccio2", "furtherNested" -> List(
@@ -128,6 +134,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "float" -> 1.23f,
         "floatRepeated" -> List(1.23f, 3.21f),
         "floatNullable" -> Some(1.23f),
+        "long" -> 1L,
+        "longRepeated" -> List(1L, 3L),
+        "longNullable" -> Some(3L),
         "labels" -> List("etichetta1", "label2"),
         "nullable" -> Some(1),
         "nested" -> ("nest1" -> "ciccio1", "nest2" -> "ciccio2", "furtherNested" -> List(
@@ -169,6 +178,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "float" -> FloatType(),
         "floatRepeated" -> FloatType(Repeated),
         "floatNullable" -> FloatType(Nullable),
+        "long" -> LongType(),
+        "longRepeated" -> LongType(Repeated),
+        "longNullable" -> LongType(Nullable),
         "labels" -> StringType(Repeated),
         "version" -> IntType(),
         "aStruct" -> StructType(
@@ -199,6 +211,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "float": 1.23,
       "floatRepeated": [1.23, 3.21],
       "floatNullable": 1.23,
+      "long": 1,
+      "longRepeated": [1, 3],
+      "longNullable": 3,
       "labels": ["label1", "label2", "label3"],
       "version": 1,
       "aStruct": {
@@ -239,6 +254,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
           "float": 1.23,
           "floatRepeated": [1.23, 3.21],
           "floatNullable": 1.23,
+          "long": 1,
+          "longRepeated": [1, 3],
+          "longNullable": 3,
           "labels": ["label1", "label2", "label3"],
           "version": 1,
           "aStruct": {

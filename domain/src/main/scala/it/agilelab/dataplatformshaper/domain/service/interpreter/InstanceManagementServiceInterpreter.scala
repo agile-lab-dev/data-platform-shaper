@@ -156,6 +156,18 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
+        case LongType(mode) =>
+          val lit =
+            mode match
+              case Required | Repeated =>
+                literal(value.asInstanceOf[Long].toString)
+              case Nullable =>
+                value.asInstanceOf[Option[Long]].fold(literal("null"))(literal)
+            end match
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
         case StructType(attributes, mode) =>
           foldingPhase match
             case BeginFoldingStruct =>
@@ -447,6 +459,19 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toFloat)
             case None =>
               fieldName -> List[Float]()
+        case LongType(mode) =>
+          fieldValue match
+            case Some(value) =>
+              mode match
+                case Required =>
+                  fieldName -> value(0)(1).toLong
+                case Repeated =>
+                  fieldName -> value.map(_(1).toLong).reverse
+                case Nullable =>
+                  if value(0)(1) === "null" then fieldName -> Option.empty[Long]
+                  else fieldName -> Some(value(0)(1).toLong)
+            case None =>
+              fieldName -> List[Long]()
         case IntType(mode) =>
           fieldValue match
             case Some(value) =>
@@ -525,6 +550,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             case _: DoubleType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case _: FloatType =>
+              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
+            case _: LongType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case struct: StructType =>
               handleStructDataType(fieldName, struct, fieldValue)

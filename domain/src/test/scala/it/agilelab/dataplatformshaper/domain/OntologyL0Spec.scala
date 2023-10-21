@@ -195,12 +195,22 @@ class OntologyL0Spec
           "floatNullable" -> FloatType(Nullable)
         )
       ),
+      "longStruct" -> StructType(
+        List(
+          "long" -> LongType(),
+          "longRepeated" -> LongType(Repeated),
+          "longNullable" -> LongType(Nullable)
+        )
+      ),
       "double" -> DoubleType(),
       "doubleRepeated" -> DoubleType(Repeated),
       "doubleNullable" -> DoubleType(Nullable),
       "float" -> FloatType(),
       "floatRepeated" -> FloatType(Repeated),
       "floatNullable" -> FloatType(Nullable),
+      "long" -> LongType(Required),
+      "longRepeated" -> LongType(Repeated),
+      "longNullable" -> LongType(Nullable),
       "int" -> IntType(),
       "optionalInt" -> IntType(Nullable),
       "emptyOptionalInt" -> IntType(Nullable),
@@ -304,12 +314,20 @@ class OntologyL0Spec
       "floatRepeated" -> List(1.23f, 3.21f),
       "floatNullable" -> Some(1.23f)
     ),
+    "longStruct" -> (
+      "long" -> 10L,
+      "longRepeated" -> List(10L, 20L),
+      "longNullable" -> Some(30L)
+    ),
     "double" -> 1.23,
     "doubleRepeated" -> List(1.23, 3.21),
     "doubleNullable" -> Some(1.23),
     "float" -> 1.23f,
     "floatRepeated" -> List(1.23f, 3.21f),
     "floatNullable" -> Some(1.23f),
+    "long" -> 10L,
+    "longRepeated" -> List(10L, 20L),
+    "longNullable" -> Some(30L),
     "int" -> 10,
     "optionalInt" -> Some(10),
     "emptyOptionalInt" -> None,
@@ -403,12 +421,20 @@ class OntologyL0Spec
       "floatRepeated" -> List(1.24f, 3.20f),
       "floatNullable" -> Some(1.24f)
     ),
+    "longStruct" -> (
+      "long" -> 11L,
+      "longRepeated" -> List(21L, 11L),
+      "longNullable" -> Some(31L)
+    ),
     "double" -> 1.24,
     "doubleRepeated" -> List(1.24, 3.20),
     "doubleNullable" -> Some(1.24),
     "float" -> 1.24f,
     "floatRepeated" -> List(1.24f, 3.20f),
     "floatNullable" -> Some(1.24f),
+    "long" -> 11L,
+    "longRepeated" -> List(21L, 11L),
+    "longNullable" -> Some(31L),
     "int" -> 10,
     "optionalInt" -> Some(10),
     "emptyOptionalInt" -> None,

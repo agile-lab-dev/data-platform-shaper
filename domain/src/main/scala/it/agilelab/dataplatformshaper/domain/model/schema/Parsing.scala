@@ -220,6 +220,37 @@ private def unfoldPrimitive(
         case wrong =>
           Left[String, Unit](s"$wrong is not a float")
       end match
+    case tpe @ LongType(mode) =>
+      value match
+        case value: Long if mode === Required =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+          try
+            value
+              .asInstanceOf[List[Long]]
+              .foreach(long =>
+                unfoldPrimitive(
+                  name,
+                  long,
+                  tpe.copy(mode = Required),
+                  currentPath,
+                  func
+                )
+              )
+            Right[String, Unit](())
+          catch
+            case _: Throwable =>
+              Left[String, Unit](s"$value is not a List[Long]")
+        case value @ Some(_: Long) if mode === Nullable =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case None if mode === Nullable =>
+          func(currentPath, tpe, None: Option[Long], FoldingPrimitive)
+          Right[String, Unit](())
+        case wrong =>
+          Left[String, Unit](s"$wrong is not a long")
+      end match
     case wrong =>
       Left[String, Unit](s"$wrong type is unknown")
   end match
@@ -367,6 +398,8 @@ private def unfoldDataType(
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case tpe @ FloatType(_) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
+    case tpe @ LongType(_) =>
+      unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case wrong =>
       Left[String, Unit](s"$wrong type is unknown")
   end match
@@ -511,6 +544,21 @@ private def jsonToTupleChecked(
                   .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[Float].toOption
+            end match
+          case LongType(mode) =>
+            mode match
+              case Required =>
+                obj
+                  .as[Long]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Repeated =>
+                obj
+                  .as[List[Long]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Nullable =>
+                obj.as[Long].toOption
             end match
           case StringType(mode) =>
             mode match
@@ -684,6 +732,19 @@ def tupleToJsonChecked(
                           throw new IllegalArgumentException(s"Wrong value")
                         )
                     )
+              end match
+            case LongType(mode) =>
+              mode match
+                case Required =>
+                  Json.fromLong(tupleFieldValue.asInstanceOf[Long])
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue.asInstanceOf[List[Long]].map(Json.fromLong)
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[Long]]
+                    .fold(Json.Null)(Json.fromLong)
               end match
             case StringType(mode) =>
               mode match

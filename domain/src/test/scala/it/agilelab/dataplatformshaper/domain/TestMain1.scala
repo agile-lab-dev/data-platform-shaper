@@ -86,6 +86,7 @@ object TestMain1 extends IOApp:
                     "timestamp" -> TimestampDataType(),
                     "double" -> DoubleType(),
                     "float" -> FloatType(),
+                    "long" -> LongType(),
                     "additional-info" -> StructType(
                       List(
                         "info1" -> StringType(),
@@ -122,6 +123,7 @@ object TestMain1 extends IOApp:
                 .of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
               "double" -> 1.23,
               "float" -> 1.23f,
+              "long" -> 123L,
               "additional-info" -> (
                 "info1" -> "ciccio1",
                 "info2" -> "ciccio2"
