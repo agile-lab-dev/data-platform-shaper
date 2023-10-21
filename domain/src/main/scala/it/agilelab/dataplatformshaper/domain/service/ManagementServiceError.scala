@@ -18,6 +18,10 @@ enum ManagementServiceError(errorMessage: String):
       extends ManagementServiceError(
         s"The instance with id $instanceId does not exist"
       )
+  case NonExistentTraitError(traitName: String)
+      extends ManagementServiceError(
+        s"The trait with name $traitName does not exist"
+      )
   case TupleIsNotConformToSchema(parsingError: String)
       extends ManagementServiceError(parsingError)
   case InvalidLinkType(inst1: String, linkType: String, inst2: String)

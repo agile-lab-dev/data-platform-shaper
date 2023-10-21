@@ -10,7 +10,6 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.{
@@ -314,7 +313,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
 
   private def getTraitsFromEntityType(
       entityTypeName: String
-  ): F[Either[ManagementServiceError, Set[SpecificTrait]]] =
+  ): F[Either[ManagementServiceError, Set[String]]] =
     val entityTypeIri = iri(ns, entityTypeName)
     val query: String =
       s"""
@@ -332,10 +331,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       .map(
         _.map(bs =>
           bs.getBinding("trait").getValue match
-            case iri: IRI => iri.getLocalName: SpecificTrait
+            case iri: IRI => iri.getLocalName
         ).toSet
       )
-      .map(Right[ManagementServiceError, Set[SpecificTrait]])
+      .map(Right[ManagementServiceError, Set[String]])
   end getTraitsFromEntityType
 
   private def getSchemaFromEntityType(entityTypeName: String): F[Schema] =

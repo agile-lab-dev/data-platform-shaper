@@ -1,7 +1,6 @@
 package it.agilelab.dataplatformshaper.uservice.api.intepreter
 
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
-import it.agilelab.dataplatformshaper.domain.model.l1.given
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,

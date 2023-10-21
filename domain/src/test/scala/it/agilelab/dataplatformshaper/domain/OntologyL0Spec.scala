@@ -19,6 +19,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
@@ -251,7 +252,6 @@ class OntologyL0Spec
   )
 
   val fileBasedDataCollectionTuple = (
-    "version" -> "1.0",
     "organization" -> "HR",
     "sub-organization" -> "Any",
     "domain" -> "Registrations",
@@ -529,12 +529,14 @@ class OntologyL0Spec
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val service = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
         val entityType = l0.EntityType(
           "FileBasedDataCollectionType",
-          Set(DataCollection, Versionable),
+          Set("DataCollection"),
           fileBasedDataCollectionTypeSchema
         )
-        service.create(entityType) *>
+        trservice.create("DataCollection", None) *>
+          service.create(entityType) *>
           service.create(entityType)
       } asserting (ret =>
         ret should matchPattern { case Left(_) =>
@@ -682,6 +684,7 @@ class OntologyL0Spec
       })
     }
   }
+
   "Retrieving the EntityType given its name" - {
     "works" in {
       val session = Session[IO]("localhost", 7201, "repo1", false)
@@ -692,7 +695,7 @@ class OntologyL0Spec
       } asserting (_ shouldBe Right(
         l0.EntityType(
           "FileBasedDataCollectionType",
-          Set(DataCollection, Versionable),
+          Set("DataCollection"),
           fileBasedDataCollectionTypeSchema
         )
       ))
@@ -743,7 +746,7 @@ class OntologyL0Spec
           )
           _ <- EitherT[IO, ManagementServiceError, Unit](
             service.create(
-              EntityType("BaseEntityType", Set(Versionable), schema),
+              EntityType("BaseEntityType", schema),
               "CommonEntityType"
             )
           )
@@ -755,7 +758,6 @@ class OntologyL0Spec
         et shouldBe Right(
           l0.EntityType(
             "BaseEntityType",
-            Set(Versionable),
             schema,
             l0.EntityType("CommonEntityType", commonSchema)
           )
@@ -790,7 +792,7 @@ class OntologyL0Spec
         )
       )
 
-      val entityType0 = EntityType("EntityType0", Set(Versionable), schema0)
+      val entityType0 = EntityType("EntityType0", schema0)
 
       val entityType1 = l0.EntityType("EntityType1", schema1)
 
@@ -817,7 +819,6 @@ class OntologyL0Spec
         et.map(_.schema) shouldBe Right(
           StructType(
             List(
-              "version" -> StringType(),
               "field0" -> StringType(),
               "field1" -> StringType(),
               "field2" -> StringType(),
