@@ -8,6 +8,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.{*, given}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.language.{dynamics, implicitConversions}
 
 class DataTypeSpec extends AnyFlatSpec with Matchers:
@@ -22,6 +23,18 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "sub-organization" -> StringType(),
         "domain" -> StringType(),
         "sub-domain" -> StringType(),
+        "foundation" -> DateType(),
+        "foundationRepeated" -> DateType(Repeated),
+        "foundationNullable" -> DateType(Nullable),
+        "timestamp" -> TimestampDataType(),
+        "timestampRepeated" -> TimestampDataType(Repeated),
+        "timestampNullable" -> TimestampDataType(Nullable),
+        "double" -> DoubleType(),
+        "doubleRepeated" -> DoubleType(Repeated),
+        "doubleNullable" -> DoubleType(Nullable),
+        "float" -> FloatType(),
+        "floatRepeated" -> FloatType(Repeated),
+        "floatNullable" -> FloatType(Nullable),
         "labels" -> StringType(Repeated),
         "nullable" -> IntType(Nullable),
         "nested" -> StructType(
@@ -45,6 +58,33 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "sub-organization" -> "Any",
       "domain" -> "Registration",
       "sub-domain" -> "Person",
+      "foundation" -> LocalDate.of(2008, 8, 26),
+      "foundationRepeated" -> List(
+        LocalDate.of(2008, 8, 26),
+        LocalDate.of(1966, 11, 24)
+      ),
+      "foundationNullable" -> None,
+      "timestamp" -> ZonedDateTime.of(
+        2023,
+        10,
+        11,
+        12,
+        0,
+        0,
+        0,
+        ZoneId.of("Europe/London")
+      ),
+      "timestampRepeated" -> List(
+        ZonedDateTime.of(2022, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+        ZonedDateTime.of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+      ),
+      "timestampNullable" -> None,
+      "double" -> 1.23,
+      "doubleRepeated" -> List(1.23, 3.21),
+      "doubleNullable" -> Some(3.21),
+      "float" -> 1.23f,
+      "floatRepeated" -> List(1.23f, 3.21f),
+      "floatNullable" -> Some(1.23f),
       "labels" -> List("label1", "label2"),
       "nullable" -> Some(1),
       "nested" -> ("nest1" -> "ciccio1", "nest2" -> "ciccio2", "furtherNested" -> List(
@@ -67,6 +107,27 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "sub-organization" -> "Italy",
         "domain" -> "Registration",
         "sub-domain" -> "Person",
+        "foundation" -> LocalDate.of(2008, 8, 26),
+        "foundationRepeated" -> List(
+          LocalDate.of(2008, 8, 26),
+          LocalDate.of(1966, 11, 24)
+        ),
+        "foundationNullable" -> None,
+        "timestamp" -> ZonedDateTime
+          .of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+        "timestampRepeated" -> List(
+          ZonedDateTime
+            .of(2022, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+          ZonedDateTime
+            .of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+        ),
+        "timestampNullable" -> None,
+        "double" -> 1.23,
+        "doubleRepeated" -> List(1.23, 3.21),
+        "doubleNullable" -> Some(3.21),
+        "float" -> 1.23f,
+        "floatRepeated" -> List(1.23f, 3.21f),
+        "floatNullable" -> Some(1.23f),
         "labels" -> List("etichetta1", "label2"),
         "nullable" -> Some(1),
         "nested" -> ("nest1" -> "ciccio1", "nest2" -> "ciccio2", "furtherNested" -> List(
@@ -96,6 +157,18 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "sub-organization" -> StringType(),
         "domain" -> StringType(),
         "sub-domain" -> StringType(),
+        "foundation" -> DateType(),
+        "foundationRepeated" -> DateType(Repeated),
+        "foundationNullable" -> DateType(Nullable),
+        "timestamp" -> TimestampDataType(),
+        "timestampRepeated" -> TimestampDataType(Repeated),
+        "timestampNullale" -> TimestampDataType(Nullable),
+        "double" -> DoubleType(),
+        "doubleRepeated" -> DoubleType(Repeated),
+        "doubleNullable" -> DoubleType(Nullable),
+        "float" -> FloatType(),
+        "floatRepeated" -> FloatType(Repeated),
+        "floatNullable" -> FloatType(Nullable),
         "labels" -> StringType(Repeated),
         "version" -> IntType(),
         "aStruct" -> StructType(
@@ -114,6 +187,18 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "sub-organization": "Italy",
       "domain": "Registration",
       "sub-domain": "Person",
+      "foundation": "2008-08-26",
+      "foundationRepeated": ["2008-08-26", "1966-11-24"],
+      "foundationNullable": null,
+      "timestamp": "2023-10-11T12:00Z[Europe/London]",
+      "timestampRepeated": ["2022-10-11T12:00Z[Europe/London]", "2023-10-11T12:00Z[Europe/London]"],
+      "timestampNullable": null,
+      "double": 1.23,
+      "doubleRepeated": [1.23, 3.21],
+      "doubleNullable": 3.21,
+      "float": 1.23,
+      "floatRepeated": [1.23, 3.21],
+      "floatNullable": 1.23,
       "labels": ["label1", "label2", "label3"],
       "version": 1,
       "aStruct": {
@@ -142,6 +227,18 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
           "sub-organization": "Italy",
           "domain": "Registration",
           "sub-domain": "Person",
+          "foundation": "2008-08-26",
+          "foundationRepeated": ["2008-08-26", "1966-11-24"],
+          "foundationNullable": null,
+          "timestamp": "2023-10-11T12:00Z[Europe/London]",
+          "timestampRepeated": ["2022-10-11T12:00Z[Europe/London]", "2023-10-11T12:00Z[Europe/London]"],
+          "timestampNullable": null,
+          "double": 1.23,
+          "doubleRepeated": [1.23, 3.21],
+          "doubleNullable": 3.21,
+          "float": 1.23,
+          "floatRepeated": [1.23, 3.21],
+          "floatNullable": 1.23,
           "labels": ["label1", "label2", "label3"],
           "version": 1,
           "aStruct": {

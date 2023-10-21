@@ -17,6 +17,7 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
+import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 
@@ -81,6 +82,10 @@ object TestMain1 extends IOApp:
                     "sub-organization" -> StringType(),
                     "domain" -> StringType(),
                     "sub-domain" -> StringType(),
+                    "foundation" -> DateType(),
+                    "timestamp" -> TimestampDataType(),
+                    "double" -> DoubleType(),
+                    "float" -> FloatType(),
                     "additional-info" -> StructType(
                       List(
                         "info1" -> StringType(),
@@ -112,6 +117,11 @@ object TestMain1 extends IOApp:
               "sub-organization" -> "Any",
               "domain" -> "Registration",
               "sub-domain" -> "Person",
+              "foundation" -> LocalDate.of(2008, 8, 26),
+              "timestamp" -> ZonedDateTime
+                .of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+              "double" -> 1.23,
+              "float" -> 1.23f,
               "additional-info" -> (
                 "info1" -> "ciccio1",
                 "info2" -> "ciccio2"

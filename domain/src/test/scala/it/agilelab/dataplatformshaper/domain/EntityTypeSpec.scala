@@ -31,7 +31,11 @@ class EntityTypeSpec extends AnyFlatSpec with Matchers:
         "field1" -> StringType(),
         "field2" -> StringType(),
         "field3" -> StringType(),
-        "field4" -> StringType()
+        "field4" -> StringType(),
+        "field5" -> DateType(),
+        "field6" -> TimestampDataType(),
+        "field7" -> DoubleType(),
+        "field8" -> FloatType()
       )
     )
 
@@ -48,7 +52,11 @@ class EntityTypeSpec extends AnyFlatSpec with Matchers:
         "field1" -> StringType(),
         "field2" -> StringType(),
         "field3" -> StringType(),
-        "field4" -> StringType()
+        "field4" -> StringType(),
+        "field5" -> DateType(),
+        "field6" -> TimestampDataType(),
+        "field7" -> DoubleType(),
+        "field8" -> FloatType()
       )
     )
 

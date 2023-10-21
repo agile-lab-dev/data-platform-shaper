@@ -11,6 +11,9 @@ export org.datatools.bigdatatypes.basictypes.SqlType.SqlInt as IntType
 export org.datatools.bigdatatypes.basictypes.SqlType.SqlDate as DateType
 export org.datatools.bigdatatypes.basictypes.SqlType.SqlTimestamp as TimestampDataType
 export org.datatools.bigdatatypes.basictypes.SqlType.SqlStruct as StructType
+export org.datatools.bigdatatypes.basictypes.SqlType.SqlDouble as DoubleType
+export org.datatools.bigdatatypes.basictypes.SqlType.SqlFloat as FloatType
+export org.datatools.bigdatatypes.basictypes.SqlType.SqlLong as LongType
 export org.datatools.bigdatatypes.basictypes.SqlTypeMode as Mode
 
 type Schema = StructType

@@ -82,6 +82,14 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         StringType(modeStringToMode(stringMode))
       case "IntAttributeType" =>
         IntType(modeStringToMode(stringMode))
+      case "DateAttributeType" =>
+        DateType(modeStringToMode(stringMode))
+      case "TimestampAttributeType" =>
+        TimestampDataType(modeStringToMode(stringMode))
+      case "DoubleAttributeType" =>
+        DoubleType(modeStringToMode(stringMode))
+      case "FloatAttributeType" =>
+        FloatType(modeStringToMode(stringMode))
       case _ =>
         StructType(records.getOrElse(List.empty), modeStringToMode(stringMode))
   end stringToDataType
@@ -129,6 +137,46 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
           statement(
             triple(childEntity, RDFS.RANGE, NS.STRINGATTRIBUTETYPE),
+            L2
+          ),
+          modeToStatement(childEntity, mode)
+        )
+      case DateType(mode) =>
+        List(
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(
+            triple(childEntity, RDFS.RANGE, NS.DATEATTRIBUTETYPE),
+            L2
+          ),
+          modeToStatement(childEntity, mode)
+        )
+      case TimestampDataType(mode) =>
+        List(
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(
+            triple(childEntity, RDFS.RANGE, NS.TIMESTAMPATTRIBUTETYPE),
+            L2
+          ),
+          modeToStatement(childEntity, mode)
+        )
+      case DoubleType(mode) =>
+        List(
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(
+            triple(childEntity, RDFS.RANGE, NS.DOUBLEATTRIBUTETYPE),
+            L2
+          ),
+          modeToStatement(childEntity, mode)
+        )
+      case FloatType(mode) =>
+        List(
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(
+            triple(childEntity, RDFS.RANGE, NS.FLOATATTRIBUTETYPE),
             L2
           ),
           modeToStatement(childEntity, mode)
