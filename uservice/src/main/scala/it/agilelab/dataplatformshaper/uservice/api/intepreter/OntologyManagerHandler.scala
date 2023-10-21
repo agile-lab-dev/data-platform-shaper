@@ -11,7 +11,6 @@ import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
-import it.agilelab.dataplatformshaper.domain.model.l1.{SpecificTrait, given}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
@@ -47,9 +46,7 @@ class OntologyManagerHandler[F[_]: Async](
       summon[Applicative[F]].pure(
         Try(
           body.traits
-            .fold(Set.empty[SpecificTrait])(x =>
-              x.map(str => str: SpecificTrait).toSet
-            )
+            .fold(Set.empty[String])(x => x.map(str => str).toSet)
         ).toEither
           .leftMap(t => s"Trait ${t.getMessage} is not a Trait")
       )
@@ -111,8 +108,8 @@ class OntologyManagerHandler[F[_]: Async](
 
     val res = for {
       entityType <- EitherT(getEntityType)
-      ts = entityType.traits.fold(Set.empty[SpecificTrait])(x =>
-        x.map(str => str: SpecificTrait).toSet
+      ts = entityType.traits.fold(Set.empty[String])(x =>
+        x.map(str => str).toSet
       )
       res <- EitherT(
         entityType.fatherName

@@ -2,7 +2,6 @@ package it.agilelab.dataplatformshaper.domain
 
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
-import it.agilelab.dataplatformshaper.domain.model.l1.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -35,7 +34,7 @@ class EntityTypeSpec extends AnyFlatSpec with Matchers:
       )
     )
 
-    val entityType0 = EntityType("EntityType0", Set(Versionable), schema0)
+    val entityType0 = EntityType("EntityType0", schema0)
 
     val entityType1 = l0.EntityType("EntityType1", schema1, entityType0)
 
@@ -43,7 +42,6 @@ class EntityTypeSpec extends AnyFlatSpec with Matchers:
 
     entityType2.schema shouldBe StructType(
       List(
-        "version" -> StringType(),
         "field0" -> StringType(),
         "field1" -> StringType(),
         "field2" -> StringType(),

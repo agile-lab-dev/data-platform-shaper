@@ -5,7 +5,6 @@ import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.effect.{IO, Ref}
 import fs2.io.file.Path
-import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
@@ -13,12 +12,12 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
 import org.eclipse.rdf4j.model.*
@@ -188,7 +187,6 @@ class OntologyL0Spec
   )
 
   val fileBasedDataCollectionTuple = (
-    "version" -> "1.0",
     "organization" -> "HR",
     "sub-organization" -> "Any",
     "domain" -> "Registrations",
@@ -262,12 +260,14 @@ class OntologyL0Spec
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val service = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
         val entityType = l0.EntityType(
           "FileBasedDataCollectionType",
-          Set(DataCollection, Versionable),
+          Set("DataCollection"),
           fileBasedDataCollectionTypeSchema
         )
-        service.create(entityType) *>
+        trservice.create("DataCollection", None) *>
+          service.create(entityType) *>
           service.create(entityType)
       } asserting (ret =>
         ret should matchPattern { case Left(_) =>
@@ -387,7 +387,6 @@ class OntologyL0Spec
             iservice.update(
               uid,
               (
-                "version" -> "1.0",
                 "organization" -> "HR",
                 "sub-organization" -> "Any",
                 "domain" -> "Registrations",
@@ -429,7 +428,6 @@ class OntologyL0Spec
                   _,
                   "FileBasedDataCollectionType",
                   (
-                    "version" -> "1.0",
                     "organization" -> "HR",
                     "sub-organization" -> "Any",
                     "domain" -> "Registrations",
@@ -474,7 +472,7 @@ class OntologyL0Spec
       } asserting (_ shouldBe Right(
         l0.EntityType(
           "FileBasedDataCollectionType",
-          Set(DataCollection, Versionable),
+          Set("DataCollection"),
           fileBasedDataCollectionTypeSchema
         )
       ))
@@ -525,7 +523,7 @@ class OntologyL0Spec
           )
           _ <- EitherT[IO, ManagementServiceError, Unit](
             service.create(
-              EntityType("BaseEntityType", Set(Versionable), schema),
+              EntityType("BaseEntityType", schema),
               "CommonEntityType"
             )
           )
@@ -537,7 +535,6 @@ class OntologyL0Spec
         et shouldBe Right(
           l0.EntityType(
             "BaseEntityType",
-            Set(Versionable),
             schema,
             l0.EntityType("CommonEntityType", commonSchema)
           )
@@ -572,7 +569,7 @@ class OntologyL0Spec
         )
       )
 
-      val entityType0 = EntityType("EntityType0", Set(Versionable), schema0)
+      val entityType0 = EntityType("EntityType0", schema0)
 
       val entityType1 = l0.EntityType("EntityType1", schema1)
 
@@ -599,7 +596,6 @@ class OntologyL0Spec
         et.map(_.schema) shouldBe Right(
           StructType(
             List(
-              "version" -> StringType(),
               "field0" -> StringType(),
               "field1" -> StringType(),
               "field2" -> StringType(),
