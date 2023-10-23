@@ -11,7 +11,14 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 }
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.service.interpreter.TraitManagementServiceInterpreter
+import it.agilelab.dataplatformshaper.domain.model.l1.Relationship
+import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+  InstanceManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 import org.eclipse.rdf4j.model.*
 import org.eclipse.rdf4j.model.util.Values
 import org.eclipse.rdf4j.model.util.Values.iri
@@ -157,6 +164,92 @@ class OntologyL1Spec
           res <- EitherT(trms.exist("ANewTrait"))
         } yield res).value
       } asserting (res => res should be(Right(true)))
+    }
+  }
+
+  "Linking a trait to another trait" - {
+    "works" in {
+      val session = Session[IO]("localhost", 7201, "repo1", false)
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        (for {
+          _ <- EitherT(trms.create("DataProductComponent", None))
+          _ <- EitherT(trms.create("OutputPort", Some("DataProductComponent")))
+          _ <- EitherT(trms.create("DataProduct", None))
+          _ <- EitherT(
+            trms
+              .link("DataProduct", Relationship.hasPart, "DataProductComponent")
+          )
+          res <- EitherT(trms.linked("DataProduct", Relationship.hasPart))
+        } yield res).value
+      } asserting (res => res should be(Right(List("DataProductComponent"))))
+    }
+  }
+
+  "Link with relationship hasPart different instances of entity types" - {
+    "works" in {
+      val session = Session[IO]("localhost", 7201, "repo1", false)
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val tms = TypeManagementServiceInterpreter[IO](repository)
+        val ims = InstanceManagementServiceInterpreter[IO](tms)
+        (for {
+          _ <- EitherT(
+            tms.create(
+              EntityType(
+                "DataProductType",
+                Set("DataProduct"),
+                StructType(List("name" -> StringType())): Schema
+              )
+            )
+          )
+          _ <- EitherT(
+            tms.create(
+              EntityType(
+                "OutputPortType",
+                Set("OutputPort"),
+                StructType(List("name" -> StringType())): Schema
+              )
+            )
+          )
+          dp <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp1")))
+          op1 <- EitherT(ims.create("OutputPortType", Tuple1("name" -> "op1")))
+          op2 <- EitherT(ims.create("OutputPortType", Tuple1("name" -> "op2")))
+          _ <- EitherT(ims.link(dp, Relationship.hasPart, op1))
+          _ <- EitherT(ims.link(dp, Relationship.hasPart, op2))
+          ids <- EitherT(ims.linked(dp, Relationship.hasPart))
+        } yield (ids, op1, op2)).value
+      } asserting (res =>
+        res.map(r => r(0)) shouldBe res.map(r => List(r(1), r(2)))
+      )
+    }
+  }
+
+  "Link with relationship hasPart two instances and one of them is not related to the proper trait" - {
+    "fails" in {
+      val session = Session[IO]("localhost", 7201, "repo1", false)
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val tms = TypeManagementServiceInterpreter[IO](repository)
+        val ims = InstanceManagementServiceInterpreter[IO](tms)
+        (for {
+          _ <- EitherT(
+            tms.create(
+              EntityType(
+                "AnotherType",
+                StructType(List("name" -> StringType())): Schema
+              )
+            )
+          )
+          dp <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp1")))
+          at1 <- EitherT(ims.create("AnotherType", Tuple1("name" -> "at1")))
+          res <- EitherT(ims.link(dp, Relationship.hasPart, at1))
+        } yield res).value
+      } asserting (res =>
+        res should matchPattern { case Left(InvalidLinkType(_, "hasPart", _)) =>
+        }
+      )
     }
   }
 
