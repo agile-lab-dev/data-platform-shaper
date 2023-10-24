@@ -24,6 +24,7 @@ object NS:
   val DOUBLEATTRIBUTETYPE = iri(ns, "DoubleAttributeType")
   val FLOATATTRIBUTETYPE = iri(ns, "FloatAttributeType")
   val LONGATTRIBUTETYPE = iri(ns, "LongAttributeType")
+  val BOOLEANATTRIBUTETYPE = iri(ns, "BooleanAttributeType")
   val INTATTRIBUTETYPE = iri(ns, "IntAttributeType")
   val HASATTRIBUTETYPE = iri(ns, "hasAttributeType")
   val ENTITY = iri(ns, "Entity")

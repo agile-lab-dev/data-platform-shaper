@@ -134,7 +134,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           val lit =
             mode match
               case Required | Repeated =>
-                literal(value.asInstanceOf[Double].toString)
+                literal(value.asInstanceOf[Double])
               case Nullable =>
                 value
                   .asInstanceOf[Option[Double]]
@@ -148,7 +148,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           val lit =
             mode match
               case Required | Repeated =>
-                literal(value.asInstanceOf[Float].toString)
+                literal(value.asInstanceOf[Float])
               case Nullable =>
                 value.asInstanceOf[Option[Float]].fold(literal("null"))(literal)
             end match
@@ -160,9 +160,23 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           val lit =
             mode match
               case Required | Repeated =>
-                literal(value.asInstanceOf[Long].toString)
+                literal(value.asInstanceOf[Long])
               case Nullable =>
                 value.asInstanceOf[Option[Long]].fold(literal("null"))(literal)
+            end match
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case BooleanType(mode) =>
+          val lit =
+            mode match
+              case Required | Repeated =>
+                literal(value.asInstanceOf[Boolean])
+              case Nullable =>
+                value
+                  .asInstanceOf[Option[Boolean]]
+                  .fold(literal("null"))(literal)
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
@@ -472,6 +486,20 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toLong)
             case None =>
               fieldName -> List[Long]()
+        case BooleanType(mode) =>
+          fieldValue match
+            case Some(value) =>
+              mode match
+                case Required =>
+                  fieldName -> value(0)(1).toBoolean
+                case Repeated =>
+                  fieldName -> value.map(_(1).toBoolean).reverse
+                case Nullable =>
+                  if value(0)(1) === "null" then
+                    fieldName -> Option.empty[Boolean]
+                  else fieldName -> Some(value(0)(1).toBoolean)
+            case None =>
+              fieldName -> List[Boolean]()
         case IntType(mode) =>
           fieldValue match
             case Some(value) =>
@@ -552,6 +580,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             case _: FloatType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case _: LongType =>
+              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
+            case _: BooleanType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case struct: StructType =>
               handleStructDataType(fieldName, struct, fieldValue)

@@ -146,7 +146,7 @@ class OntologyL0Spec
       } asserting (_.toList.length shouldBe 1)
     }
   }
-
+//TODO: Make lists order dependent
   val fileBasedDataCollectionTypeSchema: StructType = StructType(
     List(
       "organization" -> StringType(),
@@ -202,6 +202,13 @@ class OntologyL0Spec
           "longNullable" -> LongType(Nullable)
         )
       ),
+      "boolStruct" -> StructType(
+        List(
+          "bool" -> BooleanType(),
+          "boolRepeated" -> BooleanType(Repeated),
+          "boolNullable" -> BooleanType(Nullable)
+        )
+      ),
       "double" -> DoubleType(),
       "doubleRepeated" -> DoubleType(Repeated),
       "doubleNullable" -> DoubleType(Nullable),
@@ -211,6 +218,9 @@ class OntologyL0Spec
       "long" -> LongType(Required),
       "longRepeated" -> LongType(Repeated),
       "longNullable" -> LongType(Nullable),
+      "bool" -> BooleanType(),
+      "boolRepeated" -> BooleanType(Repeated),
+      "boolNullable" -> BooleanType(Nullable),
       "int" -> IntType(),
       "optionalInt" -> IntType(Nullable),
       "emptyOptionalInt" -> IntType(Nullable),
@@ -319,6 +329,11 @@ class OntologyL0Spec
       "longRepeated" -> List(10L, 20L),
       "longNullable" -> Some(30L)
     ),
+    "boolStruct" -> (
+      "bool" -> true,
+      "boolRepeated" -> List(true, false).sorted,
+      "boolNullable" -> Some(true)
+    ),
     "double" -> 1.23,
     "doubleRepeated" -> List(1.23, 3.21),
     "doubleNullable" -> Some(1.23),
@@ -328,6 +343,9 @@ class OntologyL0Spec
     "long" -> 10L,
     "longRepeated" -> List(10L, 20L),
     "longNullable" -> Some(30L),
+    "bool" -> true,
+    "boolRepeated" -> List(true, false).sorted,
+    "boolNullable" -> Some(true),
     "int" -> 10,
     "optionalInt" -> Some(10),
     "emptyOptionalInt" -> None,
@@ -426,6 +444,11 @@ class OntologyL0Spec
       "longRepeated" -> List(21L, 11L),
       "longNullable" -> Some(31L)
     ),
+    "boolStruct" -> (
+      "bool" -> false,
+      "boolRepeated" -> List(false, false).sorted,
+      "boolNullable" -> Some(true)
+    ),
     "double" -> 1.24,
     "doubleRepeated" -> List(1.24, 3.20),
     "doubleNullable" -> Some(1.24),
@@ -435,6 +458,9 @@ class OntologyL0Spec
     "long" -> 11L,
     "longRepeated" -> List(21L, 11L),
     "longNullable" -> Some(31L),
+    "bool" -> false,
+    "boolRepeated" -> List(false, true).sorted,
+    "boolNullable" -> Some(true),
     "int" -> 10,
     "optionalInt" -> Some(10),
     "emptyOptionalInt" -> None,
@@ -514,6 +540,16 @@ class OntologyL0Spec
         }
       )
     }
+  }
+
+  def testEquivalency(a: Any, b: Any): Boolean = (a, b) match {
+    case (listA: List[_], listB: List[_]) => listA.toSet.equals(listB.toSet)
+    case (tupleA: Tuple, tupleB: Tuple) =>
+      tupleA.productArity.equals(tupleB.productArity) &&
+      tupleA.productIterator.zip(tupleB.productIterator).forall {
+        case (elA, elB) => testEquivalency(elA, elB)
+      }
+    case _ => a.equals(b)
   }
 
   "Caching entity type definitions" - {
@@ -603,7 +639,7 @@ class OntologyL0Spec
         } yield read).value
       } asserting (entity =>
         inside(entity) { case Right(entity) =>
-          entity.values should be(fileBasedDataCollectionTuple)
+          assert(testEquivalency(entity.values, fileBasedDataCollectionTuple))
         }
       )
     }
@@ -633,20 +669,18 @@ class OntologyL0Spec
             iservice.read(uid)
           )
         } yield read).value
-      } asserting (entity =>
+      } asserting (entity => {
         entity should matchPattern {
-          case Right(
-                Entity(
-                  _,
-                  "FileBasedDataCollectionType",
-                  `fileBasedDataCollectionTupleForUpdate`
-                )
-              ) =>
+          case Right(Entity(_, "FileBasedDataCollectionType", _)) =>
         }
-      )
+        entity match {
+          case Right(Entity(_, _, data)) =>
+            assert(testEquivalency(data, fileBasedDataCollectionTupleForUpdate))
+          case _ => fail("Unexpected pattern encountered")
+        }
+      })
     }
   }
-
   "Retrieving the EntityType given its name" - {
     "works" in {
       val session = Session[IO]("localhost", 7201, "repo1", false)

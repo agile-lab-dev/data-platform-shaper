@@ -38,6 +38,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "long" -> LongType(),
         "longRepeated" -> LongType(Repeated),
         "longNullable" -> LongType(Nullable),
+        "bool" -> BooleanType(),
+        "boolRepeated" -> BooleanType(Repeated),
+        "boolNullable" -> BooleanType(Nullable),
         "labels" -> StringType(Repeated),
         "nullable" -> IntType(Nullable),
         "nested" -> StructType(
@@ -91,6 +94,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "long" -> 1L,
       "longRepeated" -> List(1L, 3L),
       "longNullable" -> Some(3L),
+      "bool" -> true,
+      "boolRepeated" -> List(true, false),
+      "boolNullable" -> Some(false),
       "labels" -> List("label1", "label2"),
       "nullable" -> Some(1),
       "nested" -> ("nest1" -> "ciccio1", "nest2" -> "ciccio2", "furtherNested" -> List(
@@ -137,6 +143,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "long" -> 1L,
         "longRepeated" -> List(1L, 3L),
         "longNullable" -> Some(3L),
+        "bool" -> true,
+        "boolRepeated" -> List(true, false),
+        "boolNullable" -> Some(false),
         "labels" -> List("etichetta1", "label2"),
         "nullable" -> Some(1),
         "nested" -> ("nest1" -> "ciccio1", "nest2" -> "ciccio2", "furtherNested" -> List(
@@ -181,6 +190,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "long" -> LongType(),
         "longRepeated" -> LongType(Repeated),
         "longNullable" -> LongType(Nullable),
+        "bool" -> BooleanType(),
+        "boolRepeated" -> BooleanType(Repeated),
+        "boolNullable" -> BooleanType(Nullable),
         "labels" -> StringType(Repeated),
         "version" -> IntType(),
         "aStruct" -> StructType(
@@ -214,6 +226,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "long": 1,
       "longRepeated": [1, 3],
       "longNullable": 3,
+      "bool": true,
+      "boolRepeated": [true, false],
+      "boolNullable": false,
       "labels": ["label1", "label2", "label3"],
       "version": 1,
       "aStruct": {
@@ -257,6 +272,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
           "long": 1,
           "longRepeated": [1, 3],
           "longNullable": 3,
+          "bool": true,
+          "boolRepeated": [true, false],
+          "boolNullable": false,
           "labels": ["label1", "label2", "label3"],
           "version": 1,
           "aStruct": {

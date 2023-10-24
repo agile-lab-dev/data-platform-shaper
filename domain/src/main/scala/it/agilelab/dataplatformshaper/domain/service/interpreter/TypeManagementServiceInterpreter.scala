@@ -92,6 +92,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         FloatType(modeStringToMode(stringMode))
       case "LongAttributeType" =>
         LongType(modeStringToMode(stringMode))
+      case "BooleanAttributeType" =>
+        BooleanType(modeStringToMode(stringMode))
       case _ =>
         StructType(records.getOrElse(List.empty), modeStringToMode(stringMode))
   end stringToDataType
@@ -188,6 +190,16 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
           statement(triple(childEntity, RDFS.RANGE, NS.LONGATTRIBUTETYPE), L2),
+          modeToStatement(childEntity, mode)
+        )
+      case BooleanType(mode) =>
+        List(
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(
+            triple(childEntity, RDFS.RANGE, NS.BOOLEANATTRIBUTETYPE),
+            L2
+          ),
           modeToStatement(childEntity, mode)
         )
       case IntType(mode) =>

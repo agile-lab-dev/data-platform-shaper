@@ -49,6 +49,39 @@ given OpenApiAttributeTypeToAttributeType
           oaAttributeType.name,
           IntType(oaAttributeType.mode.getOrElse(OpenApiMode.members.Required))
         )
+      case AttributeTypeName.members.Date =>
+        (
+          oaAttributeType.name,
+          DateType(oaAttributeType.mode.getOrElse(OpenApiMode.members.Required))
+        )
+      case AttributeTypeName.members.Timestamp =>
+        (
+          oaAttributeType.name,
+          TimestampDataType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+          )
+        )
+      case AttributeTypeName.members.Double =>
+        (
+          oaAttributeType.name,
+          DoubleType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+          )
+        )
+      case AttributeTypeName.members.Float =>
+        (
+          oaAttributeType.name,
+          FloatType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+          )
+        )
+      case AttributeTypeName.members.Bool =>
+        (
+          oaAttributeType.name,
+          BooleanType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+          )
+        )
       case AttributeTypeName.members.Struct =>
         (
           oaAttributeType.name,

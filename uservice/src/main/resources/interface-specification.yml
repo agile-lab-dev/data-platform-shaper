@@ -326,6 +326,11 @@ components:
         - String
         - Integer
         - Struct
+        - Date
+        - Timestamp
+        - Double
+        - Float
+        - Bool
     Mode:
       type: string
       enum:
