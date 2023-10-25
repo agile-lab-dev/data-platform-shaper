@@ -299,7 +299,8 @@ class OntologyL0Spec
         ZoneId.of("Europe/London")
       ),
       "repeatedTimestamp" -> List(
-        ZonedDateTime.of(2023, 11, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+        ZonedDateTime
+          .of(2023, 11, 11, 12, 1, 12, 13, ZoneId.of("Europe/London")),
         ZonedDateTime.of(2024, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
       ),
       "optionalTimestamp" -> Some(

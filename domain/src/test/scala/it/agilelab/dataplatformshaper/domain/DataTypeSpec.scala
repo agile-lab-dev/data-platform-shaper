@@ -81,7 +81,8 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         ZoneId.of("Europe/London")
       ),
       "timestampRepeated" -> List(
-        ZonedDateTime.of(2022, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+        ZonedDateTime
+          .of(2022, 10, 11, 12, 1, 12, 13, ZoneId.of("Europe/London")),
         ZonedDateTime.of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
       ),
       "timestampNullable" -> None,
@@ -129,7 +130,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
           .of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
         "timestampRepeated" -> List(
           ZonedDateTime
-            .of(2022, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+            .of(2022, 10, 11, 12, 1, 12, 13, ZoneId.of("Europe/London")),
           ZonedDateTime
             .of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
         ),
@@ -215,7 +216,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "foundationRepeated": ["2008-08-26", "1966-11-24"],
       "foundationNullable": null,
       "timestamp": "2023-10-11T12:00Z[Europe/London]",
-      "timestampRepeated": ["2022-10-11T12:00Z[Europe/London]", "2023-10-11T12:00Z[Europe/London]"],
+      "timestampRepeated": ["2022-10-11T12:01:12.000000013+01:00[Europe/London]", "2023-10-11T12:00Z[Europe/London]"],
       "timestampNullable": null,
       "double": 1.23,
       "doubleRepeated": [1.23, 3.21],
@@ -261,7 +262,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
           "foundationRepeated": ["2008-08-26", "1966-11-24"],
           "foundationNullable": null,
           "timestamp": "2023-10-11T12:00Z[Europe/London]",
-          "timestampRepeated": ["2022-10-11T12:00Z[Europe/London]", "2023-10-11T12:00Z[Europe/London]"],
+          "timestampRepeated": ["2022-10-11T12:01:12.000000013+01:00[Europe/London]", "2023-10-11T12:00Z[Europe/London]"],
           "timestampNullable": null,
           "double": 1.23,
           "doubleRepeated": [1.23, 3.21],
