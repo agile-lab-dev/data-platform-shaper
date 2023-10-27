@@ -16,6 +16,10 @@ trait TraitManagementService[F[_]]:
       traitName: String
   ): F[Either[ManagementServiceError, Boolean]]
 
+  def exist(
+      traitNames: Set[String]
+  ): F[Either[ManagementServiceError, Set[(String, Boolean)]]]
+
   def link(
       trait1Name: String,
       linkType: Relationship,

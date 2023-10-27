@@ -101,6 +101,12 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     })
   end exist
 
+  override def exist(
+      traitNames: Set[String]
+  ): F[Either[ManagementServiceError, Set[(String, Boolean)]]] =
+    ???
+  end exist
+
   override def link(
       traitName1: String,
       linkType: Relationship,
