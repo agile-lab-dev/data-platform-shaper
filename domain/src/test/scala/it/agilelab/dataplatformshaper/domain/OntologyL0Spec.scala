@@ -21,6 +21,7 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
+import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import org.eclipse.rdf4j.model.*
 import org.eclipse.rdf4j.model.util.Values
 import org.eclipse.rdf4j.model.util.Values.iri
@@ -145,19 +146,81 @@ class OntologyL0Spec
       } asserting (_.toList.length shouldBe 1)
     }
   }
-
+//TODO: Make lists order dependent
   val fileBasedDataCollectionTypeSchema: StructType = StructType(
     List(
       "organization" -> StringType(),
       "sub-organization" -> StringType(),
       "domain" -> StringType(),
       "sub-domain" -> StringType(),
+      "foundation" -> DateType(),
       "labels" -> StringType(Repeated),
       "string" -> StringType(),
       "optionalString" -> StringType(Nullable),
       "emptyOptionalString" -> StringType(Nullable),
       "repeatedString" -> StringType(Repeated),
       "emptyRepeatedString" -> StringType(Repeated),
+      "optionalDate" -> DateType(Nullable),
+      "emptyOptionalDate" -> DateType(Nullable),
+      "repeatedDate" -> DateType(Repeated),
+      "emptyRepeatedDate" -> DateType(Repeated),
+      "timestamp" -> TimestampDataType(Required),
+      "repeatedTimestamp" -> TimestampDataType(Repeated),
+      "optionalTimestamp" -> TimestampDataType(Nullable),
+      "timestampStruct" -> StructType(
+        List(
+          "timestamp" -> TimestampDataType(Required),
+          "repeatedTimestamp" -> TimestampDataType(Repeated),
+          "optionalTimestamp" -> TimestampDataType(Nullable)
+        )
+      ),
+      "dateStruct" -> StructType(
+        List(
+          "date" -> DateType(Required),
+          "repeatedDate" -> DateType(Repeated),
+          "optionalDate" -> DateType(Nullable)
+        )
+      ),
+      "doubleStruct" -> StructType(
+        List(
+          "double" -> DoubleType(),
+          "doubleRepeated" -> DoubleType(Repeated),
+          "doubleNullable" -> DoubleType(Nullable)
+        )
+      ),
+      "floatStruct" -> StructType(
+        List(
+          "float" -> FloatType(),
+          "floatRepeated" -> FloatType(Repeated),
+          "floatNullable" -> FloatType(Nullable)
+        )
+      ),
+      "longStruct" -> StructType(
+        List(
+          "long" -> LongType(),
+          "longRepeated" -> LongType(Repeated),
+          "longNullable" -> LongType(Nullable)
+        )
+      ),
+      "boolStruct" -> StructType(
+        List(
+          "bool" -> BooleanType(),
+          "boolRepeated" -> BooleanType(Repeated),
+          "boolNullable" -> BooleanType(Nullable)
+        )
+      ),
+      "double" -> DoubleType(),
+      "doubleRepeated" -> DoubleType(Repeated),
+      "doubleNullable" -> DoubleType(Nullable),
+      "float" -> FloatType(),
+      "floatRepeated" -> FloatType(Repeated),
+      "floatNullable" -> FloatType(Nullable),
+      "long" -> LongType(Required),
+      "longRepeated" -> LongType(Repeated),
+      "longNullable" -> LongType(Nullable),
+      "bool" -> BooleanType(),
+      "boolRepeated" -> BooleanType(Repeated),
+      "boolNullable" -> BooleanType(Nullable),
       "int" -> IntType(),
       "optionalInt" -> IntType(Nullable),
       "emptyOptionalInt" -> IntType(Nullable),
@@ -193,12 +256,97 @@ class OntologyL0Spec
     "sub-organization" -> "Any",
     "domain" -> "Registrations",
     "sub-domain" -> "People",
+    "foundation" -> LocalDate.of(2008, 8, 26),
     "labels" -> List("label1", "label2", "label3"),
     "string" -> "str",
     "optionalString" -> Some("str"),
     "emptyOptionalString" -> None,
     "repeatedString" -> List("str1", "str2", "str3"),
     "emptyRepeatedString" -> List(),
+    "optionalDate" -> Some(LocalDate.of(2008, 8, 26)),
+    "emptyOptionalDate" -> None,
+    "repeatedDate" -> List(
+      LocalDate.of(2008, 8, 26),
+      LocalDate.of(1966, 11, 24)
+    ),
+    "emptyRepeatedDate" -> List(),
+    "timestamp" -> ZonedDateTime.of(
+      2023,
+      10,
+      11,
+      12,
+      0,
+      0,
+      0,
+      ZoneId.of("Europe/London")
+    ),
+    "repeatedTimestamp" -> List(
+      ZonedDateTime.of(2023, 10, 12, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+      ZonedDateTime.of(2024, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+    ),
+    "optionalTimestamp" -> Some(
+      ZonedDateTime.of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+    ),
+    "timestampStruct" -> (
+      "timestamp" -> ZonedDateTime.of(
+        2023,
+        10,
+        11,
+        12,
+        0,
+        0,
+        0,
+        ZoneId.of("Europe/London")
+      ),
+      "repeatedTimestamp" -> List(
+        ZonedDateTime
+          .of(2023, 11, 11, 12, 1, 12, 13, ZoneId.of("Europe/London")),
+        ZonedDateTime.of(2024, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+      ),
+      "optionalTimestamp" -> Some(
+        ZonedDateTime.of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+      )
+    ),
+    "dateStruct" -> (
+      "date" -> LocalDate.of(2009, 8, 26),
+      "repeatedDate" -> List(
+        LocalDate.of(2009, 8, 26),
+        LocalDate.of(2000, 6, 19)
+      ),
+      "optionalDate" -> Some(LocalDate.of(2008, 9, 26))
+    ),
+    "doubleStruct" -> (
+      "double" -> 1.23,
+      "doubleRepeated" -> List(1.23, 3.21),
+      "doubleNullable" -> Some(1.23)
+    ),
+    "floatStruct" -> (
+      "float" -> 1.23f,
+      "floatRepeated" -> List(1.23f, 3.21f),
+      "floatNullable" -> Some(1.23f)
+    ),
+    "longStruct" -> (
+      "long" -> 10L,
+      "longRepeated" -> List(10L, 20L),
+      "longNullable" -> Some(30L)
+    ),
+    "boolStruct" -> (
+      "bool" -> true,
+      "boolRepeated" -> List(true, false).sorted,
+      "boolNullable" -> Some(true)
+    ),
+    "double" -> 1.23,
+    "doubleRepeated" -> List(1.23, 3.21),
+    "doubleNullable" -> Some(1.23),
+    "float" -> 1.23f,
+    "floatRepeated" -> List(1.23f, 3.21f),
+    "floatNullable" -> Some(1.23f),
+    "long" -> 10L,
+    "longRepeated" -> List(10L, 20L),
+    "longNullable" -> Some(30L),
+    "bool" -> true,
+    "boolRepeated" -> List(true, false).sorted,
+    "boolNullable" -> Some(true),
     "int" -> 10,
     "optionalInt" -> Some(10),
     "emptyOptionalInt" -> None,
@@ -218,6 +366,121 @@ class OntologyL0Spec
     "emptyOptionalStruct" -> None,
   )
 
+  val fileBasedDataCollectionTupleForUpdate = (
+    "version" -> "1.0",
+    "organization" -> "HR",
+    "sub-organization" -> "Any",
+    "domain" -> "Registrations",
+    "sub-domain" -> "People",
+    "foundation" -> LocalDate.of(1969, 5, 25),
+    "labels" -> List("label1", "label2", "label3"),
+    "string" -> "str",
+    "optionalString" -> Some("str"),
+    "emptyOptionalString" -> None,
+    "repeatedString" -> List("str1", "str2", "str3"),
+    "emptyRepeatedString" -> List(),
+    "optionalDate" -> Some(LocalDate.of(2008, 8, 26)),
+    "emptyOptionalDate" -> None,
+    "repeatedDate" -> List(
+      LocalDate.of(2008, 8, 26),
+      LocalDate.of(1966, 11, 24)
+    ),
+    "emptyRepeatedDate" -> List(),
+    "timestamp" -> ZonedDateTime.of(
+      2023,
+      10,
+      11,
+      12,
+      0,
+      0,
+      0,
+      ZoneId.of("Europe/London")
+    ),
+    "repeatedTimestamp" -> List(
+      ZonedDateTime.of(2025, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+      ZonedDateTime.of(2024, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+    ),
+    "optionalTimestamp" -> Some(
+      ZonedDateTime.of(2024, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+    ),
+    "timestampStruct" -> (
+      "timestamp" -> ZonedDateTime.of(
+        2024,
+        10,
+        11,
+        12,
+        0,
+        0,
+        0,
+        ZoneId.of("Europe/London")
+      ),
+      "repeatedTimestamp" -> List(
+        ZonedDateTime.of(2025, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London")),
+        ZonedDateTime.of(2024, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+      ),
+      "optionalTimestamp" -> Some(
+        ZonedDateTime.of(2024, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+      )
+    ),
+    "dateStruct" -> (
+      "date" -> LocalDate.of(2009, 8, 26),
+      "repeatedDate" -> List(
+        LocalDate.of(2008, 8, 26),
+        LocalDate.of(2000, 6, 19)
+      ),
+      "optionalDate" -> Some(LocalDate.of(2008, 9, 26))
+    ),
+    "doubleStruct" -> (
+      "double" -> 1.24,
+      "doubleRepeated" -> List(1.24, 3.20),
+      "doubleNullable" -> Some(1.24)
+    ),
+    "floatStruct" -> (
+      "float" -> 1.24f,
+      "floatRepeated" -> List(1.24f, 3.20f),
+      "floatNullable" -> Some(1.24f)
+    ),
+    "longStruct" -> (
+      "long" -> 11L,
+      "longRepeated" -> List(21L, 11L),
+      "longNullable" -> Some(31L)
+    ),
+    "boolStruct" -> (
+      "bool" -> false,
+      "boolRepeated" -> List(false, false).sorted,
+      "boolNullable" -> Some(true)
+    ),
+    "double" -> 1.24,
+    "doubleRepeated" -> List(1.24, 3.20),
+    "doubleNullable" -> Some(1.24),
+    "float" -> 1.24f,
+    "floatRepeated" -> List(1.24f, 3.20f),
+    "floatNullable" -> Some(1.24f),
+    "long" -> 11L,
+    "longRepeated" -> List(21L, 11L),
+    "longNullable" -> Some(31L),
+    "bool" -> false,
+    "boolRepeated" -> List(false, true).sorted,
+    "boolNullable" -> Some(true),
+    "int" -> 10,
+    "optionalInt" -> Some(10),
+    "emptyOptionalInt" -> None,
+    "repeatedInt" -> List(10, 20, 30),
+    "emptyRepeatedInt" -> List(),
+    "struct" -> (
+      "nest1" -> "ciccio3",
+      "nest2" -> "ciccio4",
+      "intList" -> List(1, 2, 3)
+    ),
+    "optionalStruct" -> Some(
+      (
+        "nest1" -> "ciccio5",
+        "nest2" -> "ciccio6"
+      )
+    ),
+    "emptyOptionalStruct" -> None,
+  )
+
   "Creating an EntityType instance" - {
     "works" in {
       val session = Session[IO]("localhost", 7201, "repo1", false)
@@ -228,6 +491,10 @@ class OntologyL0Spec
           "domain" -> StringType(),
           "sub-domain" -> StringType(),
           "version" -> IntType(),
+          "foundation" -> DateType(),
+          "timestamp" -> TimestampDataType(),
+          "double" -> DoubleType(),
+          "float" -> FloatType(),
           "aStruct" -> StructType(
             List(
               "nest1" -> StringType(),
@@ -274,6 +541,16 @@ class OntologyL0Spec
         }
       )
     }
+  }
+
+  def testEquivalency(a: Any, b: Any): Boolean = (a, b) match {
+    case (listA: List[_], listB: List[_]) => listA.toSet.equals(listB.toSet)
+    case (tupleA: Tuple, tupleB: Tuple) =>
+      tupleA.productArity.equals(tupleB.productArity) &&
+      tupleA.productIterator.zip(tupleB.productIterator).forall {
+        case (elA, elB) => testEquivalency(elA, elB)
+      }
+    case _ => a.equals(b)
   }
 
   "Caching entity type definitions" - {
@@ -363,7 +640,7 @@ class OntologyL0Spec
         } yield read).value
       } asserting (entity =>
         inside(entity) { case Right(entity) =>
-          entity.values should be(fileBasedDataCollectionTuple)
+          assert(testEquivalency(entity.values, fileBasedDataCollectionTuple))
         }
       )
     }
@@ -386,84 +663,25 @@ class OntologyL0Spec
           _ <- EitherT[IO, ManagementServiceError, String](
             iservice.update(
               uid,
-              (
-                "version" -> "1.0",
-                "organization" -> "HR",
-                "sub-organization" -> "Any",
-                "domain" -> "Registrations",
-                "sub-domain" -> "People",
-                "labels" -> List("label1", "label2", "label3"),
-                "string" -> "str",
-                "optionalString" -> Some("str"),
-                "emptyOptionalString" -> None,
-                "repeatedString" -> List("str1", "str2", "str3"),
-                "emptyRepeatedString" -> List(),
-                "int" -> 10,
-                "optionalInt" -> Some(10),
-                "emptyOptionalInt" -> None,
-                "repeatedInt" -> List(10, 20, 30),
-                "emptyRepeatedInt" -> List(),
-                "struct" -> (
-                  "nest1" -> "ciccio3",
-                  "nest2" -> "ciccio4",
-                  "intList" -> List(1, 2, 3)
-                ),
-                "optionalStruct" -> Some(
-                  (
-                    "nest1" -> "ciccio5",
-                    "nest2" -> "ciccio6"
-                  )
-                ),
-                "emptyOptionalStruct" -> None,
-              )
+              fileBasedDataCollectionTupleForUpdate
             )
           )
           read <- EitherT[IO, ManagementServiceError, Entity](
             iservice.read(uid)
           )
         } yield read).value
-      } asserting (entity =>
+      } asserting (entity => {
         entity should matchPattern {
-          case Right(
-                Entity(
-                  _,
-                  "FileBasedDataCollectionType",
-                  (
-                    "version" -> "1.0",
-                    "organization" -> "HR",
-                    "sub-organization" -> "Any",
-                    "domain" -> "Registrations",
-                    "sub-domain" -> "People",
-                    "labels" -> List("label1", "label2", "label3"),
-                    "string" -> "str",
-                    "optionalString" -> Some("str"),
-                    "emptyOptionalString" -> None,
-                    "repeatedString" -> List("str1", "str2", "str3"),
-                    "emptyRepeatedString" -> List(),
-                    "int" -> 10,
-                    "optionalInt" -> Some(10),
-                    "emptyOptionalInt" -> None,
-                    "repeatedInt" -> List(10, 20, 30),
-                    "emptyRepeatedInt" -> List(),
-                    "struct" -> (
-                      "nest1" -> "ciccio3", "nest2" -> "ciccio4",
-                      "intList" -> List(1, 2, 3)
-                    ),
-                    "optionalStruct" -> Some(
-                      (
-                        "nest1" -> "ciccio5",
-                        "nest2" -> "ciccio6"
-                      )
-                    ),
-                    "emptyOptionalStruct" -> None,
-                  )
-                )
-              ) =>
+          case Right(Entity(_, "FileBasedDataCollectionType", _)) =>
         }
-      )
+        entity match {
+          case Right(Entity(_, _, data)) =>
+            assert(testEquivalency(data, fileBasedDataCollectionTupleForUpdate))
+          case _ => fail("Unexpected pattern encountered")
+        }
+      })
     }
   }
-
   "Retrieving the EntityType given its name" - {
     "works" in {
       val session = Session[IO]("localhost", 7201, "repo1", false)

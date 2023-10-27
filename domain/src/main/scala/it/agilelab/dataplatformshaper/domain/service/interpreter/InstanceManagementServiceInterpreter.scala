@@ -20,6 +20,7 @@ import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
   TypeManagementService
 }
+import java.time.{LocalDate, ZonedDateTime}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
@@ -92,9 +93,90 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           val lit =
             mode match
               case Required | Repeated =>
-                literal(value.asInstanceOf[Option[Int]].get)
+                literal(value.asInstanceOf[Int])
               case Nullable =>
                 value.asInstanceOf[Option[Int]].fold(literal("null"))(literal)
+            end match
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case DateType(mode) =>
+          val lit =
+            mode match
+              case Required | Repeated =>
+                literal(value.asInstanceOf[LocalDate])
+              case Nullable =>
+                value
+                  .asInstanceOf[Option[LocalDate]]
+                  .fold(literal("null"))(literal)
+            end match
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case TimestampDataType(mode) =>
+          val lit =
+            mode match
+              case Required | Repeated =>
+                literal(value.asInstanceOf[ZonedDateTime].toString)
+              case Nullable =>
+                value
+                  .asInstanceOf[Option[ZonedDateTime]]
+                  .map(_.toString)
+                  .fold(literal("null"))(literal)
+            end match
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case DoubleType(mode) =>
+          val lit =
+            mode match
+              case Required | Repeated =>
+                literal(value.asInstanceOf[Double])
+              case Nullable =>
+                value
+                  .asInstanceOf[Option[Double]]
+                  .fold(literal("null"))(literal)
+            end match
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case FloatType(mode) =>
+          val lit =
+            mode match
+              case Required | Repeated =>
+                literal(value.asInstanceOf[Float])
+              case Nullable =>
+                value.asInstanceOf[Option[Float]].fold(literal("null"))(literal)
+            end match
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case LongType(mode) =>
+          val lit =
+            mode match
+              case Required | Repeated =>
+                literal(value.asInstanceOf[Long])
+              case Nullable =>
+                value.asInstanceOf[Option[Long]].fold(literal("null"))(literal)
+            end match
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case BooleanType(mode) =>
+          val lit =
+            mode match
+              case Required | Repeated =>
+                literal(value.asInstanceOf[Boolean])
+              case Nullable =>
+                value
+                  .asInstanceOf[Option[Boolean]]
+                  .fold(literal("null"))(literal)
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
@@ -133,7 +215,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           unfoldTuple(
             tuple,
             schema,
-            emitStatement(_, _, _, _)
+            emitStatement
           ) match
             case Left(parsingError) =>
               Left[ManagementServiceError, String](
@@ -331,6 +413,93 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1))
             case None =>
               fieldName -> List[String]()
+        case DateType(mode) =>
+          fieldValue match
+            case Some(value) =>
+              mode match
+                case Required =>
+                  fieldName -> LocalDate.parse(value(0)(1))
+                case Repeated =>
+                  fieldName -> value
+                    .map(date => LocalDate.parse(date(1)))
+                    .reverse
+                case Nullable =>
+                  if value(0)(1) === "null" then
+                    fieldName -> Option.empty[LocalDate]
+                  else fieldName -> Some(LocalDate.parse(value(0)(1)))
+            case None =>
+              fieldName -> List[LocalDate]()
+        case TimestampDataType(mode) =>
+          fieldValue match
+            case Some(value) =>
+              mode match
+                case Required =>
+                  fieldName -> ZonedDateTime.parse(value(0)(1))
+                case Repeated =>
+                  fieldName -> value
+                    .map(instant => ZonedDateTime.parse(instant(1)))
+                    .reverse
+                case Nullable =>
+                  if value(0)(1) === "null" then
+                    fieldName -> Option.empty[ZonedDateTime]
+                  else fieldName -> Some(ZonedDateTime.parse(value(0)(1)))
+            case None =>
+              fieldName -> List[ZonedDateTime]()
+        case DoubleType(mode) =>
+          fieldValue match
+            case Some(value) =>
+              mode match
+                case Required =>
+                  fieldName -> value(0)(1).toDouble
+                case Repeated =>
+                  fieldName -> value.map(_(1).toDouble).reverse
+                case Nullable =>
+                  if value(0)(1) === "null" then
+                    fieldName -> Option.empty[Double]
+                  else fieldName -> Some(value(0)(1).toDouble)
+            case None =>
+              fieldName -> List[Double]()
+        case FloatType(mode) =>
+          fieldValue match
+            case Some(value) =>
+              mode match
+                case Required =>
+                  fieldName -> value(0)(1).toFloat
+                case Repeated =>
+                  fieldName -> value.map(_(1).toFloat).reverse
+                case Nullable =>
+                  if value(0)(1) === "null" then
+                    fieldName -> Option.empty[Float]
+                  else fieldName -> Some(value(0)(1).toFloat)
+            case None =>
+              fieldName -> List[Float]()
+        case LongType(mode) =>
+          fieldValue match
+            case Some(value) =>
+              mode match
+                case Required =>
+                  fieldName -> value(0)(1).toLong
+                case Repeated =>
+                  fieldName -> value.map(_(1).toLong).reverse
+                case Nullable =>
+                  if value(0)(1) === "null" then fieldName -> Option.empty[Long]
+                  else fieldName -> Some(value(0)(1).toLong)
+            case None =>
+              fieldName -> List[Long]()
+        case BooleanType(mode) =>
+          fieldValue match
+            case Some(value) =>
+              mode match
+                case Required =>
+                  fieldName -> value(0)(1).toBoolean
+                case Repeated =>
+                  fieldName -> value.map(_(1).toBoolean).reverse
+                case Nullable =>
+                  if value(0)(1) === "null" then
+                    fieldName -> Option.empty[Boolean]
+                  else fieldName -> Some(value(0)(1).toBoolean)
+            case None =>
+              fieldName -> List[Boolean]()
         case IntType(mode) =>
           fieldValue match
             case Some(value) =>
@@ -401,6 +570,18 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             case _: StringType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case _: IntType =>
+              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
+            case _: DateType =>
+              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
+            case _: TimestampDataType =>
+              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
+            case _: DoubleType =>
+              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
+            case _: FloatType =>
+              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
+            case _: LongType =>
+              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
+            case _: BooleanType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case struct: StructType =>
               handleStructDataType(fieldName, struct, fieldValue)

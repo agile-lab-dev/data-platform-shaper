@@ -7,6 +7,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
 
+import java.time.{LocalDate, ZonedDateTime}
 import scala.language.{dynamics, postfixOps}
 import scala.util.{Failure, Success, Try}
 
@@ -68,7 +69,7 @@ private def unfoldPrimitive(
     case tpe @ IntType(mode) =>
       value match
         case value: Int if mode === Required =>
-          func(currentPath, tpe, Some(value), FoldingPrimitive)
+          func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
         case value if value.isInstanceOf[List[_]] && mode === Repeated =>
           try
@@ -95,6 +96,191 @@ private def unfoldPrimitive(
           Right[String, Unit](())
         case wrong =>
           Left[String, Unit](s"$wrong is not an int")
+      end match
+    case tpe @ DateType(mode) =>
+      value match
+        case value: LocalDate if mode === Required =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+          try
+            value
+              .asInstanceOf[List[LocalDate]]
+              .foreach(date =>
+                unfoldPrimitive(
+                  name,
+                  date,
+                  tpe.copy(mode = Required),
+                  currentPath,
+                  func
+                )
+              )
+            Right[String, Unit](())
+          catch
+            case _: Throwable =>
+              Left[String, Unit](s"$value is not a List[LocalDate]")
+        case value @ Some(_: LocalDate) if mode === Nullable =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case None if mode === Nullable =>
+          func(currentPath, tpe, None: Option[LocalDate], FoldingPrimitive)
+          Right[String, Unit](())
+        case wrong =>
+          Left[String, Unit](s"$wrong is not a LocalDate")
+      end match
+    case tpe @ TimestampDataType(mode) =>
+      value match
+        case value: ZonedDateTime if mode === Required =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+          try
+            value
+              .asInstanceOf[List[ZonedDateTime]]
+              .foreach(timestamp =>
+                unfoldPrimitive(
+                  name,
+                  timestamp,
+                  tpe.copy(mode = Required),
+                  currentPath,
+                  func
+                )
+              )
+            Right[String, Unit](())
+          catch
+            case _: Throwable =>
+              Left[String, Unit](s"$value is not a List[ZonedDateTime]")
+        case value @ Some(_: ZonedDateTime) if mode === Nullable =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case None if mode === Nullable =>
+          func(currentPath, tpe, None: Option[ZonedDateTime], FoldingPrimitive)
+          Right[String, Unit](())
+        case wrong =>
+          Left[String, Unit](s"$wrong is not a ZonedDateTime")
+    case tpe @ DoubleType(mode) =>
+      value match
+        case value: Double if mode === Required =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+          try
+            value
+              .asInstanceOf[List[Double]]
+              .foreach(num =>
+                unfoldPrimitive(
+                  name,
+                  num,
+                  tpe.copy(mode = Required),
+                  currentPath,
+                  func
+                )
+              )
+            Right[String, Unit](())
+          catch
+            case _: Throwable =>
+              Left[String, Unit](s"$value is not a List[Double]")
+        case value @ Some(_: Double) if mode === Nullable =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case None if mode === Nullable =>
+          func(currentPath, tpe, None: Option[Double], FoldingPrimitive)
+          Right[String, Unit](())
+        case wrong =>
+          Left[String, Unit](s"$wrong is not a Double")
+      end match
+    case tpe @ FloatType(mode) =>
+      value match
+        case value: Float if mode === Required =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+          try
+            value
+              .asInstanceOf[List[Float]]
+              .foreach(float =>
+                unfoldPrimitive(
+                  name,
+                  float,
+                  tpe.copy(mode = Required),
+                  currentPath,
+                  func
+                )
+              )
+            Right[String, Unit](())
+          catch
+            case _: Throwable =>
+              Left[String, Unit](s"$value is not a List[Float]")
+        case value @ Some(_: Float) if mode === Nullable =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case None if mode === Nullable =>
+          func(currentPath, tpe, None: Option[Float], FoldingPrimitive)
+          Right[String, Unit](())
+        case wrong =>
+          Left[String, Unit](s"$wrong is not a float")
+      end match
+    case tpe @ LongType(mode) =>
+      value match
+        case value: Long if mode === Required =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+          try
+            value
+              .asInstanceOf[List[Long]]
+              .foreach(long =>
+                unfoldPrimitive(
+                  name,
+                  long,
+                  tpe.copy(mode = Required),
+                  currentPath,
+                  func
+                )
+              )
+            Right[String, Unit](())
+          catch
+            case _: Throwable =>
+              Left[String, Unit](s"$value is not a List[Long]")
+        case value @ Some(_: Long) if mode === Nullable =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case None if mode === Nullable =>
+          func(currentPath, tpe, None: Option[Long], FoldingPrimitive)
+          Right[String, Unit](())
+        case wrong =>
+          Left[String, Unit](s"$wrong is not a long")
+      end match
+    case tpe @ BooleanType(mode) =>
+      value match
+        case value: Boolean if mode === Required =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+          try
+            value
+              .asInstanceOf[List[Boolean]]
+              .foreach(boolean =>
+                unfoldPrimitive(
+                  name,
+                  boolean,
+                  tpe.copy(mode = Required),
+                  currentPath,
+                  func
+                )
+              )
+            Right[String, Unit](())
+          catch
+            case _: Throwable =>
+              Left[String, Unit](s"$value is not a List[Boolean]")
+        case value @ Some(_: Boolean) if mode === Nullable =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case None if mode === Nullable =>
+          func(currentPath, tpe, None: Option[Boolean], FoldingPrimitive)
+          Right[String, Unit](())
+        case wrong =>
+          Left[String, Unit](s"$wrong is not a boolean")
       end match
     case wrong =>
       Left[String, Unit](s"$wrong type is unknown")
@@ -235,6 +421,18 @@ private def unfoldDataType(
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case tpe @ IntType(_) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
+    case tpe @ DateType(_) =>
+      unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
+    case tpe @ TimestampDataType(_) =>
+      unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
+    case tpe @ DoubleType(_) =>
+      unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
+    case tpe @ FloatType(_) =>
+      unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
+    case tpe @ LongType(_) =>
+      unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
+    case tpe @ BooleanType(_) =>
+      unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case wrong =>
       Left[String, Unit](s"$wrong type is unknown")
   end match
@@ -320,6 +518,96 @@ private def jsonToTupleChecked(
               case Nullable =>
                 obj.as[Int].toOption
             end match
+          case DateType(mode) =>
+            mode match
+              case Required =>
+                obj
+                  .as[LocalDate]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Repeated =>
+                obj
+                  .as[List[LocalDate]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Nullable =>
+                obj.as[LocalDate].toOption
+            end match
+          case TimestampDataType(mode) =>
+            mode match
+              case Required =>
+                obj
+                  .as[ZonedDateTime]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Repeated =>
+                obj
+                  .as[List[ZonedDateTime]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Nullable =>
+                obj.as[ZonedDateTime].toOption
+            end match
+          case DoubleType(mode) =>
+            mode match
+              case Required =>
+                obj
+                  .as[Double]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Repeated =>
+                obj
+                  .as[List[Double]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Nullable =>
+                obj.as[Double].toOption
+            end match
+          case FloatType(mode) =>
+            mode match
+              case Required =>
+                obj
+                  .as[Float]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Repeated =>
+                obj
+                  .as[List[Float]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Nullable =>
+                obj.as[Float].toOption
+            end match
+          case LongType(mode) =>
+            mode match
+              case Required =>
+                obj
+                  .as[Long]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Repeated =>
+                obj
+                  .as[List[Long]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Nullable =>
+                obj.as[Long].toOption
+            end match
+          case BooleanType(mode) =>
+            mode match
+              case Required =>
+                obj
+                  .as[Boolean]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Repeated =>
+                obj
+                  .as[List[Boolean]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Nullable =>
+                obj.as[Boolean].toOption
+            end match
           case StringType(mode) =>
             mode match
               case Required =>
@@ -390,6 +678,136 @@ def tupleToJsonChecked(
                   tupleFieldValue
                     .asInstanceOf[Option[Int]]
                     .fold(Json.Null)(Json.fromInt)
+              end match
+            case DateType(mode) =>
+              mode match
+                case Required =>
+                  Json.fromString(
+                    tupleFieldValue.toString
+                      .asInstanceOf[String]
+                  )
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue
+                      .asInstanceOf[List[LocalDate]]
+                      .map(date => date.toString)
+                      .asInstanceOf[List[String]]
+                      .map(Json.fromString)
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[String]]
+                    .fold(Json.Null)(Json.fromString)
+              end match
+            case TimestampDataType(mode) =>
+              mode match
+                case Required =>
+                  Json.fromString(
+                    tupleFieldValue.toString
+                      .asInstanceOf[String]
+                  )
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue
+                      .asInstanceOf[List[ZonedDateTime]]
+                      .map(ts => ts.toString)
+                      .asInstanceOf[List[String]]
+                      .map(Json.fromString)
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[String]]
+                    .fold(Json.Null)(Json.fromString)
+              end match
+            case DoubleType(mode) =>
+              mode match
+                case Required =>
+                  Json
+                    .fromDouble(tupleFieldValue.asInstanceOf[Double])
+                    .getOrElse(
+                      throw new IllegalArgumentException(s"Wrong value")
+                    )
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue
+                      .asInstanceOf[List[Double]]
+                      .map(el =>
+                        Json
+                          .fromDouble(el)
+                          .getOrElse(
+                            throw new IllegalArgumentException(s"Wrong value")
+                          )
+                      )
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[Double]]
+                    .fold(Json.Null)(el =>
+                      Json
+                        .fromDouble(el)
+                        .getOrElse(
+                          throw new IllegalArgumentException(s"Wrong value")
+                        )
+                    )
+              end match
+            case FloatType(mode) =>
+              mode match
+                case Required =>
+                  Json
+                    .fromFloat(tupleFieldValue.asInstanceOf[Float])
+                    .getOrElse(
+                      throw new IllegalArgumentException(s"Wrong value")
+                    )
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue
+                      .asInstanceOf[List[Float]]
+                      .map(el =>
+                        Json
+                          .fromFloat(el)
+                          .getOrElse(
+                            throw new IllegalArgumentException(s"Wrong value")
+                          )
+                      )
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[Float]]
+                    .fold(Json.Null)(el =>
+                      Json
+                        .fromFloat(el)
+                        .getOrElse(
+                          throw new IllegalArgumentException(s"Wrong value")
+                        )
+                    )
+              end match
+            case LongType(mode) =>
+              mode match
+                case Required =>
+                  Json.fromLong(tupleFieldValue.asInstanceOf[Long])
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue.asInstanceOf[List[Long]].map(Json.fromLong)
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[Long]]
+                    .fold(Json.Null)(Json.fromLong)
+              end match
+            case BooleanType(mode) =>
+              mode match
+                case Required =>
+                  Json.fromBoolean(tupleFieldValue.asInstanceOf[Boolean])
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue
+                      .asInstanceOf[List[Boolean]]
+                      .map(Json.fromBoolean)
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[Boolean]]
+                    .fold(Json.Null)(Json.fromBoolean)
               end match
             case StringType(mode) =>
               mode match
