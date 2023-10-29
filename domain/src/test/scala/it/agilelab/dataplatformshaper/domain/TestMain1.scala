@@ -10,7 +10,6 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
@@ -75,7 +74,7 @@ object TestMain1 extends IOApp:
             service.create(
               l0.EntityType(
                 "DataCollectionType",
-                Set(Versionable, DataProduct),
+                Set("DataCollection"),
                 StructType(
                   List(
                     "organization" -> StringType(),
