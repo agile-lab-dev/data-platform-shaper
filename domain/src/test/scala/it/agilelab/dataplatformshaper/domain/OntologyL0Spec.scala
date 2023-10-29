@@ -13,7 +13,6 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
@@ -367,7 +366,6 @@ class OntologyL0Spec
   )
 
   val fileBasedDataCollectionTupleForUpdate = (
-    "version" -> "1.0",
     "organization" -> "HR",
     "sub-organization" -> "Any",
     "domain" -> "Registrations",
