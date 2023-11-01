@@ -40,7 +40,8 @@ object ApplicationConfiguration:
 
   def graphdbRepositoryTls: Boolean =
     config.get.getBoolean(s"${BuildInfo.name}.graphdb-repository-tls")
-    
-  def graphdbCreateRepo: Boolean = config.get.getBoolean(s"${BuildInfo.name}.graphdb-create-repo")
+
+  def graphdbCreateRepo: Boolean =
+    config.get.getBoolean(s"${BuildInfo.name}.graphdb-create-repo")
 
 end ApplicationConfiguration

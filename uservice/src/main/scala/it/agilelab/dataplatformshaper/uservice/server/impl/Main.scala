@@ -1,7 +1,10 @@
 package it.agilelab.dataplatformshaper.uservice.server.impl
 import cats.effect.std.Random
 import cats.effect.{ExitCode, IO, IOApp, Ref}
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L0, L1, ns}
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
@@ -56,7 +59,10 @@ object Main extends IOApp:
                 Part
                   .fileData[IO](
                     "config",
-                    Thread.currentThread().getContextClassLoader.getResource("repo-config.ttl")
+                    Thread
+                      .currentThread()
+                      .getContextClassLoader
+                      .getResource("repo-config.ttl")
                   )
               )
             )
@@ -66,15 +72,16 @@ object Main extends IOApp:
               val request = Request(
                 method = Method.POST,
                 uri = Uri
-                  .unsafeFromString(s"http://$graphdbHost:$graphdbPort/rest/repositories"),
+                  .unsafeFromString(
+                    s"http://$graphdbHost:$graphdbPort/rest/repositories"
+                  ),
                 body = body,
                 headers = multipart.headers
               )
               client.expect[String](request)
             }
-        } map(_ => ())
-    else
-      IO.pure(())
+        } map (_ => ())
+    else IO.pure(())
     end if
   end createRepository
 
