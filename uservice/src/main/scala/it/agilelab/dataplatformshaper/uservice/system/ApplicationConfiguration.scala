@@ -23,7 +23,7 @@ object ApplicationConfiguration:
     end snip
     snip()
     config.get
-      .getObject("specific-provisioner")
+      .getObject("dataplatform.shaper.uservice")
       .render(ConfigRenderOptions.defaults())
   }
   end reloadConfig
@@ -40,5 +40,7 @@ object ApplicationConfiguration:
 
   def graphdbRepositoryTls: Boolean =
     config.get.getBoolean(s"${BuildInfo.name}.graphdb-repository-tls")
+    
+  def graphdbCreateRepo: Boolean = config.get.getBoolean(s"${BuildInfo.name}.graphdb-create-repo")
 
 end ApplicationConfiguration
