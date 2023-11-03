@@ -18,7 +18,8 @@ import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeType as OpenApiAttributeType,
   Entity as OpenApiEntity,
   EntityType as OpenApiEntityType,
-  Mode as OpenApiMode
+  Mode as OpenApiMode,
+  Trait as OpenApiTrait
 }
 import it.agilelab.dataplatformshaper.uservice.server.impl.Server
 import it.agilelab.dataplatformshaper.uservice.{
@@ -193,6 +194,7 @@ class ApiSpec
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
         _ <- Resource.liftK(client.createType(fatherEntityType))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait("DataCollection")))
         _ <- Resource.liftK(client.createType(childrenEntityType))
         resp <- Resource.liftK(client.readType("childrenEntityType"))
       } yield resp
