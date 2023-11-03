@@ -192,7 +192,8 @@ class OntologyL1Spec
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tms = TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
         (for {
           _ <- EitherT(
@@ -231,7 +232,8 @@ class OntologyL1Spec
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tms = TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
         (for {
           _ <- EitherT(

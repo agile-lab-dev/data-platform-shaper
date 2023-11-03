@@ -14,8 +14,10 @@ import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
+
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
@@ -57,7 +59,8 @@ object TestMain1 extends IOApp:
     def createEntityType(using cache: Ref[IO, Map[String, EntityType]]) =
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val service = new TypeManagementServiceInterpreter[IO](repository)
+        val trms = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trms)
         (for {
           _ <- EitherT[IO, ManagementServiceError, Unit](
             service.create(
@@ -104,7 +107,8 @@ object TestMain1 extends IOApp:
     def instancesCreation(using cache: Ref[IO, Map[String, EntityType]]) =
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tservice = new TypeManagementServiceInterpreter[IO](repository)
+        val trms = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trms)
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         (1 to 1).toList.traverse(i =>
           println(i)

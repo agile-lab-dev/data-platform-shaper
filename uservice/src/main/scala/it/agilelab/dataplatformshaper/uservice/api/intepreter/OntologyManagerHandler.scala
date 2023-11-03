@@ -14,10 +14,12 @@ import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
 import it.agilelab.dataplatformshaper.uservice.Resource.CreateTypeResponse
 import it.agilelab.dataplatformshaper.uservice.definitions.{
+  Trait,
   ValidationError,
   Entity as OpenApiEntity,
   EntityType as OpenApiEntityType
@@ -30,7 +32,8 @@ import scala.util.Try
 
 class OntologyManagerHandler[F[_]: Async](
     tms: TypeManagementServiceInterpreter[F],
-    ims: InstanceManagementServiceInterpreter[F]
+    ims: InstanceManagementServiceInterpreter[F],
+    trms: TraitManagementServiceInterpreter[F]
 ) extends Handler[F]
     with StrictLogging:
 
@@ -357,4 +360,16 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end readEntityAsYaml
 
-end OntologyManagerHandler
+  override def createTrait(respond: Resource.CreateTraitResponse.type)(
+      body: Trait
+  ): F[Resource.CreateTraitResponse] =
+    val res = trms.create(body.name, Option.empty[String])
+
+    res.attempt.map {
+      case Left(error) =>
+        logger.error(s"Error: ${error.getMessage}")
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok("Trait created successfully")
+    }
+  end createTrait

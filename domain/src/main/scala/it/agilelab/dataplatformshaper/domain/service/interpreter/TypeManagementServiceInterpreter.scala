@@ -14,6 +14,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
+  TraitManagementService,
   TypeManagementService
 }
 import org.datatools.bigdatatypes.basictypes.SqlType
@@ -28,9 +29,11 @@ import java.util.UUID
 import scala.language.{implicitConversions, postfixOps}
 
 class TypeManagementServiceInterpreter[F[_]: Sync](
-    val repository: KnowledgeGraph[F]
+    traitManagementService: TraitManagementService[F]
 )(using cache: Ref[F, Map[String, EntityType]])
     extends TypeManagementService[F]:
+
+  val repository: KnowledgeGraph[F] = traitManagementService.repository
 
   extension (entityType: EntityType)
     def inheritsFrom(fatherName: String)(using
@@ -380,6 +383,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
   ): F[Either[ManagementServiceError, Unit]] =
 
     val instanceType = iri(ns, entityType.name)
+    // val ioRepository = repository.asInstanceOf[KnowledgeGraph[IO]]
 
     val statementsForInheritance
         : F[Either[ManagementServiceError, List[Statement]]] =
@@ -427,6 +431,17 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       _ <- traceT(
         s"Checking the existence, does ${entityType.name} already exist? $exist"
       )
+      traitExistence <- EitherT(traitManagementService.exist(entityType.traits))
+      _ <- {
+        val nonExistentTraits =
+          traitExistence.filter(!_._2).map(_._1).toList
+        if (nonExistentTraits.isEmpty)
+          EitherT.rightT[F, ManagementServiceError](())
+        else
+          EitherT.leftT[F, Unit](
+            ManagementServiceError.NonExistentTraitError(nonExistentTraits.head)
+          )
+      }
       stmts <- EitherT(statementsForInheritance)
       _ <- EitherT {
         if !exist

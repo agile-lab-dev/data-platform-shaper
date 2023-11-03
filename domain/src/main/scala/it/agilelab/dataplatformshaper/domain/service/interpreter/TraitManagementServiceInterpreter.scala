@@ -104,7 +104,36 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   override def exist(
       traitNames: Set[String]
   ): F[Either[ManagementServiceError, Set[(String, Boolean)]]] =
-    ???
+
+    val traitIris = traitNames
+      .map(traitName => s"""<${iri(ns, traitName).stringValue()}>""")
+      .mkString(" ")
+
+    val query =
+      s"""
+         |PREFIX ns:  <${ns.getName}>
+         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+         |SELECT ?trait WHERE {
+         |  VALUES ?trait { $traitIris }
+         |  ?trait rdf:type owl:NamedIndividual .
+         |  ?trait rdf:type ns:Trait .
+         |}
+         |""".stripMargin
+
+    val res = repository.evaluateQuery(query)
+
+    summon[Functor[F]].map(res) { bindings =>
+      val existingTraits = bindings
+        .flatMap(binding =>
+          Option(binding.getValue("trait")).map(_.stringValue())
+        )
+        .toSet
+      val result = traitNames.map(traitName =>
+        (traitName, existingTraits.contains(iri(ns, traitName).stringValue()))
+      )
+      Right[ManagementServiceError, Set[(String, Boolean)]](result)
+    }
   end exist
 
   override def link(
