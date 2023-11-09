@@ -22,6 +22,7 @@ The project is currently based on the [rdf4j](https://rdf4j.org) library and the
 It's a Scala 3 project based on the [sbt building](https://www.scala-sbt.org) tool that needs to be previously installed; for running the tests, you need to have a docker daemon up and running. The tests are performed using a GraphDB instance running in a container. A docker-compose file is provided for running GraphDB and the microservice together.
 
 ### Build and Test
+This is a Scala-based project; we used [Scala 3](https://www.scala-lang.org) in combination with the [Typelevel libraries](https://typelevel.org), in particular, [Cats Effect](https://typelevel.org/cats-effect/) for managing effect using the tag-less final pattern. 
 ```
 git clone https://github.com/agile-lab-dev/data-platform-shaper.git
 cd data-platform-shaper
@@ -40,8 +41,151 @@ Then run everything with:
 HOST_IP=<IP ADDRESS OF YOUR MACHINE> docker compose up
 ```
 
+Then, you can try to create a user-defined type:
 
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "DataCollectionType",
+  "traits": [
+    "DataCollection"
+  ],
+  "schema": [
+    {
+      "name": "name",
+      "typeName": "String",
+      "mode": "Required"
+    },
+    {
+      "name": "organization",
+      "typeName": "String",
+      "mode": "Required"
+    },
+    {
+      "name": "domain",
+      "typeName": "String",
+      "mode": "Required"
+    }
+  ]
+}'
+```
 
+You could create a user-defined type posting a YAML file:
 
+```
+name: DataCollectionType
+traits:
+- DataCollection
+schema:
+- name: name
+  typeName: String
+  mode: Required
+  attributeTypes: null
+- name: organization
+  typeName: String
+  mode: Required
+  attributeTypes: null
+- name: domain
+  typeName: String
+  mode: Required
+  attributeTypes: null
+fatherName: null
+```
 
+Just put the content in a file entity-type.yaml, and then:
 
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary '@entity-type.yaml'
+```
+
+After creating the user-defined type, it's now possible to create instances of it, either using a REST API or just posting a YAML document:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "entityId": "",
+  "entityTypeName": "DataCollectionType",
+  "values": {
+    "name": "Person",
+    "organization": "HR",
+    "domain": "Registrations"
+  }
+}'
+```
+
+YAML file (put it into a file entity.yaml):
+
+```
+entityId: ""
+entityTypeName: DataCollectionType
+values:
+  domain: Registrations
+  organization: HR
+  name: Person
+```
+
+And submit it:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/yaml' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary '@entity.yaml'
+```
+
+Creating an instance returns its ID, so you can use that ID for retrieving it:
+
+```
+curl -X 'GET' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/9c2a7c0a-575d-4572-9d33-610d7b4977af' \
+  -H 'accept: application/json'
+```
+
+#Attention
+It's still a work in progress; more documentation explaining the overall model and the internal APIs will be written.
+You can look at the various tests to get a better understanding of its internal working:
+
+* This test suite shows how the system manages tuples, parsing, and unparsing driven by a schema
+```
+domain/src/test/scala/it/agilelab/dataplatformshaper/domain/DataTypeSpec.scala 
+```
+* This test suite shows the inheritance mechanism:
+```
+domain/src/test/scala/it/agilelab/dataplatformshaper/domain/EntityTypeSpec.scala
+```
+* This test suite shows the user-defined types and their instances creation:
+```
+domain/src/test/scala/it/agilelab/dataplatformshaper/domain/OntologyL0Spec.scala
+```
+* This test suite shows everything about traits and their usage:
+```
+domain/src/test/scala/it/agilelab/dataplatformshaper/domain/OntologyL1Spec.scala
+```
+* This test suite shows the REST APIs usage:
+```
+uservice/src/test/scala/it/agilelab/dataplatformshaper/uservice/api/ApiSpec.scala
+```
+
+#Credits
+This project is the result of a collaborative effort:
+
+| Name                      | Affiliation                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------|
+| Diego Reforgiato Recupero | Department of Math and Computer Science, University of Cagliari (Italy)               |
+| Francesco Osborne         | KMi, The Open University (UK) and University of Milano-Bicocca (Italy)                |
+| Andrea Giovanni Nuzzolese | Institute of Cognitive Sciences and Technologies National Council of Research (Italy) |
+| Simone Pusceddu.          | Department of Math and Computer Science, University of Cagliari (Italy)               |
+| David Greco               | Big Data Laboratory, AgileLab S.r.L. (Italy)                                          |
+| Nicolò Bidotti            | Big Data Laboratory, AgileLab S.r.L. (Italy)                                          |
+| Paolo Platter             | Big Data Laboratory, AgileLab S.r.L. (Italy)                                          |
