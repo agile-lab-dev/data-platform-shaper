@@ -43,29 +43,37 @@ lazy val domain = (project in file("domain")).settings(
 )
 
 lazy val userviceClientGenerated = (project in file("uservice-client-generated")).settings(
-  name                      := s"$serviceName-client-generated",
-  libraryDependencies       := Dependencies.Jars.uservice,
-  Compile / scalacOptions   := Seq(),
-  Compile / guardrailTasks  += ScalaClient(clientInterfaceFile, pkg=s"it.agilelab.dataplatformshaper.uservice", framework="http4s"),
+  name                                   := s"$serviceName-client-generated",
+  libraryDependencies                    := Dependencies.Jars.uservice,
+  Compile / scalacOptions                := Seq(),
+  Compile / guardrailTasks               += ScalaClient(clientInterfaceFile, pkg=s"it.agilelab.dataplatformshaper.uservice", framework="http4s"),
+  Compile / packageDoc / publishArtifact := false
 )
 
 lazy val userviceGenerated = (project in file("uservice-generated")).settings(
-  name                      := s"$serviceName-generated",
-  libraryDependencies       := Dependencies.Jars.uservice,
-  Compile / scalacOptions   := Seq(),
-  Compile / guardrailTasks  += ScalaServer(file(interfaceSpecFile), pkg=s"it.agilelab.dataplatformshaper.uservice", framework="http4s"),
+  name                                   := s"$serviceName-generated",
+  libraryDependencies                    := Dependencies.Jars.uservice,
+  Compile / scalacOptions                := Seq(),
+  Compile / guardrailTasks               += ScalaServer(file(interfaceSpecFile), pkg=s"it.agilelab.dataplatformshaper.uservice", framework="http4s"),
+  Compile / packageDoc / publishArtifact := false
 )
 
 lazy val uservice = (project in file("uservice")).settings(
   name                                    := serviceName,
   libraryDependencies                     := Dependencies.Jars.uservice,
-  dockerBuildOptions                     ++= Seq("--network=host"),
-  dockerBaseImage                         := "adoptopenjdk:11-jdk-hotspot",
+  dockerBaseImage                         := "adoptopenjdk:11-jre-hotspot",
   dockerUpdateLatest                      := true,
   daemonUser                              := "daemon",
   Docker / version                        := s"${
     val buildVersion = (ThisBuild / version).value
     if (buildVersion == "latest") buildVersion else s"v$buildVersion"
   }".toLowerCase,
-  Docker / dockerExposedPorts             := Seq(8080)
+  Docker / dockerExposedPorts             := Seq(8093),
 ).dependsOn(domain, userviceGenerated, userviceClientGenerated % "test->compile").enablePlugins(JavaAppPackaging).setupBuildInfo
+
+lazy val docs = (project in file("docs")).
+  enablePlugins(ParadoxPlugin).
+  settings(
+    name := "Hello Project",
+    paradoxTheme := Some(builtinParadoxTheme("generic"))
+  )
