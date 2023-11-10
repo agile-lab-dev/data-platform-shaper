@@ -5,9 +5,15 @@ import cats.effect.{Async, Ref, Resource}
 import cats.implicits.*
 import com.comcast.ip4s.{Port, ipv4}
 import fs2.io.net.Network
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+  InstanceManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 import it.agilelab.dataplatformshaper.uservice.Resource as GenResource
 import it.agilelab.dataplatformshaper.uservice.api.intepreter.OntologyManagerHandler
 import it.agilelab.dataplatformshaper.uservice.system.ApplicationConfiguration.httpPort
