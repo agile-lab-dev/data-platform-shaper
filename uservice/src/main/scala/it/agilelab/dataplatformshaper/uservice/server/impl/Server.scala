@@ -3,23 +3,18 @@ package it.agilelab.dataplatformshaper.uservice.server.impl
 import buildinfo.BuildInfo
 import cats.effect.{Async, Ref, Resource}
 import cats.implicits.*
-import com.comcast.ip4s.Port
+import com.comcast.ip4s.{Port, ipv4}
 import fs2.io.net.Network
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{
-  InstanceManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
-import it.agilelab.dataplatformshaper.uservice.system.ApplicationConfiguration.httpPort
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{InstanceManagementServiceInterpreter, TypeManagementServiceInterpreter}
 import it.agilelab.dataplatformshaper.uservice.Resource as GenResource
 import it.agilelab.dataplatformshaper.uservice.api.intepreter.OntologyManagerHandler
+import it.agilelab.dataplatformshaper.uservice.system.ApplicationConfiguration.httpPort
 import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
-import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.ember.server.*
+import org.http4s.implicits.*
 import org.http4s.server.Router
 import org.http4s.server.staticcontent.resourceServiceBuilder
 
@@ -73,6 +68,7 @@ object Server:
           ).orNotFound
         )
         .withPort(Port.fromInt(httpPort).get)
+        .withHost(ipv4"0.0.0.0")
         .build
     yield ()
   end server

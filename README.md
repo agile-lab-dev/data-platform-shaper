@@ -38,8 +38,10 @@ sbt docker:publishLocal
 Then run everything with:
 
 ```
-HOST_IP=<IP ADDRESS OF YOUR MACHINE> docker compose up
+docker compose up
 ```
+
+After a while you can connect to the Swagger UI [here](http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/swagger-ui/index.html).
 
 Then, you can try to create a user-defined type:
 

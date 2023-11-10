@@ -4,16 +4,21 @@ services:
   # GraphDB
   graphdb:
     image: ontotext/graphdb:10.3.1
-    network_mode: "host"
+    ports:
+      - target: 7200
+        published: 7200
+        protocol: tcp
 
   # uservice
   uservice:
     image: dataplatform-shaper-uservice:latest
-    network_mode: "host"
+    ports:
+      - target: 8093
+        published: 8093
+        protocol: tcp
     restart: always
     depends_on:
       - graphdb
     environment:
-      GRAPHDB-HOST: ${HOST_IP}
+      GRAPHDB-HOST: graphdb
       GRAPHDB-CREATE-REPO: true
-
