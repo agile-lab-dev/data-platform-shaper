@@ -10,6 +10,10 @@ import fs2.{Stream, text}
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.l0
+import it.agilelab.dataplatformshaper.domain.model.l1.{
+  Relationship,
+  given_Conversion_String_Relationship
+}
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
@@ -373,3 +377,89 @@ class OntologyManagerHandler[F[_]: Async](
         respond.Ok("Trait created successfully")
     }
   end createTrait
+
+  override def linkTrait(respond: Resource.LinkTraitResponse.type)(
+      trait1: String,
+      rel: String,
+      trait2: String
+  ): F[Resource.LinkTraitResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkResult <- EitherT(trms.link(trait1, relationship, trait2).attempt)
+    } yield linkResult
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error linking traits or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok(
+          s"Traits $trait1 and $trait2 linked successfully with relationship $rel"
+        )
+    }
+  end linkTrait
+
+  override def unlinkTrait(respond: Resource.UnlinkTraitResponse.type)(
+      trait1: String,
+      rel: String,
+      trait2: String
+  ): F[Resource.UnlinkTraitResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkResult <- EitherT(trms.unlink(trait1, relationship, trait2).attempt)
+    } yield linkResult
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error unlinking traits or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok(
+          s"Traits $trait1 and $trait2 with relationship $rel unlinked successfully"
+        )
+    }
+  end unlinkTrait
+
+  override def linkedTraits(respond: Resource.LinkedTraitsResponse.type)(
+      traitName: String,
+      rel: String
+  ): F[Resource.LinkedTraitsResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkedTraits <- EitherT(trms.linked(traitName, relationship).attempt)
+    } yield linkedTraits
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error retrieving linked traits or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(traits) =>
+        traits match {
+          case Left(serviceError) =>
+            logger.error(
+              s"Service error in getting linked traits: ${serviceError.getMessage}"
+            )
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          case Right(traitsList) =>
+            respond.Ok(traitsList.toVector)
+        }
+    }
+  end linkedTraits

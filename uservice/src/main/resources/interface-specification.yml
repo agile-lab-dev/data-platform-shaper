@@ -300,6 +300,141 @@ paths:
               schema:
                 $ref: '#/components/schemas/SystemError'
 
+  /ontology/trait/link/{trait1}/{rel}/{trait2}:
+    put:
+      tags:
+        - OntologyManager
+      summary: Link two traits with a relationship
+      operationId: linkTrait
+      parameters:
+        - in: path
+          name: trait1
+          description: 'First trait'
+          required: true
+          schema:
+            type: 'string'
+        - in: path
+          name: rel
+          description: 'Relationship between the two traits'
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: trait2
+          description: 'Second trait'
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful, returns "OK"
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+                
+  /ontology/trait/unlink/{trait1}/{rel}/{trait2}:
+    put:
+      tags:
+        - OntologyManager
+      summary: Unlink two traits with a relationship
+      operationId: unlinkTrait
+      parameters:
+        - in: path
+          name: trait1
+          description: 'First trait'
+          required: true
+          schema:
+            type: 'string'
+        - in: path
+          name: rel
+          description: 'Relationship between the two traits'
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: trait2
+          description: 'Second trait'
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful, returns "OK"
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
+  /ontology/trait/linked/{traitName}/{rel}:
+    get:
+      tags:
+        - OntologyManager
+      summary: Retrieve traits linked to a specified trait via a given relationship
+      operationId: linkedTraits
+      parameters:
+        - in: path
+          name: traitName
+          description: 'The trait for which linked traits are being queried'
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: rel
+          description: 'The relationship through which traits are linked'
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful, returns a list of linked traits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
+
+
+
+
 components:
   schemas:
     Entity:

@@ -27,7 +27,10 @@ import it.agilelab.dataplatformshaper.uservice.{
   CreateEntityByYamlResponse,
   CreateEntityResponse,
   ReadEntityResponse,
-  ReadTypeResponse
+  ReadTypeResponse,
+  LinkTraitResponse,
+  UnlinkTraitResponse,
+  LinkedTraitsResponse
 }
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
@@ -330,6 +333,81 @@ class ApiSpec
               json should be(entityJson)
           }
         )
+    }
+  }
+
+  "Linking two traits" - {
+    "should create a link between trait1 and trait2 and verify the link" in {
+
+      val trait1 = "trait1"
+      val trait2 = "trait2"
+      val relationship = "hasPart"
+
+      val resp: Resource[IO, (LinkTraitResponse, LinkedTraitsResponse)] = for
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(Client.httpClient(_, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait(trait1)))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait(trait2)))
+        linkResp <- Resource.liftK(
+          client.linkTrait(trait1, relationship, trait2)
+        )
+        linkedTraitsResp <- Resource.liftK(
+          client.linkedTraits(trait1, relationship)
+        )
+      yield (linkResp, linkedTraitsResp)
+
+      resp
+        .use { case (linkResponse, linkedTraitsResponse) =>
+          IO {
+            linkResponse should matchPattern { case LinkTraitResponse.Ok(_) => }
+            linkedTraitsResponse should matchPattern {
+              case LinkedTraitsResponse.Ok(traits) if traits.contains(trait2) =>
+            }
+          }
+        }
+        .asserting(assertion => assertion)
+    }
+  }
+
+  "Unlinking two traits" - {
+    "should remove the link between trait1 and trait2" in {
+
+      val trait1 = "trait3"
+      val trait2 = "trait4"
+      val relationship = "hasPart"
+
+      val resp: Resource[IO, (UnlinkTraitResponse, LinkedTraitsResponse)] =
+        for {
+          client <- EmberClientBuilder
+            .default[IO]
+            .build
+            .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+          _ <- Resource.liftK(client.createTrait(OpenApiTrait(trait1)))
+          _ <- Resource.liftK(client.createTrait(OpenApiTrait(trait2)))
+          _ <- Resource.liftK(client.linkTrait(trait1, relationship, trait2))
+          unlinkResp <- Resource.liftK(
+            client.unlinkTrait(trait1, relationship, trait2)
+          )
+          linkedTraitsResp <- Resource.liftK(
+            client.linkedTraits(trait1, relationship)
+          )
+        } yield (unlinkResp, linkedTraitsResp)
+
+      resp
+        .use { case (unlinkResponse, linkedTraitsResponse) =>
+          IO {
+            unlinkResponse should matchPattern {
+              case UnlinkTraitResponse.Ok(_) =>
+            }
+            linkedTraitsResponse should matchPattern {
+              case LinkedTraitsResponse.Ok(traits)
+                  if !traits.contains(trait2) =>
+            }
+          }
+        }
+        .asserting(assertion => assertion)
     }
   }
 
