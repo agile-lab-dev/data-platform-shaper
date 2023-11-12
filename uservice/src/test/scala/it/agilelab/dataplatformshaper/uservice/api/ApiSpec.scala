@@ -30,7 +30,10 @@ import it.agilelab.dataplatformshaper.uservice.{
   ReadTypeResponse,
   LinkTraitResponse,
   UnlinkTraitResponse,
-  LinkedTraitsResponse
+  LinkedTraitsResponse,
+  LinkEntityResponse,
+  LinkedEntitiesResponse,
+  UnlinkEntityResponse
 }
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
@@ -406,6 +409,183 @@ class ApiSpec
                   if !traits.contains(trait2) =>
             }
           }
+        }
+        .asserting(assertion => assertion)
+    }
+  }
+
+  "Linking two entities" - {
+    "should create a link between instances with ids instanceId1 and instanceId2 and verify the link" in {
+
+      val relationship = "hasPart"
+      val entityType1 = OpenApiEntityType(
+        name = "LinkedEntity1",
+        Some(Vector("Trait1")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+      val entityType2 = OpenApiEntityType(
+        name = "LinkedEntity2",
+        Some(Vector("Trait2")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+      val rawJson: String =
+        """
+        {
+          "name": "dc1"
+        }
+        """
+
+      val entityJson = parse(rawJson).getOrElse(Json.Null)
+      val entity1 = OpenApiEntity("", "LinkedEntity1", entityJson)
+      val entity2 = OpenApiEntity("", "LinkedEntity2", entityJson)
+
+      val resp: Resource[IO, Either[
+        String,
+        (LinkEntityResponse, LinkedEntitiesResponse, String)
+      ]] = for
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(Client.httpClient(_, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait("Trait1")))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait("Trait2")))
+        _ <- Resource.liftK(client.linkTrait("Trait1", relationship, "Trait2"))
+        _ <- Resource.liftK(client.createType(entityType1))
+        _ <- Resource.liftK(client.createType(entityType2))
+        createResp1 <- Resource.liftK(client.createEntity(entity1))
+        createResp2 <- Resource.liftK(client.createEntity(entity2))
+        result <- Resource.liftK {
+          (createResp1, createResp2) match {
+            case (CreateEntityResponse.Ok(id1), CreateEntityResponse.Ok(id2)) =>
+              for {
+                linkResp <- client.linkEntity(id1, relationship, id2)
+                linkedEntitiesResp <- client.linkedEntities(id1, relationship)
+              } yield Right((linkResp, linkedEntitiesResp, id2))
+            case _ =>
+              IO.pure(Left("Entity creation failed for one or both entities"))
+          }
+        }
+      yield result
+
+      resp
+        .use {
+          case Right((linkResponse, linkedEntitiesResponse, instanceId2)) =>
+            IO {
+              linkResponse should matchPattern {
+                case LinkEntityResponse.Ok(_) =>
+              }
+              linkedEntitiesResponse should matchPattern {
+                case LinkedEntitiesResponse.Ok(entities)
+                    if entities.contains(instanceId2) =>
+              }
+            }
+          case Left(errorMessage) =>
+            IO.raiseError(new Exception(errorMessage))
+        }
+        .asserting(assertion => assertion)
+    }
+  }
+
+  "Unlinking two entities" - {
+    "should remove a link between instances with ids instanceId1 and instanceId2" in {
+
+      val relationship = "hasPart"
+      val entityType1 = OpenApiEntityType(
+        name = "LinkedEntity3",
+        Some(Vector("Trait3")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+      val entityType2 = OpenApiEntityType(
+        name = "LinkedEntity4",
+        Some(Vector("Trait4")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+      val rawJson: String =
+        """
+        {
+          "name": "dc1"
+        }
+        """
+
+      val entityJson = parse(rawJson).getOrElse(Json.Null)
+      val entity1 = OpenApiEntity("", "LinkedEntity3", entityJson)
+      val entity2 = OpenApiEntity("", "LinkedEntity4", entityJson)
+
+      val resp: Resource[IO, Either[
+        String,
+        (UnlinkEntityResponse, LinkedEntitiesResponse, String)
+      ]] = for
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(Client.httpClient(_, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait("Trait3")))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait("Trait4")))
+        _ <- Resource.liftK(client.linkTrait("Trait3", relationship, "Trait4"))
+        _ <- Resource.liftK(client.createType(entityType1))
+        _ <- Resource.liftK(client.createType(entityType2))
+        createResp1 <- Resource.liftK(client.createEntity(entity1))
+        createResp2 <- Resource.liftK(client.createEntity(entity2))
+        result <- Resource.liftK {
+          (createResp1, createResp2) match {
+            case (CreateEntityResponse.Ok(id1), CreateEntityResponse.Ok(id2)) =>
+              for {
+                _ <- client.linkEntity(id1, relationship, id2)
+                unlinkResp <- client.unlinkEntity(id1, relationship, id2)
+                linkedEntitiesResp <- client.linkedEntities(id1, relationship)
+              } yield Right((unlinkResp, linkedEntitiesResp, id2))
+            case _ =>
+              IO.pure(Left("Entity creation failed for one or both entities"))
+          }
+        }
+      yield result
+
+      resp
+        .use {
+          case Right((unlinkResponse, linkedEntitiesResponse, instanceId2)) =>
+            IO {
+              unlinkResponse should matchPattern {
+                case UnlinkEntityResponse.Ok(_) =>
+              }
+              linkedEntitiesResponse should matchPattern {
+                case LinkedEntitiesResponse.Ok(entities)
+                    if !entities.contains(instanceId2) =>
+              }
+            }
+          case Left(errorMessage) =>
+            IO.raiseError(new Exception(errorMessage))
         }
         .asserting(assertion => assertion)
     }

@@ -463,3 +463,93 @@ class OntologyManagerHandler[F[_]: Async](
         }
     }
   end linkedTraits
+
+  override def linkEntity(respond: Resource.LinkEntityResponse.type)(
+      instanceId1: String,
+      rel: String,
+      instanceId2: String
+  ): F[Resource.LinkEntityResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkResult <- EitherT(
+        ims.link(instanceId1, relationship, instanceId2).attempt
+      )
+    } yield linkResult
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error linking instances or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok(
+          s"Instances with ids $instanceId1 and $instanceId2 linked successfully with relationship $rel"
+        )
+    }
+  end linkEntity
+
+  override def unlinkEntity(respond: Resource.UnlinkEntityResponse.type)(
+      instanceId1: String,
+      rel: String,
+      instanceId2: String
+  ): F[Resource.UnlinkEntityResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkResult <- EitherT(
+        ims.unlink(instanceId1, relationship, instanceId2).attempt
+      )
+    } yield linkResult
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error unlinking traits or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok(
+          s"Instances with ids $instanceId1 and $instanceId2 and with relationship $rel unlinked successfully"
+        )
+    }
+  end unlinkEntity
+
+  override def linkedEntities(respond: Resource.LinkedEntitiesResponse.type)(
+      instanceId: String,
+      rel: String
+  ): F[Resource.LinkedEntitiesResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkedEntities <- EitherT(ims.linked(instanceId, relationship).attempt)
+    } yield linkedEntities
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error retrieving linked entities or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(entities) =>
+        entities match {
+          case Left(serviceError) =>
+            logger.error(
+              s"Service error in getting linked entities: ${serviceError.getMessage}"
+            )
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          case Right(entitiesList) =>
+            respond.Ok(entitiesList.toVector)
+        }
+    }
+  end linkedEntities
