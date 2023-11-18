@@ -201,6 +201,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/entity/delete/{id}:
+    delete:
+      tags:
+        - OntologyManager
+      summary: Delete a user-defined type instance
+      operationId: deleteEntity
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            description: user-defined type instance id to be deleted
+      responses:
+        200:
+          description: If successful, returns "OK"
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
   /ontology/entity/yaml:
     post:
       tags:

@@ -246,6 +246,21 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createEntity
 
+  override def deleteEntity(respond: Resource.DeleteEntityResponse.type)(
+      id: String
+  ): F[Resource.DeleteEntityResponse] =
+    ims
+      .delete(id)
+      .map {
+        case Left(error) =>
+          respond.BadRequest(ValidationError(Vector(error.getMessage)))
+        case Right(_) => respond.Ok("Entity deleted successfully")
+      }
+      .onError { t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      }
+  end deleteEntity
+
   override def createEntityByYaml(
       respond: Resource.CreateEntityByYamlResponse.type
   )(body: fs2.Stream[F, Byte]): F[Resource.CreateEntityByYamlResponse] =
