@@ -15,6 +15,7 @@ import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
+  ValidationError,
   AttributeType as OpenApiAttributeType,
   Entity as OpenApiEntity,
   EntityType as OpenApiEntityType,
@@ -26,14 +27,15 @@ import it.agilelab.dataplatformshaper.uservice.{
   Client,
   CreateEntityByYamlResponse,
   CreateEntityResponse,
+  DeleteEntityResponse,
+  LinkEntityResponse,
+  LinkTraitResponse,
+  LinkedEntitiesResponse,
+  LinkedTraitsResponse,
   ReadEntityResponse,
   ReadTypeResponse,
-  LinkTraitResponse,
-  UnlinkTraitResponse,
-  LinkedTraitsResponse,
-  LinkEntityResponse,
-  LinkedEntitiesResponse,
-  UnlinkEntityResponse
+  UnlinkEntityResponse,
+  UnlinkTraitResponse
 }
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
@@ -588,6 +590,70 @@ class ApiSpec
             IO.raiseError(new Exception(errorMessage))
         }
         .asserting(assertion => assertion)
+    }
+  }
+
+  "Deleting a user defined type instance" - {
+    "should delete a user defined type instance with given id" in {
+
+      val entityType = OpenApiEntityType(
+        name = "TypeForDeletion",
+        None,
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val rawJson: String =
+        """
+      {
+        "name": "dc1"
+      }
+      """
+
+      val entityJson = parse(rawJson).getOrElse(Json.Null)
+
+      val entity = OpenApiEntity("", "TypeForDeletion", entityJson)
+
+      val resp: Resource[IO, Either[CreateEntityResponse, ReadEntityResponse]] =
+        for {
+          client <- EmberClientBuilder
+            .default[IO]
+            .build
+            .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+          _ <- Resource.liftK(client.createType(entityType))
+          createEntityResp <- Resource.liftK(client.createEntity(entity))
+          finalResp <- createEntityResp match {
+            case CreateEntityResponse.Ok(id) =>
+              Resource.liftK(
+                for {
+                  _ <- client.deleteEntity(id)
+                  readEntityResp <- client.readEntity(id)
+                } yield Right(readEntityResp)
+              )
+            case _ =>
+              Resource
+                .pure[IO, Either[CreateEntityResponse, ReadEntityResponse]](
+                  Left(
+                    CreateEntityResponse.BadRequest(
+                      ValidationError(Vector("Failed to create entity"))
+                    )
+                  )
+                )
+          }
+        } yield finalResp
+
+      resp.use(resp => IO.pure(resp)).asserting { response =>
+        response should matchPattern {
+          case Right(ReadEntityResponse.BadRequest(_)) =>
+        }
+      }
     }
   }
 

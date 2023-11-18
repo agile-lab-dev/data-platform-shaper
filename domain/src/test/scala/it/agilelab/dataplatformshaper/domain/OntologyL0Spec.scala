@@ -728,6 +728,31 @@ class OntologyL0Spec
     }
   }
 
+  "Reading a Non-Existent Entity" - {
+    "succeeds if an error is returned" in {
+      val session = Session[IO]("localhost", 7201, "repo1", false)
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val nonExistentId = "non-existent-id"
+
+        (for {
+          readResult <- EitherT[IO, ManagementServiceError, Entity](
+            iservice.read(nonExistentId)
+          )
+        } yield readResult).value
+      } asserting (result => {
+        result match {
+          case Left(_) => succeed
+          case Right(_) =>
+            fail("Expected an error for non-existent entity, but got success")
+        }
+      })
+    }
+  }
+
   "Using a service when there is no connection with the knowledge graph" - {
     "fails" in {
       val session = Session[IO]("localhost", 7210, "repo1", false)

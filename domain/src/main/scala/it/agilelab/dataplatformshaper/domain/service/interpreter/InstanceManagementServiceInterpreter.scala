@@ -384,13 +384,17 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
     def fetchEntityFieldsAndTypeName(instanceId: String) = {
       fetchFieldsForInstance(instanceId)
-        .map(lp =>
-          val entityTypeName: String = iri(
-            lp.filter(p => p(0) === "isClassifiedBy").map(_(1)).toArray.apply(0)
-          ).getLocalName
+        .map(lp => {
+          val entityTypeNameOption = lp
+            .filter(p => p(0) === "isClassifiedBy")
+            .map(_(1))
+            .headOption
+            .map(value => iri(value).getLocalName)
+
+          val entityTypeName = entityTypeNameOption.getOrElse("")
           val fields = lp.filter(p => p(0) =!= "isClassifiedBy")
           (entityTypeName, fields)
-        )
+        })
     }
 
     def handlePrimitiveDataTypes(
