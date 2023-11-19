@@ -35,7 +35,8 @@ import it.agilelab.dataplatformshaper.uservice.{
   ReadEntityResponse,
   ReadTypeResponse,
   UnlinkEntityResponse,
-  UnlinkTraitResponse
+  UnlinkTraitResponse,
+  UpdateEntityResponse
 }
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
@@ -652,6 +653,84 @@ class ApiSpec
       resp.use(resp => IO.pure(resp)).asserting { response =>
         response should matchPattern {
           case Right(ReadEntityResponse.BadRequest(_)) =>
+        }
+      }
+    }
+  }
+
+  "Updating a user-defined type instance" - {
+    "should update a user-defined type instance with given id and values" in {
+
+      val entityType = OpenApiEntityType(
+        name = "TypeForUpdate",
+        None,
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val rawJsonCreate: String =
+        """
+        {
+          "name": "initialName"
+        }
+        """
+
+      val entityJsonCreate = parse(rawJsonCreate).getOrElse(Json.Null)
+
+      val entity = OpenApiEntity("", "TypeForUpdate", entityJsonCreate)
+
+      val rawJsonUpdate: String =
+        """
+        {
+          "name": "updatedName"
+        }
+        """
+
+      val entityUpdateJsonCreate = parse(rawJsonUpdate).getOrElse(Json.Null)
+      val updatedEntity =
+        OpenApiEntity("", "TypeForUpdate", entityUpdateJsonCreate)
+
+      val resp: Resource[IO, Either[UpdateEntityResponse, ReadEntityResponse]] =
+        for {
+          client <- EmberClientBuilder
+            .default[IO]
+            .build
+            .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+          _ <- Resource.liftK(client.createType(entityType))
+          createEntityResp <- Resource.liftK(client.createEntity(entity))
+          finalResp <- createEntityResp match {
+            case CreateEntityResponse.Ok(id) =>
+              Resource.liftK(
+                for {
+                  _ <- client.updateEntity(id, rawJsonUpdate)
+                  readEntityResp <- client.readEntity(id)
+                } yield Right(readEntityResp)
+              )
+            case _ =>
+              Resource
+                .pure[IO, Either[UpdateEntityResponse, ReadEntityResponse]](
+                  Left(
+                    UpdateEntityResponse.BadRequest(
+                      ValidationError(
+                        Vector("Failed to create entity for update")
+                      )
+                    )
+                  )
+                )
+          }
+        } yield finalResp
+
+      resp.use(resp => IO.pure(resp)).asserting { response =>
+        response should matchPattern {
+          case Right(ReadEntityResponse.Ok(entity))
+              if entity.values.equals(updatedEntity.values) =>
         }
       }
     }

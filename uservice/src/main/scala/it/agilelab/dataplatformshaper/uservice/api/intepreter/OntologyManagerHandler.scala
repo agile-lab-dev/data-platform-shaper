@@ -7,6 +7,7 @@ import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
 import fs2.io.readInputStream
 import fs2.{Stream, text}
+import io.circe.Json
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.l0
@@ -260,6 +261,67 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       }
   end deleteEntity
+
+  override def updateEntity(respond: Resource.UpdateEntityResponse.type)(
+      id: String,
+      values: String
+  ): F[Resource.UpdateEntityResponse] = {
+    val parsedValues: Either[Throwable, Json] = io.circe.parser.parse(values)
+
+    parsedValues match {
+      case Left(parsingError) =>
+        summon[Applicative[F]].pure(
+          respond.BadRequest(ValidationError(Vector(parsingError.getMessage)))
+        )
+
+      case Right(jsonValues) =>
+        ims
+          .read(id)
+          .flatMap {
+            case Left(readError) =>
+              summon[Applicative[F]].pure(
+                respond.BadRequest(
+                  ValidationError(Vector(readError.getMessage))
+                )
+              )
+
+            case Right(entity) =>
+              tms.read(entity.entityTypeName).flatMap {
+                case Left(readError) =>
+                  summon[Applicative[F]].pure(
+                    respond
+                      .BadRequest(ValidationError(Vector(readError.getMessage)))
+                  )
+
+                case Right(entityType) =>
+                  // Use 'jsonValues' in your code instead of 'values'
+                  jsonToTuple(jsonValues, entityType.schema) match {
+                    case Left(parsingError) =>
+                      summon[Applicative[F]].pure(
+                        respond.BadRequest(
+                          ValidationError(Vector(parsingError.getMessage))
+                        )
+                      )
+
+                    case Right(tupleValues) =>
+                      ims.update(id, tupleValues).map {
+                        case Left(error) =>
+                          respond.BadRequest(
+                            ValidationError(Vector(error.getMessage))
+                          )
+                        case Right(updatedId) =>
+                          respond.Ok(
+                            s"Entity updated successfully with id: $updatedId"
+                          )
+                      }
+                  }
+              }
+          }
+          .onError { case t =>
+            summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+          }
+    }
+  }
 
   override def createEntityByYaml(
       respond: Resource.CreateEntityByYamlResponse.type

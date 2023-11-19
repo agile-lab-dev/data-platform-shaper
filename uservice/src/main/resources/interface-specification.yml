@@ -234,6 +234,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/SystemError'
 
+  /ontology/entity/update/{id}/{values}:
+    put:
+      tags:
+        - OntologyManager
+      summary: Update a user-defined type instance
+      operationId: updateEntity
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: User-defined type instance id to be updated
+        - in: path
+          name: values
+          required: true
+          schema:
+            type: string
+          description: String containing the values to be updated
+      responses:
+        200:
+          description: If successful, returns "Entity Updated"
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
+
+
+
+
   /ontology/entity/yaml:
     post:
       tags:
