@@ -17,9 +17,9 @@ This project aims to implement an RDF-based catalog supporting a novel approach 
 This catalog should be the base for defining data platform assets and ontologies capable of describing data collection, data mesh, and data products, i.e., the typical items that compose a modern data platform.
 
 ## How to build and run the project
-The project is currently based on the [rdf4j](https://rdf4j.org) library and the [GraphDB](https://graphdb.ontotext.com) knowledge graph from Ontotext. There is a plan to support the RDF4J Native Store.
+The project is currently based on the [rdf4j](https://rdf4j.org) library and the [GraphDB](https://graphdb.ontotext.com) knowledge graph from Ontotext.
 
-It's a Scala 3 project based on the [sbt building](https://www.scala-sbt.org) tool that needs to be previously installed; for running the tests, you need to have a docker daemon up and running. The tests are performed using a GraphDB instance running in a container. A docker-compose file is provided for running GraphDB and the microservice together.
+It's a Scala 3 project based on the [sbt building](https://www.scala-sbt.org) tool that needs to be previously installed; for running the tests, you need to have a docker daemon up and running, please check that the docker daemon is accessible from a non-root user. The tests are performed using a GraphDB instance running in a container. A docker-compose file is provided for running GraphDB and the microservice together.
 
 ### Build and Test
 This is a Scala-based project; we used [Scala 3](https://www.scala-lang.org) in combination with the [Typelevel libraries](https://typelevel.org), in particular, [Cats Effect](https://typelevel.org/cats-effect/) for managing effect using the tag-less final pattern. 
@@ -153,6 +153,8 @@ curl -X 'GET' \
   'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/9c2a7c0a-575d-4572-9d33-610d7b4977af' \
   -H 'accept: application/json'
 ```
+
+**After a run with ```docker compose up``` you should always run ```docker compose rm``` to clean up everything.**
 
 #Attention
 It's still a work in progress; more documentation explaining the overall model and the internal APIs will be written.
