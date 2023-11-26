@@ -248,10 +248,10 @@ class OntologyManagerHandler[F[_]: Async](
   end createEntity
 
   override def deleteEntity(respond: Resource.DeleteEntityResponse.type)(
-      id: String
+      deleteId: String
   ): F[Resource.DeleteEntityResponse] =
     ims
-      .delete(id)
+      .delete(deleteId)
       .map {
         case Left(error) =>
           respond.BadRequest(ValidationError(Vector(error.getMessage)))
@@ -263,7 +263,7 @@ class OntologyManagerHandler[F[_]: Async](
   end deleteEntity
 
   override def updateEntity(respond: Resource.UpdateEntityResponse.type)(
-      id: String,
+      updateId: String,
       values: String
   ): F[Resource.UpdateEntityResponse] = {
     val parsedValues: Either[Throwable, Json] = io.circe.parser.parse(values)
@@ -276,7 +276,7 @@ class OntologyManagerHandler[F[_]: Async](
 
       case Right(jsonValues) =>
         ims
-          .read(id)
+          .read(updateId)
           .flatMap {
             case Left(readError) =>
               summon[Applicative[F]].pure(
@@ -294,7 +294,6 @@ class OntologyManagerHandler[F[_]: Async](
                   )
 
                 case Right(entityType) =>
-                  // Use 'jsonValues' in your code instead of 'values'
                   jsonToTuple(jsonValues, entityType.schema) match {
                     case Left(parsingError) =>
                       summon[Applicative[F]].pure(
@@ -304,7 +303,7 @@ class OntologyManagerHandler[F[_]: Async](
                       )
 
                     case Right(tupleValues) =>
-                      ims.update(id, tupleValues).map {
+                      ims.update(updateId, tupleValues).map {
                         case Left(error) =>
                           respond.BadRequest(
                             ValidationError(Vector(error.getMessage))
