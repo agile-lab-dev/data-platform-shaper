@@ -201,7 +201,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-  /ontology/entity/delete/{id}:
+  /ontology/entity/{deleteId}:
     delete:
       tags:
         - OntologyManager
@@ -209,7 +209,7 @@ paths:
       operationId: deleteEntity
       parameters:
         - in: path
-          name: id
+          name: deleteId
           required: true
           schema:
             type: string
@@ -234,7 +234,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SystemError'
 
-  /ontology/entity/update/{id}/{values}:
+  /ontology/entity/{updateId}:
     put:
       tags:
         - OntologyManager
@@ -242,12 +242,12 @@ paths:
       operationId: updateEntity
       parameters:
         - in: path
-          name: id
+          name: updateId
           required: true
           schema:
             type: string
           description: User-defined type instance id to be updated
-        - in: path
+        - in: query
           name: values
           required: true
           schema:
@@ -272,8 +272,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-
-
 
 
 
