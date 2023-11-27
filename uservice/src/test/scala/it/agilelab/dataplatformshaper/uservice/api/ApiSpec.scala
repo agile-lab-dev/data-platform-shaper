@@ -709,7 +709,7 @@ class ApiSpec
             case CreateEntityResponse.Ok(id) =>
               Resource.liftK(
                 for {
-                  _ <- client.updateEntity(id, rawJsonUpdate)
+                  _ <- client.updateEntity(id, updatedEntity)
                   readEntityResp <- client.readEntity(id)
                 } yield Right(readEntityResp)
               )

@@ -247,12 +247,13 @@ paths:
           schema:
             type: string
           description: User-defined type instance id to be updated
-        - in: query
-          name: values
-          required: true
-          schema:
-            type: string
-          description: String containing the values to be updated
+      requestBody:
+        description: The new entity data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Entity'
       responses:
         200:
           description: If successful, returns "Entity Updated"
@@ -272,6 +273,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+
 
 
 
