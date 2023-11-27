@@ -7,7 +7,6 @@ import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
 import fs2.io.readInputStream
 import fs2.{Stream, text}
-import io.circe.Json
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.l0
@@ -264,6 +263,37 @@ class OntologyManagerHandler[F[_]: Async](
 
   override def updateEntity(respond: Resource.UpdateEntityResponse.type)(
       updateId: String,
+      body: OpenApiEntity
+  ): F[Resource.UpdateEntityResponse] =
+    val res = (for {
+      schema <- EitherT(
+        tms
+          .read(body.entityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(_.getMessage))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+      )
+      entityId <- EitherT(
+        ims.update(updateId, tuple).map(_.leftMap(_.getMessage))
+      )
+    } yield entityId).value
+
+    res
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(entityId) => respond.Ok(entityId)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end updateEntity
+
+  /*
+  override def updateEntity(respond: Resource.UpdateEntityResponse.type)(
+      updateId: String,
       values: String
   ): F[Resource.UpdateEntityResponse] = {
     val parsedValues: Either[Throwable, Json] = io.circe.parser.parse(values)
@@ -321,6 +351,7 @@ class OntologyManagerHandler[F[_]: Async](
           }
     }
   }
+   */
 
   override def createEntityByYaml(
       respond: Resource.CreateEntityByYamlResponse.type
