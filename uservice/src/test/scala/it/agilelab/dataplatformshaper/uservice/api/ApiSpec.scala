@@ -36,7 +36,8 @@ import it.agilelab.dataplatformshaper.uservice.{
   ReadTypeResponse,
   UnlinkEntityResponse,
   UnlinkTraitResponse,
-  UpdateEntityResponse
+  UpdateEntityResponse,
+  UpdateEntityByYamlResponse
 }
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
@@ -732,6 +733,59 @@ class ApiSpec
           case Right(ReadEntityResponse.Ok(entity))
               if entity.values.equals(updatedEntity.values) =>
         }
+      }
+    }
+  }
+
+  "Updating a user defined type instance using a YAML file" - {
+    "works" in {
+
+      val createStream =
+        fs2.io.readClassLoaderResource[IO]("initial_entity.yaml")
+      val updateStream =
+        fs2.io.readClassLoaderResource[IO]("updated_entity.yaml")
+
+      val rawJson: String =
+        """
+      {
+        "name": "updated_entity"
+      }
+      """
+
+      val updatedEntityJson = parse(rawJson).getOrElse(Json.Null)
+
+      val testFlow: Resource[IO, ReadEntityResponse] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+
+        entityId <- Resource.liftK(client.createEntityByYaml(createStream).map {
+          case CreateEntityByYamlResponse.Ok(id) => id
+          case _ => fail("Initial entity creation failed")
+        })
+
+        _ <- Resource.liftK(
+          client.updateEntityByYaml(entityId, updateStream).map {
+            case UpdateEntityByYamlResponse.Ok(_) => ()
+            case _ => fail("Entity update failed")
+          }
+        )
+
+        readResponse <- Resource.liftK(client.readEntity(entityId))
+
+      } yield readResponse
+
+      testFlow.use { readResponse =>
+        IO.pure(readResponse)
+          .asserting { resp =>
+            inside(resp) {
+              case ReadEntityResponse.Ok(
+                    OpenApiEntity(_, "DataCollectionType", json)
+                  ) =>
+                json should be(updatedEntityJson)
+            }
+          }
       }
     }
   }

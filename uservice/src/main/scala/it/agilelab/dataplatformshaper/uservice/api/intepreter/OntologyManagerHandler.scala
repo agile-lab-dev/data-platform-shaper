@@ -291,67 +291,51 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end updateEntity
 
-  /*
-  override def updateEntity(respond: Resource.UpdateEntityResponse.type)(
-      updateId: String,
-      values: String
-  ): F[Resource.UpdateEntityResponse] = {
-    val parsedValues: Either[Throwable, Json] = io.circe.parser.parse(values)
-
-    parsedValues match {
-      case Left(parsingError) =>
-        summon[Applicative[F]].pure(
-          respond.BadRequest(ValidationError(Vector(parsingError.getMessage)))
+  override def updateEntityByYaml(
+      respond: Resource.UpdateEntityByYamlResponse.type
+  )(
+      id: String,
+      body: Stream[F, Byte]
+  ): F[Resource.UpdateEntityByYamlResponse] = {
+    val getYaml = body
+      .through(text.utf8.decode)
+      .fold("")(_ + _)
+      .compile
+      .toList
+      .map(_.head)
+      .map(parser.parse(_).leftMap(_.getMessage))
+      .map(
+        _.flatMap(yaml =>
+          OpenApiEntity.decodeEntity(yaml.hcursor).leftMap(_.getMessage)
         )
+      )
 
-      case Right(jsonValues) =>
-        ims
-          .read(updateId)
-          .flatMap {
-            case Left(readError) =>
-              summon[Applicative[F]].pure(
-                respond.BadRequest(
-                  ValidationError(Vector(readError.getMessage))
-                )
-              )
+    val res = (for {
+      body <- EitherT(getYaml)
+      schema <- EitherT(
+        tms
+          .read(body.entityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(_.getMessage))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+      )
+      _ <- EitherT(
+        ims.update(id, tuple).map(_.leftMap(_.getMessage))
+      )
+    } yield id).value
 
-            case Right(entity) =>
-              tms.read(entity.entityTypeName).flatMap {
-                case Left(readError) =>
-                  summon[Applicative[F]].pure(
-                    respond
-                      .BadRequest(ValidationError(Vector(readError.getMessage)))
-                  )
-
-                case Right(entityType) =>
-                  jsonToTuple(jsonValues, entityType.schema) match {
-                    case Left(parsingError) =>
-                      summon[Applicative[F]].pure(
-                        respond.BadRequest(
-                          ValidationError(Vector(parsingError.getMessage))
-                        )
-                      )
-
-                    case Right(tupleValues) =>
-                      ims.update(updateId, tupleValues).map {
-                        case Left(error) =>
-                          respond.BadRequest(
-                            ValidationError(Vector(error.getMessage))
-                          )
-                        case Right(updatedId) =>
-                          respond.Ok(
-                            s"Entity updated successfully with id: $updatedId"
-                          )
-                      }
-                  }
-              }
-          }
-          .onError { case t =>
-            summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
-          }
-    }
+    res
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(updatedId) => respond.Ok(updatedId)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}}"))
+      )
   }
-   */
 
   override def createEntityByYaml(
       respond: Resource.CreateEntityByYamlResponse.type
