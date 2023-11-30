@@ -5,7 +5,6 @@ import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.effect.{IO, Ref}
 import fs2.io.file.Path
-import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
@@ -21,7 +20,7 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
-import java.time.{LocalDate, ZoneId, ZonedDateTime}
+import org.datatools.bigdatatypes.basictypes.SqlType
 import org.eclipse.rdf4j.model.*
 import org.eclipse.rdf4j.model.util.Values
 import org.eclipse.rdf4j.model.util.Values.iri
@@ -29,6 +28,7 @@ import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
+import org.scalactic.Equality
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.Inside.inside
 import org.scalatest.freespec.AsyncFreeSpec
@@ -36,6 +36,7 @@ import org.scalatest.matchers.should.Matchers
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 
+import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.collection.immutable.List
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
@@ -43,7 +44,10 @@ import scala.util.Right
 
 @SuppressWarnings(
   Array(
-    "scalafix:DisableSyntax.null"
+    "scalafix:DisableSyntax.null",
+    "scalafix:DisableSyntax.asInstanceOf",
+    "scalafix:DisableSyntax.isInstanceOf",
+    "scalafix:DisableSyntax.=="
   )
 )
 class OntologyL0Spec
@@ -52,6 +56,24 @@ class OntologyL0Spec
     with Matchers
     with BeforeAndAfterAll:
 
+  given Equality[DataType] with
+    def areEqual(x: DataType, y: Any): Boolean =
+      x match
+        case struct: StructType if y.isInstanceOf[StructType] =>
+          struct === y.asInstanceOf[StructType]
+        case _ =>
+          x == y
+    end areEqual
+  end given
+
+  given Equality[StructType] with
+    def areEqual(x: StructType, y: Any): Boolean =
+      val c1: Map[String, SqlType] = x.records.toMap
+      val c2: Map[String, SqlType] = y.asInstanceOf[StructType].records.toMap
+      val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
+      ret
+    end areEqual
+  end given
   val graphdbContainer = new GenericContainer("ontotext/graphdb:10.3.1")
 
   graphdbContainer.addExposedPort(7200)
@@ -447,7 +469,7 @@ class OntologyL0Spec
     ),
     "boolStruct" -> (
       "bool" -> false,
-      "boolRepeated" -> List(false, false).sorted,
+      "boolRepeated" -> List(false, true).sorted,
       "boolNullable" -> Some(true)
     ),
     "double" -> 1.24,
@@ -543,16 +565,6 @@ class OntologyL0Spec
     }
   }
 
-  def testEquivalency(a: Any, b: Any): Boolean = (a, b) match {
-    case (listA: List[_], listB: List[_]) => listA.toSet.equals(listB.toSet)
-    case (tupleA: Tuple, tupleB: Tuple) =>
-      tupleA.productArity.equals(tupleB.productArity) &&
-      tupleA.productIterator.zip(tupleB.productIterator).forall {
-        case (elA, elB) => testEquivalency(elA, elB)
-      }
-    case _ => a.equals(b)
-  }
-
   "Caching entity type definitions" - {
     "works" in {
       cache.get.asserting(_.size shouldBe 1)
@@ -640,7 +652,15 @@ class OntologyL0Spec
         } yield read).value
       } asserting (entity =>
         inside(entity) { case Right(entity) =>
-          assert(testEquivalency(entity.values, fileBasedDataCollectionTuple))
+          assert(
+            tupleToJsonChecked(entity.values, fileBasedDataCollectionTypeSchema)
+              .equals(
+                tupleToJsonChecked(
+                  fileBasedDataCollectionTuple,
+                  fileBasedDataCollectionTypeSchema
+                )
+              )
+          )
         }
       )
     }
@@ -676,7 +696,12 @@ class OntologyL0Spec
         }
         entity match {
           case Right(Entity(_, _, data)) =>
-            assert(testEquivalency(data, fileBasedDataCollectionTupleForUpdate))
+            val x = tupleToJsonChecked(data, fileBasedDataCollectionTypeSchema)
+            val y = tupleToJsonChecked(
+              fileBasedDataCollectionTupleForUpdate,
+              fileBasedDataCollectionTypeSchema
+            )
+            x shouldBe y
           case _ => fail("Unexpected pattern encountered")
         }
       })
