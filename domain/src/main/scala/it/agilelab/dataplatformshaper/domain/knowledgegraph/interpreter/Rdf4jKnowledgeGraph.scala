@@ -2,6 +2,7 @@ package it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter
 
 import cats.effect.Sync
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.model.NS.L3
 import org.eclipse.rdf4j.model.{IRI, Resource, Statement, Value}
 import org.eclipse.rdf4j.query.BindingSet
 
@@ -20,7 +21,14 @@ class Rdf4jKnowledgeGraph[F[_]: Sync](session: Session)
         List.empty[(Resource, IRI, Value)]
   ): F[Unit] =
     session.withTx(conn => {
-      deleteStatements.foreach(st => conn.remove(st(0), st(1), st(2)))
+      deleteStatements.foreach(st => {
+        conn.remove(
+          st(0),
+          st(1),
+          st(2),
+          L3
+        )
+      })
       conn.add(statements.asJava)
     })
   end removeAndInsertStatements

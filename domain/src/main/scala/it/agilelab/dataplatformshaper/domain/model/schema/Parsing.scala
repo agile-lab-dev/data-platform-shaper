@@ -44,6 +44,7 @@ private def unfoldPrimitive(
           try
             value
               .asInstanceOf[List[String]]
+              .sorted
               .foreach(str =>
                 unfoldPrimitive(
                   name,
@@ -75,6 +76,7 @@ private def unfoldPrimitive(
           try
             value
               .asInstanceOf[List[Int]]
+              .sorted
               .foreach(int =>
                 unfoldPrimitive(
                   name,
@@ -106,6 +108,7 @@ private def unfoldPrimitive(
           try
             value
               .asInstanceOf[List[LocalDate]]
+              .sorted
               .foreach(date =>
                 unfoldPrimitive(
                   name,
@@ -137,6 +140,7 @@ private def unfoldPrimitive(
           try
             value
               .asInstanceOf[List[ZonedDateTime]]
+              .sorted
               .foreach(timestamp =>
                 unfoldPrimitive(
                   name,
@@ -167,6 +171,7 @@ private def unfoldPrimitive(
           try
             value
               .asInstanceOf[List[Double]]
+              .sorted
               .foreach(num =>
                 unfoldPrimitive(
                   name,
@@ -198,6 +203,7 @@ private def unfoldPrimitive(
           try
             value
               .asInstanceOf[List[Float]]
+              .sorted
               .foreach(float =>
                 unfoldPrimitive(
                   name,
@@ -229,6 +235,7 @@ private def unfoldPrimitive(
           try
             value
               .asInstanceOf[List[Long]]
+              .sorted
               .foreach(long =>
                 unfoldPrimitive(
                   name,
@@ -260,6 +267,7 @@ private def unfoldPrimitive(
           try
             value
               .asInstanceOf[List[Boolean]]
+              .sorted
               .foreach(boolean =>
                 unfoldPrimitive(
                   name,
@@ -307,23 +315,22 @@ private def unfoldStruct(
       tuple match
         case value: Tuple if mode === Required =>
           val tuples =
-            try Success(value.toArray.map(_.asInstanceOf[(String, Any)]))
-            catch ex => Failure[Array[(String, Any)]](ex)
+            try Success(value.toArray.map(_.asInstanceOf[(String, Any)]).toMap)
+            catch ex => Failure[Map[String, Any]](ex)
           tuples match
             case Success(tuples) =>
               val tupleFieldNames = tuples.map(_(0)).toSet
               val recordFieldNames = records.map(_(0)).toSet
               if tupleFieldNames === recordFieldNames then
-                val indexedRecords: List[((String, DataType), Int)] =
-                  records.zipWithIndex
-                if tuples.lengthIs == records.length then
+                val indexedRecords = records
+                if tuples.size == records.length then
                   func(currentPath, tpe, tuple, BeginFoldingStruct)
                   var currentRes: Either[String, Unit] = Right[String, Unit](())
                   val managedRecords =
                     indexedRecords.takeWhile(recordWithIndex =>
                       currentRes = unfoldDataType(
-                        tuples(recordWithIndex(1)),
-                        recordWithIndex(0)(1),
+                        (recordWithIndex(0), tuples(recordWithIndex(0))),
+                        recordWithIndex(1),
                         currentPath,
                         func
                       )
@@ -336,7 +343,7 @@ private def unfoldStruct(
                   end if
                 else
                   Left[String, Unit](
-                    s"struct $name has wrong number of field, it's ${tuples.lengthIs}, but it should be ${records.length}"
+                    s"struct $name has wrong number of field, it's ${tuples.size}, but it should be ${records.length}"
                   )
                 end if
               else
@@ -451,22 +458,20 @@ def unfoldTuple(
     func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   val tuples =
-    try Success(tuple.toArray.map((_: Object).asInstanceOf[(String, Any)]))
-    catch case ex => Failure[Array[(String, Any)]](ex)
+    try Success(tuple.toArray.map(_.asInstanceOf[(String, Any)]).toMap)
+    catch case ex => Failure[Map[String, Any]](ex)
   tuples match
     case Success(tuples) =>
       val tupleFieldNames = tuples.map(_(0)).toSet
       val recordFieldNames = schema.records.map(_(0)).toSet
       if tupleFieldNames === recordFieldNames then
-        if tuples.lengthIs == schema.records.length then
-          val indexedRecords = schema.records.zipWithIndex
+        if tuples.size == schema.records.length then
           var currentRes: Either[String, Unit] = Right[String, Unit](())
-          val managedRecords = indexedRecords.takeWhile(
-            (recordWithIndex: ((String, DataType), Int)) =>
-              val tuple: Tuple = tuples(recordWithIndex(1)).asInstanceOf[Tuple]
-              val dataType = recordWithIndex(0)(1)
-              currentRes = unfoldDataType(tuple, dataType, "", func)
-              currentRes.isRight
+          val managedRecords = schema.records.takeWhile(record =>
+            val tuple = (record(0), tuples(record(0))).asInstanceOf[Tuple]
+            val dataType = record(1)
+            currentRes = unfoldDataType(tuple, dataType, "", func)
+            currentRes.isRight
           )
           if managedRecords.lengthIs == schema.records.length then
             Right[String, Unit](())
@@ -474,7 +479,7 @@ def unfoldTuple(
           end if
         else
           Left[String, Unit](
-            s"input tuple has wrong number of field, it's ${tuples.lengthIs}, but it should be ${schema.records.length}"
+            s"input tuple has wrong number of field, it's ${tuples.size}, but it should be ${schema.records.length}"
           )
         end if
       else
@@ -672,7 +677,10 @@ def tupleToJsonChecked(
                   Json.fromInt(tupleFieldValue.asInstanceOf[Int])
                 case Repeated =>
                   Json.fromValues(
-                    tupleFieldValue.asInstanceOf[List[Int]].map(Json.fromInt)
+                    tupleFieldValue
+                      .asInstanceOf[List[Int]]
+                      .sorted
+                      .map(Json.fromInt)
                   )
                 case Nullable =>
                   tupleFieldValue
@@ -690,14 +698,15 @@ def tupleToJsonChecked(
                   Json.fromValues(
                     tupleFieldValue
                       .asInstanceOf[List[LocalDate]]
+                      .sorted
                       .map(date => date.toString)
                       .asInstanceOf[List[String]]
                       .map(Json.fromString)
                   )
                 case Nullable =>
                   tupleFieldValue
-                    .asInstanceOf[Option[String]]
-                    .fold(Json.Null)(Json.fromString)
+                    .asInstanceOf[Option[LocalDate]]
+                    .fold(Json.Null)(date => Json.fromString(date.toString))
               end match
             case TimestampDataType(mode) =>
               mode match
@@ -710,14 +719,15 @@ def tupleToJsonChecked(
                   Json.fromValues(
                     tupleFieldValue
                       .asInstanceOf[List[ZonedDateTime]]
+                      .sorted
                       .map(ts => ts.toString)
                       .asInstanceOf[List[String]]
                       .map(Json.fromString)
                   )
                 case Nullable =>
                   tupleFieldValue
-                    .asInstanceOf[Option[String]]
-                    .fold(Json.Null)(Json.fromString)
+                    .asInstanceOf[Option[ZonedDateTime]]
+                    .fold(Json.Null)(date => Json.fromString(date.toString))
               end match
             case DoubleType(mode) =>
               mode match
@@ -731,6 +741,7 @@ def tupleToJsonChecked(
                   Json.fromValues(
                     tupleFieldValue
                       .asInstanceOf[List[Double]]
+                      .sorted
                       .map(el =>
                         Json
                           .fromDouble(el)
@@ -762,6 +773,7 @@ def tupleToJsonChecked(
                   Json.fromValues(
                     tupleFieldValue
                       .asInstanceOf[List[Float]]
+                      .sorted
                       .map(el =>
                         Json
                           .fromFloat(el)
@@ -787,7 +799,10 @@ def tupleToJsonChecked(
                   Json.fromLong(tupleFieldValue.asInstanceOf[Long])
                 case Repeated =>
                   Json.fromValues(
-                    tupleFieldValue.asInstanceOf[List[Long]].map(Json.fromLong)
+                    tupleFieldValue
+                      .asInstanceOf[List[Long]]
+                      .sorted
+                      .map(Json.fromLong)
                   )
                 case Nullable =>
                   tupleFieldValue
@@ -802,6 +817,7 @@ def tupleToJsonChecked(
                   Json.fromValues(
                     tupleFieldValue
                       .asInstanceOf[List[Boolean]]
+                      .sorted
                       .map(Json.fromBoolean)
                   )
                 case Nullable =>
@@ -817,6 +833,7 @@ def tupleToJsonChecked(
                   Json.fromValues(
                     tupleFieldValue
                       .asInstanceOf[List[String]]
+                      .sorted
                       .map(Json.fromString)
                   )
                 case Nullable =>
