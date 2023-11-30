@@ -201,6 +201,122 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/entity/{deleteId}:
+    delete:
+      tags:
+        - OntologyManager
+      summary: Delete a user-defined type instance
+      operationId: deleteEntity
+      parameters:
+        - in: path
+          name: deleteId
+          required: true
+          schema:
+            type: string
+            description: user-defined type instance id to be deleted
+      responses:
+        200:
+          description: If successful, returns "OK"
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
+  /ontology/entity/{updateId}:
+    put:
+      tags:
+        - OntologyManager
+      summary: Update a user-defined type instance
+      operationId: updateEntity
+      parameters:
+        - in: path
+          name: updateId
+          required: true
+          schema:
+            type: string
+          description: User-defined type instance id to be updated
+      requestBody:
+        description: The new entity data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Entity'
+      responses:
+        200:
+          description: If successful, returns the id of the updated entity
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
+  /ontology/entity/yaml/{id}:
+    put:
+      tags:
+        - OntologyManager
+      summary: Update a user-define type instance using a Yaml file
+      operationId: updateEntityByYaml
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: User-defined type instance id to be updated
+      requestBody:
+        description: An YAML file containing the new entity data
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: If successful, returns the id of the updated entity
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
+
+
   /ontology/entity/yaml:
     post:
       tags:
@@ -267,6 +383,303 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+                
+  /ontology/entity/link/{instanceId1}/{rel}/{instanceId2}:
+    post:
+      tags:
+        - OntologyManager
+      summary: Link two instances with a specified relationship
+      operationId: linkEntity
+      parameters:
+        - in: path
+          name: instanceId1
+          required: true
+          schema:
+            type: string
+            description: The unique identifier of the first instance
+        - in: path
+          name: rel
+          required: true
+          schema:
+            type: string
+            description: The type of relationship to establish between the two instances
+        - in: path
+          name: instanceId2
+          required: true
+          schema:
+            type: string
+            description: The unique identifier of the second instance
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input, such as non-existent instance IDs or unrecognized relationship type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+                
+  /ontology/entity/unlink/{instanceId1}/{rel}/{instanceId2}:
+    post:
+      tags:
+        - OntologyManager
+      summary: Unlink two instances by removing a specified relationship
+      operationId: unlinkEntity
+      parameters:
+        - in: path
+          name: instanceId1
+          required: true
+          schema:
+            type: string
+            description: The unique identifier of the first instance
+        - in: path
+          name: rel
+          required: true
+          schema:
+            type: string
+            description: The type of relationship to be removed between the two instances
+        - in: path
+          name: instanceId2
+          required: true
+          schema:
+            type: string
+            description: The unique identifier of the second instance
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input, such as non-existent instance IDs or an unrecognized relationship type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+                
+  /ontology/entity/linked/{instanceId}/{rel}:
+    get:
+      tags:
+        - OntologyManager
+      summary: Retrieve instances linked to a specified instance via a given relationship
+      operationId: linkedEntities
+      parameters:
+        - in: path
+          name: instanceId
+          description: 'The instance ID for which linked instances are being queried'
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: rel
+          description: 'The relationship through which instances are linked'
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful, returns a list of linked instance IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
+
+  /ontology/trait:
+    post:
+      tags:
+        - OntologyManager
+      summary: Create a user-defined trait
+      operationId: createTrait
+      requestBody:
+        description: A user-defined Trait spec
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Trait'
+        required: true
+      responses:
+        200:
+          description: If successful, returns "OK"
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
+  /ontology/trait/link/{trait1}/{rel}/{trait2}:
+    put:
+      tags:
+        - OntologyManager
+      summary: Link two traits with a relationship
+      operationId: linkTrait
+      parameters:
+        - in: path
+          name: trait1
+          description: 'First trait'
+          required: true
+          schema:
+            type: 'string'
+        - in: path
+          name: rel
+          description: 'Relationship between the two traits'
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: trait2
+          description: 'Second trait'
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful, returns "OK"
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+                
+  /ontology/trait/unlink/{trait1}/{rel}/{trait2}:
+    put:
+      tags:
+        - OntologyManager
+      summary: Unlink two traits with a relationship
+      operationId: unlinkTrait
+      parameters:
+        - in: path
+          name: trait1
+          description: 'First trait'
+          required: true
+          schema:
+            type: 'string'
+        - in: path
+          name: rel
+          description: 'Relationship between the two traits'
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: trait2
+          description: 'Second trait'
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful, returns "OK"
+          content:
+            application/json:
+              schema:
+                type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
+  /ontology/trait/link/{traitName}/{rel}:
+    get:
+      tags:
+        - OntologyManager
+      summary: Retrieve traits linked to a specified trait via a given relationship
+      operationId: linkedTraits
+      parameters:
+        - in: path
+          name: traitName
+          description: 'The trait for which linked traits are being queried'
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: rel
+          description: 'The relationship through which traits are linked'
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful, returns a list of linked traits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+
 components:
   schemas:
     Entity:
@@ -304,6 +717,13 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/AttributeType'
+    Trait:
+      required:
+        - name
+      type: object
+      properties:
+        name:
+          type: string
     AttributeType:
       type: object
       required:

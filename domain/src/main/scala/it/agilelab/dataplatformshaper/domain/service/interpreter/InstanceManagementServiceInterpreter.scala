@@ -384,13 +384,17 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
     def fetchEntityFieldsAndTypeName(instanceId: String) = {
       fetchFieldsForInstance(instanceId)
-        .map(lp =>
-          val entityTypeName: String = iri(
-            lp.filter(p => p(0) === "isClassifiedBy").map(_(1)).toArray.apply(0)
-          ).getLocalName
+        .map(lp => {
+          val entityTypeNameOption = lp
+            .filter(p => p(0) === "isClassifiedBy")
+            .map(_(1))
+            .headOption
+            .map(value => iri(value).getLocalName)
+
+          val entityTypeName = entityTypeNameOption.getOrElse("")
           val fields = lp.filter(p => p(0) =!= "isClassifiedBy")
           (entityTypeName, fields)
-        )
+        })
     }
 
     def handlePrimitiveDataTypes(
@@ -737,7 +741,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       exist1 <- EitherT(exist(instanceId1))
       exist2 <- EitherT(exist(instanceId2))
       link <- EitherT(
-        if exist1 && exist2 then
+        if exist1 && exist2
+        then
           summon[Functor[F]]
             .map(res)(ibs =>
               val count = ibs
@@ -759,24 +764,28 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             )
             .flatten
         else
-          if !exist1 then
+          if !exist1
+          then
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Unit](
                 NonExistentInstanceError(instanceId1)
-              )
-            )
-          else if !exist2 then
-            summon[Applicative[F]].pure(
-              Left[ManagementServiceError, Unit](
-                NonExistentInstanceError(instanceId2)
               )
             )
           else
-            summon[Applicative[F]].pure(
-              Left[ManagementServiceError, Unit](
-                NonExistentInstanceError(instanceId1)
+            if !exist2
+            then
+              summon[Applicative[F]].pure(
+                Left[ManagementServiceError, Unit](
+                  NonExistentInstanceError(instanceId2)
+                )
               )
-            )
+            else
+              summon[Applicative[F]].pure(
+                Left[ManagementServiceError, Unit](
+                  NonExistentInstanceError(instanceId1)
+                )
+              )
+            end if
           end if
       )
     } yield link).value

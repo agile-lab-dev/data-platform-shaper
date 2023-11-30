@@ -10,15 +10,20 @@ import fs2.{Stream, text}
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.l0
+import it.agilelab.dataplatformshaper.domain.model.l1.{
+  Relationship,
+  given_Conversion_String_Relationship
+}
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
-import it.agilelab.dataplatformshaper.domain.model.l1.{SpecificTrait, given}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
 import it.agilelab.dataplatformshaper.uservice.Resource.CreateTypeResponse
 import it.agilelab.dataplatformshaper.uservice.definitions.{
+  Trait,
   ValidationError,
   Entity as OpenApiEntity,
   EntityType as OpenApiEntityType
@@ -31,7 +36,8 @@ import scala.util.Try
 
 class OntologyManagerHandler[F[_]: Async](
     tms: TypeManagementServiceInterpreter[F],
-    ims: InstanceManagementServiceInterpreter[F]
+    ims: InstanceManagementServiceInterpreter[F],
+    trms: TraitManagementServiceInterpreter[F]
 ) extends Handler[F]
     with StrictLogging:
 
@@ -47,9 +53,7 @@ class OntologyManagerHandler[F[_]: Async](
       summon[Applicative[F]].pure(
         Try(
           body.traits
-            .fold(Set.empty[SpecificTrait])(x =>
-              x.map(str => str: SpecificTrait).toSet
-            )
+            .fold(Set.empty[String])(x => x.map(str => str).toSet)
         ).toEither
           .leftMap(t => s"Trait ${t.getMessage} is not a Trait")
       )
@@ -111,8 +115,8 @@ class OntologyManagerHandler[F[_]: Async](
 
     val res = for {
       entityType <- EitherT(getEntityType)
-      ts = entityType.traits.fold(Set.empty[SpecificTrait])(x =>
-        x.map(str => str: SpecificTrait).toSet
+      ts = entityType.traits.fold(Set.empty[String])(x =>
+        x.map(str => str).toSet
       )
       res <- EitherT(
         entityType.fatherName
@@ -242,6 +246,97 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createEntity
 
+  override def deleteEntity(respond: Resource.DeleteEntityResponse.type)(
+      deleteId: String
+  ): F[Resource.DeleteEntityResponse] =
+    ims
+      .delete(deleteId)
+      .map {
+        case Left(error) =>
+          respond.BadRequest(ValidationError(Vector(error.getMessage)))
+        case Right(_) => respond.Ok("Entity deleted successfully")
+      }
+      .onError { t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      }
+  end deleteEntity
+
+  override def updateEntity(respond: Resource.UpdateEntityResponse.type)(
+      updateId: String,
+      body: OpenApiEntity
+  ): F[Resource.UpdateEntityResponse] =
+    val res = (for {
+      schema <- EitherT(
+        tms
+          .read(body.entityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(_.getMessage))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+      )
+      entityId <- EitherT(
+        ims.update(updateId, tuple).map(_.leftMap(_.getMessage))
+      )
+    } yield entityId).value
+
+    res
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(entityId) => respond.Ok(entityId)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end updateEntity
+
+  override def updateEntityByYaml(
+      respond: Resource.UpdateEntityByYamlResponse.type
+  )(
+      id: String,
+      body: Stream[F, Byte]
+  ): F[Resource.UpdateEntityByYamlResponse] = {
+    val getYaml = body
+      .through(text.utf8.decode)
+      .fold("")(_ + _)
+      .compile
+      .toList
+      .map(_.head)
+      .map(parser.parse(_).leftMap(_.getMessage))
+      .map(
+        _.flatMap(yaml =>
+          OpenApiEntity.decodeEntity(yaml.hcursor).leftMap(_.getMessage)
+        )
+      )
+
+    val res = (for {
+      body <- EitherT(getYaml)
+      schema <- EitherT(
+        tms
+          .read(body.entityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(_.getMessage))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+      )
+      _ <- EitherT(
+        ims.update(id, tuple).map(_.leftMap(_.getMessage))
+      )
+    } yield id).value
+
+    res
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(updatedId) => respond.Ok(updatedId)
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}}"))
+      )
+  }
+
   override def createEntityByYaml(
       respond: Resource.CreateEntityByYamlResponse.type
   )(body: fs2.Stream[F, Byte]): F[Resource.CreateEntityByYamlResponse] =
@@ -360,4 +455,192 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end readEntityAsYaml
 
-end OntologyManagerHandler
+  override def createTrait(respond: Resource.CreateTraitResponse.type)(
+      body: Trait
+  ): F[Resource.CreateTraitResponse] =
+    val res = trms.create(body.name, Option.empty[String])
+
+    res.attempt.map {
+      case Left(error) =>
+        logger.error(s"Error: ${error.getMessage}")
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok("Trait created successfully")
+    }
+  end createTrait
+
+  override def linkTrait(respond: Resource.LinkTraitResponse.type)(
+      trait1: String,
+      rel: String,
+      trait2: String
+  ): F[Resource.LinkTraitResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkResult <- EitherT(trms.link(trait1, relationship, trait2).attempt)
+    } yield linkResult
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error linking traits or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok(
+          s"Traits $trait1 and $trait2 linked successfully with relationship $rel"
+        )
+    }
+  end linkTrait
+
+  override def unlinkTrait(respond: Resource.UnlinkTraitResponse.type)(
+      trait1: String,
+      rel: String,
+      trait2: String
+  ): F[Resource.UnlinkTraitResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkResult <- EitherT(trms.unlink(trait1, relationship, trait2).attempt)
+    } yield linkResult
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error unlinking traits or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok(
+          s"Traits $trait1 and $trait2 with relationship $rel unlinked successfully"
+        )
+    }
+  end unlinkTrait
+
+  override def linkedTraits(respond: Resource.LinkedTraitsResponse.type)(
+      traitName: String,
+      rel: String
+  ): F[Resource.LinkedTraitsResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkedTraits <- EitherT(trms.linked(traitName, relationship).attempt)
+    } yield linkedTraits
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error retrieving linked traits or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(traits) =>
+        traits match {
+          case Left(serviceError) =>
+            logger.error(
+              s"Service error in getting linked traits: ${serviceError.getMessage}"
+            )
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          case Right(traitsList) =>
+            respond.Ok(traitsList.toVector)
+        }
+    }
+  end linkedTraits
+
+  override def linkEntity(respond: Resource.LinkEntityResponse.type)(
+      instanceId1: String,
+      rel: String,
+      instanceId2: String
+  ): F[Resource.LinkEntityResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkResult <- EitherT(
+        ims.link(instanceId1, relationship, instanceId2).attempt
+      )
+    } yield linkResult
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error linking instances or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok(
+          s"Instances with ids $instanceId1 and $instanceId2 linked successfully with relationship $rel"
+        )
+    }
+  end linkEntity
+
+  override def unlinkEntity(respond: Resource.UnlinkEntityResponse.type)(
+      instanceId1: String,
+      rel: String,
+      instanceId2: String
+  ): F[Resource.UnlinkEntityResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkResult <- EitherT(
+        ims.unlink(instanceId1, relationship, instanceId2).attempt
+      )
+    } yield linkResult
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error unlinking traits or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(_) =>
+        respond.Ok(
+          s"Instances with ids $instanceId1 and $instanceId2 and with relationship $rel unlinked successfully"
+        )
+    }
+  end unlinkEntity
+
+  override def linkedEntities(respond: Resource.LinkedEntitiesResponse.type)(
+      instanceId: String,
+      rel: String
+  ): F[Resource.LinkedEntitiesResponse] =
+
+    val conversion: Either[Throwable, Relationship] =
+      Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
+
+    val result = for {
+      relationship <- EitherT.fromEither[F](conversion)
+      linkedEntities <- EitherT(ims.linked(instanceId, relationship).attempt)
+    } yield linkedEntities
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error retrieving linked entities or converting string to Relationship: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(entities) =>
+        entities match {
+          case Left(serviceError) =>
+            logger.error(
+              s"Service error in getting linked entities: ${serviceError.getMessage}"
+            )
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          case Right(entitiesList) =>
+            respond.Ok(entitiesList.toVector)
+        }
+    }
+  end linkedEntities

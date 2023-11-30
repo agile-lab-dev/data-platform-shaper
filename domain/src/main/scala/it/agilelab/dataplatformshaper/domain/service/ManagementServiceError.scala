@@ -6,6 +6,10 @@ enum ManagementServiceError(errorMessage: String):
       extends ManagementServiceError(
         s"The type $instanceTypeName has been already defined"
       )
+  case TraitAlreadyDefinedError(traitName: String)
+      extends ManagementServiceError(
+        s"The trait $traitName has been already defined"
+      )
   case NonExistentInstanceTypeError(instanceTypeName: String)
       extends ManagementServiceError(
         s"The instance type with name $instanceTypeName does not exist"
@@ -13,6 +17,10 @@ enum ManagementServiceError(errorMessage: String):
   case NonExistentInstanceError(instanceId: String)
       extends ManagementServiceError(
         s"The instance with id $instanceId does not exist"
+      )
+  case NonExistentTraitError(traitName: String)
+      extends ManagementServiceError(
+        s"The trait with name $traitName does not exist"
       )
   case TupleIsNotConformToSchema(parsingError: String)
       extends ManagementServiceError(parsingError)

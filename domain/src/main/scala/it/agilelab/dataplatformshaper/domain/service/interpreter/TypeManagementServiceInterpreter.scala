@@ -10,15 +10,14 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
+  TraitManagementService,
   TypeManagementService
 }
 import org.datatools.bigdatatypes.basictypes.SqlType
-import org.eclipse.rdf4j.model.impl.DynamicModelFactory
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.{OWL, RDF, RDFS}
@@ -30,9 +29,11 @@ import java.util.UUID
 import scala.language.{implicitConversions, postfixOps}
 
 class TypeManagementServiceInterpreter[F[_]: Sync](
-    val repository: KnowledgeGraph[F]
+    traitManagementService: TraitManagementService[F]
 )(using cache: Ref[F, Map[String, EntityType]])
     extends TypeManagementService[F]:
+
+  val repository: KnowledgeGraph[F] = traitManagementService.repository
 
   extension (entityType: EntityType)
     def inheritsFrom(fatherName: String)(using
@@ -315,7 +316,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
 
   private def getTraitsFromEntityType(
       entityTypeName: String
-  ): F[Either[ManagementServiceError, Set[SpecificTrait]]] =
+  ): F[Either[ManagementServiceError, Set[String]]] =
     val entityTypeIri = iri(ns, entityTypeName)
     val query: String =
       s"""
@@ -333,10 +334,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       .map(
         _.map(bs =>
           bs.getBinding("trait").getValue match
-            case iri: IRI => iri.getLocalName: SpecificTrait
+            case iri: IRI => iri.getLocalName
         ).toSet
       )
-      .map(Right[ManagementServiceError, Set[SpecificTrait]])
+      .map(Right[ManagementServiceError, Set[String]])
   end getTraitsFromEntityType
 
   private def getSchemaFromEntityType(entityTypeName: String): F[Schema] =
@@ -381,14 +382,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       entityType: EntityType
   ): F[Either[ManagementServiceError, Unit]] =
 
-    val model = (new DynamicModelFactory).createEmptyModel()
-
-    model.setNamespace(ns)
-    model.setNamespace(OWL.NS)
-    model.setNamespace(RDF.NS)
-    model.setNamespace(RDFS.NS)
-
     val instanceType = iri(ns, entityType.name)
+    // val ioRepository = repository.asInstanceOf[KnowledgeGraph[IO]]
 
     val statementsForInheritance
         : F[Either[ManagementServiceError, List[Statement]]] =
@@ -436,6 +431,17 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       _ <- traceT(
         s"Checking the existence, does ${entityType.name} already exist? $exist"
       )
+      traitExistence <- EitherT(traitManagementService.exist(entityType.traits))
+      _ <- {
+        val nonExistentTraits =
+          traitExistence.filter(!_._2).map(_._1).toList
+        if (nonExistentTraits.isEmpty)
+          EitherT.rightT[F, ManagementServiceError](())
+        else
+          EitherT.leftT[F, Unit](
+            ManagementServiceError.NonExistentTraitError(nonExistentTraits.head)
+          )
+      }
       stmts <- EitherT(statementsForInheritance)
       _ <- EitherT {
         if !exist

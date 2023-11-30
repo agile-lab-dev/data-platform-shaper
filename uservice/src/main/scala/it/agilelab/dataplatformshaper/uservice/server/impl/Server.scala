@@ -12,7 +12,8 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
+  TypeManagementServiceInterpreter,
+  TraitManagementServiceInterpreter
 }
 import it.agilelab.dataplatformshaper.uservice.Resource as GenResource
 import it.agilelab.dataplatformshaper.uservice.api.intepreter.OntologyManagerHandler
@@ -51,7 +52,8 @@ object Server:
     given cache: Ref[F, Map[String, EntityType]] = typeCache
 
     val repository = Rdf4jKnowledgeGraph[F](session)
-    val tms = new TypeManagementServiceInterpreter[F](repository)
+    val trms = new TraitManagementServiceInterpreter[F](repository)
+    val tms = new TypeManagementServiceInterpreter[F](trms)
     val ims = new InstanceManagementServiceInterpreter[F](tms)
 
     val assetsRoutes = resourceServiceBuilder("/").toRoutes
@@ -64,7 +66,7 @@ object Server:
     val allRoutes =
       interfaceFileRoute <+>
         assetsRoutes <+>
-        GenResource[F]().routes(new OntologyManagerHandler[F](tms, ims))
+        GenResource[F]().routes(new OntologyManagerHandler[F](tms, ims, trms))
 
     for _ <- EmberServerBuilder
         .default[F]

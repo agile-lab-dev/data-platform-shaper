@@ -12,12 +12,12 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
 import org.datatools.bigdatatypes.basictypes.SqlType
@@ -273,7 +273,6 @@ class OntologyL0Spec
   )
 
   val fileBasedDataCollectionTuple = (
-    "version" -> "1.0",
     "organization" -> "HR",
     "sub-organization" -> "Any",
     "domain" -> "Registrations",
@@ -389,7 +388,6 @@ class OntologyL0Spec
   )
 
   val fileBasedDataCollectionTupleForUpdate = (
-    "version" -> "1.0",
     "organization" -> "HR",
     "sub-organization" -> "Any",
     "domain" -> "Registrations",
@@ -532,7 +530,8 @@ class OntologyL0Spec
       )
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val service = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
 
         val entityType = EntityType(
           "TestType",
@@ -550,13 +549,15 @@ class OntologyL0Spec
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val service = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
         val entityType = l0.EntityType(
           "FileBasedDataCollectionType",
-          Set(DataCollection, Versionable),
+          Set("DataCollection"),
           fileBasedDataCollectionTypeSchema
         )
-        service.create(entityType) *>
+        trservice.create("DataCollection", None) *>
+          service.create(entityType) *>
           service.create(entityType)
       } asserting (ret =>
         ret should matchPattern { case Left(_) =>
@@ -564,6 +565,25 @@ class OntologyL0Spec
       )
     }
   }
+
+  "Creating an EntityType with a non-existing trait" - {
+    "fails" in {
+      val session = Session[IO]("localhost", 7201, "repo1", false)
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val entityType = l0.EntityType(
+          "TraitExample",
+          Set("NonExistingTrait"),
+          fileBasedDataCollectionTypeSchema
+        )
+        service.create(entityType)
+      } asserting (ret =>
+        ret should matchPattern { case Left(_) =>
+        }
+      )
+    }
 
   "Caching entity type definitions" - {
     "works" in {
@@ -576,7 +596,8 @@ class OntologyL0Spec
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tservice = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         iservice.create(
           "MissingDataCollectionType",
@@ -594,7 +615,8 @@ class OntologyL0Spec
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tservice = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         iservice.create(
           "FileBasedDataCollectionType",
@@ -609,13 +631,15 @@ class OntologyL0Spec
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tservice = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         iservice.exist("nonexistent")
       } asserting (_ should matchPattern { case Right(false) => })
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tservice = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
@@ -637,7 +661,8 @@ class OntologyL0Spec
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tservice = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
@@ -671,7 +696,8 @@ class OntologyL0Spec
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val tservice = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
@@ -707,20 +733,47 @@ class OntologyL0Spec
       })
     }
   }
+
   "Retrieving the EntityType given its name" - {
     "works" in {
       val session = Session[IO]("localhost", 7201, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val service = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
         service.read("FileBasedDataCollectionType")
       } asserting (_ shouldBe Right(
         l0.EntityType(
           "FileBasedDataCollectionType",
-          Set(DataCollection, Versionable),
+          Set("DataCollection"),
           fileBasedDataCollectionTypeSchema
         )
       ))
+    }
+  }
+
+  "Reading a Non-Existent Entity" - {
+    "succeeds if an error is returned" in {
+      val session = Session[IO]("localhost", 7201, "repo1", false)
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val nonExistentId = "non-existent-id"
+
+        (for {
+          readResult <- EitherT[IO, ManagementServiceError, Entity](
+            iservice.read(nonExistentId)
+          )
+        } yield readResult).value
+      } asserting (result => {
+        result match {
+          case Left(_) => succeed
+          case Right(_) =>
+            fail("Expected an error for non-existent entity, but got success")
+        }
+      })
     }
   }
 
@@ -729,7 +782,8 @@ class OntologyL0Spec
       val session = Session[IO]("localhost", 7210, "repo1", false)
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val service = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
         service.read("FileBasedDataCollectionType")
       }.attempt asserting (_ should matchPattern { case Left(_) => })
     }
@@ -752,7 +806,8 @@ class OntologyL0Spec
 
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val service = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
 
         val commonEntityType = l0.EntityType(
           "CommonEntityType",
@@ -768,7 +823,7 @@ class OntologyL0Spec
           )
           _ <- EitherT[IO, ManagementServiceError, Unit](
             service.create(
-              EntityType("BaseEntityType", Set(Versionable), schema),
+              EntityType("BaseEntityType", schema),
               "CommonEntityType"
             )
           )
@@ -780,7 +835,6 @@ class OntologyL0Spec
         et shouldBe Right(
           l0.EntityType(
             "BaseEntityType",
-            Set(Versionable),
             schema,
             l0.EntityType("CommonEntityType", commonSchema)
           )
@@ -815,7 +869,7 @@ class OntologyL0Spec
         )
       )
 
-      val entityType0 = EntityType("EntityType0", Set(Versionable), schema0)
+      val entityType0 = EntityType("EntityType0", schema0)
 
       val entityType1 = l0.EntityType("EntityType1", schema1)
 
@@ -823,7 +877,8 @@ class OntologyL0Spec
 
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val service = new TypeManagementServiceInterpreter[IO](repository)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
         (for {
           _ <- EitherT[IO, ManagementServiceError, Unit](
             service.create(entityType0)
@@ -842,7 +897,6 @@ class OntologyL0Spec
         et.map(_.schema) shouldBe Right(
           StructType(
             List(
-              "version" -> StringType(),
               "field0" -> StringType(),
               "field1" -> StringType(),
               "field2" -> StringType(),
