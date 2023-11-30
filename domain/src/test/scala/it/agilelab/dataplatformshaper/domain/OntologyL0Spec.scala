@@ -582,7 +582,7 @@ class OntologyL0Spec
       } asserting (ret =>
         ret should matchPattern { case Left(_) =>
         }
-        )
+      )
     }
 
     "Caching entity type definitions" - {
@@ -606,7 +606,7 @@ class OntologyL0Spec
         } asserting (ret =>
           ret should matchPattern { case Left(_) =>
           }
-          )
+        )
       }
     }
 
@@ -678,7 +678,10 @@ class OntologyL0Spec
         } asserting (entity =>
           inside(entity) { case Right(entity) =>
             assert(
-              tupleToJsonChecked(entity.values, fileBasedDataCollectionTypeSchema)
+              tupleToJsonChecked(
+                entity.values,
+                fileBasedDataCollectionTypeSchema
+              )
                 .equals(
                   tupleToJsonChecked(
                     fileBasedDataCollectionTuple,
@@ -687,7 +690,7 @@ class OntologyL0Spec
                 )
             )
           }
-          )
+        )
       }
     }
 
@@ -722,7 +725,8 @@ class OntologyL0Spec
           }
           entity match {
             case Right(Entity(_, _, data)) =>
-              val x = tupleToJsonChecked(data, fileBasedDataCollectionTypeSchema)
+              val x =
+                tupleToJsonChecked(data, fileBasedDataCollectionTypeSchema)
               val y = tupleToJsonChecked(
                 fileBasedDataCollectionTupleForUpdate,
                 fileBasedDataCollectionTypeSchema
@@ -839,7 +843,7 @@ class OntologyL0Spec
               l0.EntityType("CommonEntityType", commonSchema)
             )
           )
-          )
+        )
       }
     }
 
@@ -905,7 +909,7 @@ class OntologyL0Spec
               )
             )
           )
-          )
+        )
       }
     }
   }

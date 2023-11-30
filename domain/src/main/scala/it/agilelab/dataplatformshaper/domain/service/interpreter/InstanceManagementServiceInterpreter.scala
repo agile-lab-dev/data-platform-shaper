@@ -230,9 +230,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         summon[Functor[F]].map(
           repository.removeAndInsertStatements(
             statements,
-            statementsToRemove.map(st =>
-              (st.getSubject, st.getPredicate, st.getObject)
-            )
+            statementsToRemove
           )
         )(_ => Right[ManagementServiceError, String](entityId))
       )
@@ -668,7 +666,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
       _ <- repository.removeAndInsertStatements(
         List.empty[Statement],
-        stmts.map(st => (st.getSubject, st.getPredicate, st.getObject))
+        stmts
       )
     } yield ()).map(_ => Right[ManagementServiceError, Unit](()))
   end delete
@@ -817,7 +815,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           summon[Functor[F]].map(
             repository.removeAndInsertStatements(
               List.empty,
-              statements.map(s => (s.getSubject, s.getPredicate, s.getObject))
+              statements
             )
           )(_ => Right[ManagementServiceError, Unit](()))
         else

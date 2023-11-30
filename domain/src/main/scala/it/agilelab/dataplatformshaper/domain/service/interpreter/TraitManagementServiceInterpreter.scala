@@ -218,7 +218,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
           summon[Functor[F]].map(
             repository.removeAndInsertStatements(
               List.empty,
-              statements.map(s => (s.getSubject, s.getPredicate, s.getObject))
+              statements
             )
           )(_ => Right[ManagementServiceError, Unit](()))
         else

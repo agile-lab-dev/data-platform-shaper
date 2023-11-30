@@ -2,8 +2,7 @@ package it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter
 
 import cats.effect.Sync
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.NS.L3
-import org.eclipse.rdf4j.model.{IRI, Resource, Statement, Value}
+import org.eclipse.rdf4j.model.{Resource, Statement}
 import org.eclipse.rdf4j.query.BindingSet
 
 import scala.jdk.CollectionConverters.*
@@ -17,16 +16,15 @@ class Rdf4jKnowledgeGraph[F[_]: Sync](session: Session)
   )
   override def removeAndInsertStatements(
       statements: List[Statement],
-      deleteStatements: List[(Resource, IRI, Value)] =
-        List.empty[(Resource, IRI, Value)]
+      deleteStatements: List[Statement] = List.empty[Statement]
   ): F[Unit] =
     session.withTx(conn => {
       deleteStatements.foreach(st => {
         conn.remove(
-          st(0),
-          st(1),
-          st(2),
-          L3
+          st.getSubject,
+          st.getPredicate,
+          st.getObject,
+          st.getContext
         )
       })
       conn.add(statements.asJava)
