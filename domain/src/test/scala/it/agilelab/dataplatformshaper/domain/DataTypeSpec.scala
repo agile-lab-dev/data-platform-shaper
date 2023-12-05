@@ -293,4 +293,25 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
     })
   }
 
+  "Parsing a repeated struct" should "work" in {
+    val schema: Schema = StructType(
+      List("columns" -> StructType(
+        List(
+          "name" -> StringType(),
+          "type" -> StringType()
+        ),
+        Repeated
+      ))
+    )
+
+    val tuple: Tuple = Tuple1("columns" -> List(
+      ("name" -> "FirstName",  "type" -> "String"),
+      ("name" -> "FamilyNane", "type" -> "String"),
+      ("name" -> "Age",        "type" -> "Int")
+    ))
+
+    val res = unfoldTuple(tuple, schema, (_, _, _, _) => ())
+    res should matchPattern { case Right(()) => }
+  }
+
 end DataTypeSpec
