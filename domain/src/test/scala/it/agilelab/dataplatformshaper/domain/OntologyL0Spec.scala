@@ -502,22 +502,24 @@ class OntologyL0Spec
   )
 
   val repeatedTypeSchema: StructType = StructType(
-    List("columns" -> StructType(
-      List(
-        "name" -> StringType(),
-        "type" -> StringType()
+    List(
+      "columns" -> StructType(
+        List(
+          "name" -> StringType(),
+          "type" -> StringType()
+        ),
+        Repeated
       ),
-      Repeated
-    ),
       "additionalField" -> StringType()
     )
   )
 
-  val repeatedTypeTuple = Tuple2("columns" -> List(
-    ("name" -> "FirstName", "type" -> "String"),
-    ("name" -> "FamilyNane", "type" -> "String"),
-    ("name" -> "Age", "type" -> "Int")
-  ),
+  val repeatedTypeTuple = Tuple2(
+    "columns" -> List(
+      ("name" -> "FirstName", "type" -> "String"),
+      ("name" -> "FamilyNane", "type" -> "String"),
+      ("name" -> "Age", "type" -> "Int")
+    ),
     "additionalField" -> "Example"
   )
 
@@ -611,7 +613,6 @@ class OntologyL0Spec
       }
     }
 
-
     "Creating an EntityType with a repeated struct" - {
       "works" in {
         val session = Session[IO]("localhost", 7201, "repo1", false)
@@ -647,7 +648,6 @@ class OntologyL0Spec
       }
     }
 
-
     "Creating an instance for an EntityType with a repeated struct and reading it" - {
       "works" in {
         val session = Session[IO]("localhost", 7201, "repo1", false)
@@ -682,7 +682,7 @@ class OntologyL0Spec
                 )
             )
           }
-          )
+        )
       }
     }
 
