@@ -501,6 +501,26 @@ class OntologyL0Spec
     "emptyOptionalStruct" -> None,
   )
 
+  val repeatedTypeSchema: StructType = StructType(
+    List("columns" -> StructType(
+      List(
+        "name" -> StringType(),
+        "type" -> StringType()
+      ),
+      Repeated
+    ),
+      "additionalField" -> StringType()
+    )
+  )
+
+  val repeatedTypeTuple = Tuple2("columns" -> List(
+    ("name" -> "FirstName", "type" -> "String"),
+    ("name" -> "FamilyNane", "type" -> "String"),
+    ("name" -> "Age", "type" -> "Int")
+  ),
+    "additionalField" -> "Example"
+  )
+
   "Creating an EntityType instance" - {
     "works" in {
       val session = Session[IO]("localhost", 7201, "repo1", false)
@@ -588,6 +608,81 @@ class OntologyL0Spec
     "Caching entity type definitions" - {
       "works" in {
         cache.get.asserting(_.size shouldBe 1)
+      }
+    }
+
+
+    "Creating an EntityType with a repeated struct" - {
+      "works" in {
+        val session = Session[IO]("localhost", 7201, "repo1", false)
+        session.use(session =>
+          val repository = Rdf4jKnowledgeGraph[IO](session)
+          val trservice = new TraitManagementServiceInterpreter[IO](repository)
+          val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+          val entityType = EntityType(
+            "RepeatedStructTestType",
+            repeatedTypeSchema
+          )
+
+          service.create(entityType) *>
+            service.read("RepeatedStructTestType").map(_.map(_.schema))
+        ) asserting (sc => sc shouldBe Right(repeatedTypeSchema))
+      }
+    }
+
+    "Creating an instance for an EntityType with a repeated struct" - {
+      "works" in {
+        val session = Session[IO]("localhost", 7201, "repo1", false)
+        session.use { session =>
+          val repository = Rdf4jKnowledgeGraph[IO](session)
+          val trservice = new TraitManagementServiceInterpreter[IO](repository)
+          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+          iservice.create(
+            "RepeatedStructTestType",
+            repeatedTypeTuple
+          )
+        } asserting (_ should matchPattern { case Right(_) => })
+      }
+    }
+
+
+    "Creating an instance for an EntityType with a repeated struct and reading it" - {
+      "works" in {
+        val session = Session[IO]("localhost", 7201, "repo1", false)
+        session.use { session =>
+          val repository = Rdf4jKnowledgeGraph[IO](session)
+          val trservice = new TraitManagementServiceInterpreter[IO](repository)
+          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+          (for {
+            uid <- EitherT[IO, ManagementServiceError, String](
+              iservice.create(
+                "RepeatedStructTestType",
+                repeatedTypeTuple
+              )
+            )
+            read <- EitherT[IO, ManagementServiceError, Entity](
+              iservice.read(uid)
+            )
+          } yield read).value
+        } asserting (entity =>
+          inside(entity) { case Right(entity) =>
+            assert(
+              tupleToJsonChecked(
+                entity.values,
+                repeatedTypeSchema
+              )
+                .equals(
+                  tupleToJsonChecked(
+                    repeatedTypeTuple,
+                    repeatedTypeSchema
+                  )
+                )
+            )
+          }
+          )
       }
     }
 
