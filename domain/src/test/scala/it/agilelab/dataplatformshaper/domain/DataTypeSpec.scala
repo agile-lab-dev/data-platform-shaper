@@ -55,6 +55,13 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
               Repeated
             )
           )
+        ),
+        "columns" -> StructType(
+          List(
+            "name" -> StringType(),
+            "type" -> StringType()
+          ),
+          Repeated
         )
       )
     )
@@ -103,7 +110,12 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "nested" -> ("nest1" -> "ciccio1", "nest2" -> "ciccio2", "furtherNested" -> List(
         ("nest3" -> "ciccio3", "nest4" -> "ciccio4"),
         ("nest3" -> "ciccio5", "nest4" -> "ciccio6")
-      ))
+      )),
+      "columns" -> List(
+        ("name" -> "FirstName", "type" -> "String"),
+        ("name" -> "FamilyNane", "type" -> "String"),
+        ("name" -> "Age", "type" -> "Int")
+      )
     )
 
     (for {
@@ -152,7 +164,12 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "nested" -> ("nest1" -> "ciccio1", "nest2" -> "ciccio2", "furtherNested" -> List(
           ("nest3" -> "pippo3", "nest4" -> "ciccio4"),
           ("nest3" -> "ciccio5", "nest4" -> "ciccio6")
-        ))
+        )),
+        "columns" -> List(
+          ("name" -> "FirstName", "type" -> "String"),
+          ("name" -> "FamilyNane", "type" -> "String"),
+          ("name" -> "Age", "type" -> "Int")
+        )
       )
     )
 
@@ -202,6 +219,13 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
             "nest2" -> StringType()
           )
         ),
+        "columns" -> StructType(
+          List(
+            "name" -> StringType(),
+            "type" -> StringType()
+          ),
+          Repeated
+        ),
         "aNullable" -> StringType(Nullable)
       )
     )
@@ -236,6 +260,11 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "nest1": "ciccio1",
         "nest2": "ciccio2"
       },
+      "columns": [
+          {"name": "FirstName",  "type": "String"},
+          {"name": "FamilyNane", "type": "String"},
+          {"name": "Age",        "type": "Int"}
+        ],
       "aNullable": "notNull"
     }
     """
@@ -295,23 +324,33 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
 
   "Parsing a repeated struct" should "work" in {
     val schema: Schema = StructType(
-      List("columns" -> StructType(
-        List(
-          "name" -> StringType(),
-          "type" -> StringType()
-        ),
-        Repeated
-      ))
+      List(
+        "columns" -> StructType(
+          List(
+            "name" -> StringType(),
+            "type" -> StringType()
+          ),
+          Repeated
+        )
+      )
     )
 
-    val tuple: Tuple = Tuple1("columns" -> List(
-      ("name" -> "FirstName",  "type" -> "String"),
-      ("name" -> "FamilyNane", "type" -> "String"),
-      ("name" -> "Age",        "type" -> "Int")
-    ))
+    val tuple: Tuple = Tuple1(
+      "columns" -> List(
+        ("name" -> "FirstName", "type" -> "String"),
+        ("name" -> "FamilyNane", "type" -> "String"),
+        ("name" -> "Age", "type" -> "Int")
+      )
+    )
 
     val res = unfoldTuple(tuple, schema, (_, _, _, _) => ())
     res should matchPattern { case Right(()) => }
+
+    val json = tupleToJsonChecked(tuple, schema)
+
+    val newTuple = jsonToTupleChecked(json, schema)
+
+    tuple shouldBe (newTuple)
   }
 
 end DataTypeSpec

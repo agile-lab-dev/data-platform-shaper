@@ -498,7 +498,7 @@ end unfoldTuple
   )
 )
 @throws[IllegalArgumentException]
-private def jsonToTupleChecked(
+def jsonToTupleChecked(
     json: Json,
     schema: Schema
 ): Tuple =
@@ -637,9 +637,13 @@ private def jsonToTupleChecked(
                   Some(jsonToTupleChecked(json, schema))
                 )
               case Repeated =>
-                throw new IllegalArgumentException(
-                  s"Repeated struct is not supported"
-                )
+                obj.focus
+                  .flatMap(_.asArray)
+                  .get
+                  .map(json =>
+                    jsonToTupleChecked(json, schema.copy(mode = Required))
+                  )
+                  .toList
             end match
           case tpe =>
             throw new IllegalArgumentException(s"$tpe is not supported")
@@ -853,8 +857,12 @@ def tupleToJsonChecked(
                     .asInstanceOf[Option[Tuple]]
                     .fold(Json.Null)(tupleToJsonChecked(_, schema))
                 case Repeated =>
-                  throw new IllegalArgumentException(
-                    s"Repeated struct is not supported"
+                  Json.fromValues(
+                    tupleFieldValue
+                      .asInstanceOf[List[Tuple]]
+                      .map(tuple =>
+                        tupleToJsonChecked(tuple, schema.copy(mode = Required))
+                      )
                   )
               end match
             case tpe =>
