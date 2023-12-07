@@ -546,7 +546,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                 fieldValue.map(createTupleForStructDataType(dataType, _))
               val tuples: F[List[Tuple]] =
                 Traverse[List].sequence(listOfFTuples)
-              tuples.map(ts => fieldName -> ts)
+              tuples.map(ts =>
+                fieldName -> ts.reverse
+              ) // TODO it could break with Virtuoso
             case Nullable =>
               if fieldValue(0)(1) === "null" then
                 Applicative[F].pure(fieldName -> Option.empty[Tuple])
