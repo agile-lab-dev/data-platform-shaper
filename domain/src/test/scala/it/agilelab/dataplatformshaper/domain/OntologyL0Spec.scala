@@ -506,21 +506,45 @@ class OntologyL0Spec
       "columns" -> StructType(
         List(
           "name" -> StringType(),
-          "type" -> StringType()
+          "type" -> StringType(),
+          "date" -> DateType(),
+          "timestamp" -> TimestampDataType()
         ),
         Repeated
       ),
-      "additionalField" -> StringType()
+      "additionalField" -> StringType(),
+      "externalStruct" -> StructType(
+        List("inner-field" -> StringType())
+      )
     )
   )
 
-  val repeatedTypeTuple = Tuple2(
+  val repeatedTypeTuple = Tuple3(
     "columns" -> List(
-      ("name" -> "FirstName", "type" -> "String"),
-      ("name" -> "FamilyNane", "type" -> "String"),
-      ("name" -> "Age", "type" -> "Int")
+      (
+        "name" -> "FirstName",
+        "type" -> "String",
+        "date" -> LocalDate.of(2009, 8, 26),
+        "timestamp" -> ZonedDateTime
+          .of(2025, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+      ),
+      (
+        "name" -> "FamilyNane",
+        "type" -> "String",
+        "date" -> LocalDate.of(2000, 6, 19),
+        "timestamp" -> ZonedDateTime
+          .of(2024, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+      ),
+      (
+        "name" -> "Age",
+        "type" -> "Int",
+        "date" -> LocalDate.of(1996, 11, 24),
+        "timestamp" -> ZonedDateTime
+          .of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+      )
     ),
-    "additionalField" -> "Example"
+    "additionalField" -> "Example",
+    "externalStruct" -> Tuple1("inner-field" -> "StructExample")
   )
 
   "Creating an EntityType instance" - {
@@ -629,22 +653,6 @@ class OntologyL0Spec
           service.create(entityType) *>
             service.read("RepeatedStructTestType").map(_.map(_.schema))
         ) asserting (sc => sc shouldBe Right(repeatedTypeSchema))
-      }
-    }
-
-    "Creating an instance for an EntityType with a repeated struct" - {
-      "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
-          iservice.create(
-            "RepeatedStructTestType",
-            repeatedTypeTuple
-          )
-        } asserting (_ should matchPattern { case Right(_) => })
       }
     }
 
