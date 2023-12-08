@@ -30,10 +30,19 @@ object ApplicationConfiguration:
 
   def httpPort: Int = config.get.getInt(s"${BuildInfo.name}.http-port")
 
+  def graphdbType: String =
+    config.get.getString(s"${BuildInfo.name}.graphdb-type")
+
   def graphdbPort: Int = config.get.getInt(s"${BuildInfo.name}.graphdb-port")
 
   def graphdbHost: String =
     config.get.getString(s"${BuildInfo.name}.graphdb-host")
+
+  def graphdbUser: String =
+    config.get.getString(s"${BuildInfo.name}.graphdb-user")
+
+  def graphdbPwd: String =
+    config.get.getString(s"${BuildInfo.name}.graphdb-pwd")
 
   def graphdbRepositoryId: String =
     config.get.getString(s"${BuildInfo.name}.graphdb-repository-id")

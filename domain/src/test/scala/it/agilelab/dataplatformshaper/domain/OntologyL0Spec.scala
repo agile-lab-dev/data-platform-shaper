@@ -56,6 +56,8 @@ class OntologyL0Spec
     with Matchers
     with BeforeAndAfterAll:
 
+  val graphdbType = "graphdb"
+
   given Equality[DataType] with
     def areEqual(x: DataType, y: Any): Boolean =
       x match
@@ -74,16 +76,31 @@ class OntologyL0Spec
       ret
     end areEqual
   end given
-  val graphdbContainer = new GenericContainer("ontotext/graphdb:10.3.1")
 
-  graphdbContainer.addExposedPort(7200)
-  graphdbContainer.setPortBindings(List("0.0.0.0:" + 7201 + ":" + 7200).asJava)
+  val graphdbContainer =
+    graphdbType match
+      case "graphdb" =>
+        val container = new GenericContainer("ontotext/graphdb:10.3.1")
+        container.addExposedPort(7200)
+        container.setPortBindings(List("0.0.0.0:" + 7201 + ":" + 7200).asJava)
+        container
+      case "virtuoso" =>
+        val container = new GenericContainer(
+          "openlink/virtuoso-opensource-7:latest"
+        )
+        container.withEnv("DBA_PASSWORD", "mysecret")
+        container.addExposedPort(1111)
+        container.setPortBindings(List("0.0.0.0:" + 7201 + ":" + 1111).asJava)
+        container
+    end match
 
   override protected def beforeAll(): Unit =
     graphdbContainer.start()
     graphdbContainer.waitingFor(new HostPortWaitStrategy())
-    val port = graphdbContainer.getMappedPort(7200).intValue()
-    createRepository(port)
+    if graphdbType === "graphdb" then
+      val port = graphdbContainer.getMappedPort(7200).intValue()
+      createRepository(port)
+    end if
   end beforeAll
 
   override protected def afterAll(): Unit =
@@ -136,7 +153,15 @@ class OntologyL0Spec
 
   "Loading the base ontology" - {
     "works" in {
-      val session = Session[IO]("localhost", 7201, "repo1", false)
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val model1 = Rio.parse(
@@ -549,7 +574,15 @@ class OntologyL0Spec
 
   "Creating an EntityType instance" - {
     "works" in {
-      val session = Session[IO]("localhost", 7201, "repo1", false)
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
       val schema: StructType = StructType(
         List(
           "organization" -> StringType(),
@@ -592,7 +625,15 @@ class OntologyL0Spec
 
   "Creating the same EntityType instance" - {
     "fails" in {
-      val session = Session[IO]("localhost", 7201, "repo1", false)
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -614,7 +655,15 @@ class OntologyL0Spec
 
   "Creating an EntityType with a non-existing trait" - {
     "fails" in {
-      val session = Session[IO]("localhost", 7201, "repo1", false)
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -639,7 +688,15 @@ class OntologyL0Spec
 
     "Creating an EntityType with a repeated struct" - {
       "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use(session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -658,7 +715,15 @@ class OntologyL0Spec
 
     "Creating an instance for an EntityType with a repeated struct and reading it" - {
       "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use { session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -696,7 +761,15 @@ class OntologyL0Spec
 
     "Creating an instance for an EntityType that doesn't exist" - {
       "fails" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use { session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -715,7 +788,15 @@ class OntologyL0Spec
 
     "Creating an instance for an EntityType" - {
       "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use { session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -731,7 +812,15 @@ class OntologyL0Spec
 
     "Checking if an Entity instance exists" - {
       "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use { session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -761,7 +850,15 @@ class OntologyL0Spec
 
     "Retrieving an Entity given its id" - {
       "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use { session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -799,7 +896,15 @@ class OntologyL0Spec
 
     "Updating an Entity given its id" - {
       "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use { session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -843,7 +948,15 @@ class OntologyL0Spec
 
     "Retrieving the EntityType given its name" - {
       "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use { session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -861,7 +974,15 @@ class OntologyL0Spec
 
     "Reading a Non-Existent Entity" - {
       "succeeds if an error is returned" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use { session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -886,7 +1007,15 @@ class OntologyL0Spec
 
     "Using a service when there is no connection with the knowledge graph" - {
       "fails" in {
-        val session = Session[IO]("localhost", 7210, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7210,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         session.use { session =>
           val repository = Rdf4jKnowledgeGraph[IO](session)
           val trservice = new TraitManagementServiceInterpreter[IO](repository)
@@ -898,7 +1027,15 @@ class OntologyL0Spec
 
     "Inheriting from another EntityType with traits" - {
       "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         val commonSchema: StructType = StructType(
           List(
             "commonString" -> StringType()
@@ -952,8 +1089,15 @@ class OntologyL0Spec
 
     "Following the inheritance chain for an EntityType" - {
       "works" in {
-        val session = Session[IO]("localhost", 7201, "repo1", false)
-
+        val session = Session[IO](
+          graphdbType,
+          "localhost",
+          7201,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
         val schema0: Schema = StructType(
           List(
             "field0" -> StringType()

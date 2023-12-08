@@ -4,8 +4,15 @@ import sbt.*
 object Dependencies {
 
   private[this] object rdf4j {
-    lazy val namespace = "org.eclipse.rdf4j"
-    lazy val client    = namespace % "rdf4j-client" % rdf4jVersion
+    lazy val namespace    = "org.eclipse.rdf4j"
+    lazy val client       = namespace % "rdf4j-client" % rdf4jVersion
+    lazy val queryAlgebra = namespace % "rdf4j-queryalgebra-evaluation" % rdf4jVersion
+  }
+
+  private[this] object virtuoso {
+    lazy val namespace   = "com.openlinksw"
+    lazy val rdf4jDriver = namespace % "virt_rdf4j_v4_0" % virtuosoRDF4JVersion
+    lazy val jdbcDriver  = namespace % "virtjdbc4_2" % virtuosoJDBCVersion
   }
 
   private[this] object dataTools {
@@ -77,6 +84,9 @@ object Dependencies {
 
     lazy val domain: Seq[ModuleID] = Seq(
       rdf4j.client                 % Compile,
+      rdf4j.queryAlgebra           % Compile,
+      virtuoso.rdf4jDriver         % Compile,
+      virtuoso.jdbcDriver          % Compile,
       cats.core                    % Compile,
       cats.effect                  % Compile,
       cats.loggingCore             % Compile,

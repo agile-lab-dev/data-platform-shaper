@@ -66,18 +66,34 @@ class ApiSpec
     with Matchers
     with BeforeAndAfterAll:
 
-  val graphdbContainer = new GenericContainer("ontotext/graphdb:10.3.1")
+  val graphdbType = "graphdb"
 
-  graphdbContainer.addExposedPort(7200)
-  graphdbContainer.setPortBindings(List("0.0.0.0:" + 7202 + ":" + 7200).asJava)
+  val graphdbContainer: GenericContainer[Nothing] =
+    graphdbType match
+      case "graphdb" =>
+        val container = new GenericContainer("ontotext/graphdb:10.3.1")
+        container.addExposedPort(7200)
+        container.setPortBindings(List("0.0.0.0:" + 7202 + ":" + 7200).asJava)
+        container
+      case "virtuoso" =>
+        val container = new GenericContainer(
+          "openlink/virtuoso-opensource-7:latest"
+        )
+        container.withEnv("DBA_PASSWORD", "mysecret")
+        container.addExposedPort(1111)
+        container.setPortBindings(List("0.0.0.0:" + 7202 + ":" + 1111).asJava)
+        container
+    end match
 
   var server: Option[FiberIO[Nothing]] = None
 
   override protected def beforeAll(): Unit =
     graphdbContainer.start()
     graphdbContainer.waitingFor(new HostPortWaitStrategy())
-    val port = graphdbContainer.getMappedPort(7200).intValue()
-    createRepository(port)
+    if graphdbType === "graphdb" then
+      val port = graphdbContainer.getMappedPort(7200).intValue()
+      createRepository(port)
+    end if
     loadBaseOntologies()
     server = Some(createServer())
     Thread.sleep(1000)
@@ -129,7 +145,15 @@ class ApiSpec
   end createRepository
 
   def loadBaseOntologies(): Unit =
-    val session = Session[IO]("localhost", 7202, "repo1", false)
+    val session = Session[IO](
+      graphdbType,
+      "localhost",
+      7202,
+      "dba",
+      "mysecret",
+      "repo1",
+      false
+    )
     session
       .use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
@@ -157,9 +181,12 @@ class ApiSpec
   end loadBaseOntologies
 
   def createServer(): FiberIO[Nothing] =
-    val session: Session = Session.getSession(
-      "127.0.0.1",
+    val session = Session.getSession(
+      graphdbType,
+      "localhost",
       7202,
+      "dba",
+      "mysecret",
       "repo1",
       false
     )

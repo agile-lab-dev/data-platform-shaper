@@ -24,8 +24,11 @@ object Main extends IOApp:
     val server = for {
       _ <- createRepository
       session = Session.getSession(
+        graphdbType,
         graphdbHost,
         graphdbPort,
+        graphdbUser,
+        graphdbPwd,
         graphdbRepositoryId,
         graphdbRepositoryTls
       )

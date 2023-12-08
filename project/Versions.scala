@@ -1,6 +1,8 @@
 object Versions {
    lazy val http4sVersion                    = "0.23.24"
    lazy val rdf4jVersion                     = "4.3.8"
+   lazy val virtuosoJDBCVersion              = "3.123"
+   lazy val virtuosoRDF4JVersion             = "1.17"
    lazy val dataToolsVersion                 = "1.3.2"
    lazy val typesafeConfig                   = "1.4.3"
    lazy val catsVersion                      = "2.10.0"
