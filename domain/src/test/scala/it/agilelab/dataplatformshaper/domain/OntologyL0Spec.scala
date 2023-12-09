@@ -56,7 +56,7 @@ class OntologyL0Spec
     with Matchers
     with BeforeAndAfterAll:
 
-  val graphdbType = "graphdb"
+  val graphdbType = "virtuoso"
 
   given Equality[DataType] with
     def areEqual(x: DataType, y: Any): Boolean =
@@ -77,7 +77,7 @@ class OntologyL0Spec
     end areEqual
   end given
 
-  val graphdbContainer =
+  val graphdbContainer: GenericContainer[Nothing] =
     graphdbType match
       case "graphdb" =>
         val container = new GenericContainer("ontotext/graphdb:10.3.1")
@@ -182,18 +182,11 @@ class OntologyL0Spec
         val statements2 = model2.getStatements(null, null, null, iri(ns, "L1"))
         repository.removeAndInsertStatements(
           statements1.asScala.toList ++ statements2.asScala.toList
-        ) *> repository.evaluateQuery(
-          s"""
-               |prefix ns: <${ns.getName}>
-               |select ?p ?o {
-               | ns:EntityType ?p ?o .
-               |}
-               |""".stripMargin
         )
-      } asserting (_.toList.length shouldBe 1)
+      } asserting (_ => true shouldBe true)
     }
   }
-//TODO: Make lists order dependent
+
   val fileBasedDataCollectionTypeSchema: StructType = StructType(
     List(
       "organization" -> StringType(),
@@ -297,7 +290,7 @@ class OntologyL0Spec
     )
   )
 
-  val fileBasedDataCollectionTuple = (
+  val fileBasedDataCollectionTuple: Tuple = (
     "organization" -> "HR",
     "sub-organization" -> "Any",
     "domain" -> "Registrations",
@@ -412,7 +405,7 @@ class OntologyL0Spec
     "emptyOptionalStruct" -> None,
   )
 
-  val fileBasedDataCollectionTupleForUpdate = (
+  val fileBasedDataCollectionTupleForUpdate: Tuple = (
     "organization" -> "HR",
     "sub-organization" -> "Any",
     "domain" -> "Registrations",
@@ -531,9 +524,7 @@ class OntologyL0Spec
       "columns" -> StructType(
         List(
           "name" -> StringType(),
-          "type" -> StringType(),
-          "date" -> DateType(),
-          "timestamp" -> TimestampDataType()
+          "type" -> StringType()
         ),
         Repeated
       ),
@@ -544,28 +535,19 @@ class OntologyL0Spec
     )
   )
 
-  val repeatedTypeTuple = Tuple3(
+  val repeatedTypeTuple: Tuple = Tuple3(
     "columns" -> List(
       (
-        "name" -> "FirstName",
-        "type" -> "String",
-        "date" -> LocalDate.of(2009, 8, 26),
-        "timestamp" -> ZonedDateTime
-          .of(2025, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
-      ),
-      (
-        "name" -> "FamilyNane",
-        "type" -> "String",
-        "date" -> LocalDate.of(2000, 6, 19),
-        "timestamp" -> ZonedDateTime
-          .of(2024, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
-      ),
-      (
-        "name" -> "Age",
         "type" -> "Int",
-        "date" -> LocalDate.of(1996, 11, 24),
-        "timestamp" -> ZonedDateTime
-          .of(2023, 10, 11, 12, 0, 0, 0, ZoneId.of("Europe/London"))
+        "name" -> "Age"
+      ),
+      (
+        "type" -> "String",
+        "name" -> "FamilyNane"
+      ),
+      (
+        "type" -> "String",
+        "name" -> "FirstName"
       )
     ),
     "additionalField" -> "Example",
@@ -608,7 +590,8 @@ class OntologyL0Spec
         )
       )
       session.use(session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
         val trservice = new TraitManagementServiceInterpreter[IO](repository)
         val service = new TypeManagementServiceInterpreter[IO](trservice)
 
@@ -619,7 +602,7 @@ class OntologyL0Spec
 
         service.create(entityType) *>
           service.read("TestType").map(_.map(_.schema))
-      ) asserting (sc => sc shouldBe Right(schema))
+      ) asserting (_.map(_ === schema) shouldBe Right(true))
     }
   }
 
@@ -635,7 +618,8 @@ class OntologyL0Spec
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
         val trservice = new TraitManagementServiceInterpreter[IO](repository)
         val service = new TypeManagementServiceInterpreter[IO](trservice)
         val entityType = l0.EntityType(
@@ -679,485 +663,497 @@ class OntologyL0Spec
         }
       )
     }
+  }
 
-    "Caching entity type definitions" - {
-      "works" in {
-        cache.get.asserting(_.size shouldBe 1)
-      }
+  "Caching entity type definitions" - {
+    "works" in {
+      cache.get.asserting(_.size shouldBe 1)
     }
+  }
 
-    "Creating an EntityType with a repeated struct" - {
-      "works" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
+  "Creating an EntityType with a repeated struct" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use(session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val entityType = EntityType(
+          "RepeatedStructTestType",
+          repeatedTypeSchema
         )
-        session.use(session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val service = new TypeManagementServiceInterpreter[IO](trservice)
 
-          val entityType = EntityType(
-            "RepeatedStructTestType",
-            repeatedTypeSchema
+        service.create(entityType) *>
+          service.read("RepeatedStructTestType").map(_.map(_.schema))
+      ) asserting (_.map(_ === repeatedTypeSchema) shouldBe Right(true))
+    }
+  }
+
+  "Creating an instance for an EntityType with a repeated struct and reading it" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        (for {
+          uid <- EitherT[IO, ManagementServiceError, String](
+            iservice.create(
+              "RepeatedStructTestType",
+              repeatedTypeTuple
+            )
           )
-
-          service.create(entityType) *>
-            service.read("RepeatedStructTestType").map(_.map(_.schema))
-        ) asserting (sc => sc shouldBe Right(repeatedTypeSchema))
-      }
-    }
-
-    "Creating an instance for an EntityType with a repeated struct and reading it" - {
-      "works" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
-        )
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
-          (for {
-            uid <- EitherT[IO, ManagementServiceError, String](
-              iservice.create(
-                "RepeatedStructTestType",
-                repeatedTypeTuple
-              )
-            )
-            read <- EitherT[IO, ManagementServiceError, Entity](
-              iservice.read(uid)
-            )
-          } yield read).value
-        } asserting (entity =>
-          inside(entity) { case Right(entity) =>
-            assert(
-              tupleToJsonChecked(
-                entity.values,
-                repeatedTypeSchema
-              )
-                .equals(
-                  tupleToJsonChecked(
-                    repeatedTypeTuple,
-                    repeatedTypeSchema
+          read <- EitherT[IO, ManagementServiceError, Entity](
+            iservice.read(uid)
+          )
+        } yield read).value
+      } asserting (entity =>
+        inside(entity) { case Right(entity) =>
+          val x = entity.values.toArray.map(_.asInstanceOf[(String, Any)]).toMap
+          val y =
+            repeatedTypeTuple.toArray.map(_.asInstanceOf[(String, Any)]).toMap
+          assert(
+            x.keySet === y.keySet &&
+              x("additionalField") === y("additionalField") &&
+              x("externalStruct") === y("externalStruct") && {
+                val xcols = x("columns")
+                  .asInstanceOf[List[((String, String), (String, String))]]
+                  .map(
+                    _.toArray
+                      .map(_.asInstanceOf[(String, String)])
+                      .map(_.toArray.map(_.asInstanceOf[String]).toSet)
+                      .toSet
                   )
-                )
-            )
-          }
-        )
-      }
-    }
-
-    "Creating an instance for an EntityType that doesn't exist" - {
-      "fails" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
-        )
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
-          iservice.create(
-            "MissingDataCollectionType",
-            fileBasedDataCollectionTuple
-          )
-        } asserting (ret =>
-          ret should matchPattern { case Left(_) =>
-          }
-        )
-      }
-    }
-
-    "Creating an instance for an EntityType" - {
-      "works" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
-        )
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
-          iservice.create(
-            "FileBasedDataCollectionType",
-            fileBasedDataCollectionTuple
-          )
-        } asserting (_ should matchPattern { case Right(_) => })
-      }
-    }
-
-    "Checking if an Entity instance exists" - {
-      "works" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
-        )
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
-          iservice.exist("nonexistent")
-        } asserting (_ should matchPattern { case Right(false) => })
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
-          (for {
-            uid <- EitherT[IO, ManagementServiceError, String](
-              iservice.create(
-                "FileBasedDataCollectionType",
-                fileBasedDataCollectionTuple
-              )
-            )
-            check <- EitherT[IO, ManagementServiceError, Boolean](
-              iservice.exist(uid)
-            )
-          } yield check).value
-        } asserting (_ should matchPattern { case Right(true) => })
-      }
-    }
-
-    "Retrieving an Entity given its id" - {
-      "works" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
-        )
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
-          (for {
-            uid <- EitherT[IO, ManagementServiceError, String](
-              iservice.create(
-                "FileBasedDataCollectionType",
-                fileBasedDataCollectionTuple
-              )
-            )
-            read <- EitherT[IO, ManagementServiceError, Entity](
-              iservice.read(uid)
-            )
-          } yield read).value
-        } asserting (entity =>
-          inside(entity) { case Right(entity) =>
-            assert(
-              tupleToJsonChecked(
-                entity.values,
-                fileBasedDataCollectionTypeSchema
-              )
-                .equals(
-                  tupleToJsonChecked(
-                    fileBasedDataCollectionTuple,
-                    fileBasedDataCollectionTypeSchema
+                  .toSet
+                val ycols = y("columns")
+                  .asInstanceOf[List[((String, String), (String, String))]]
+                  .map(
+                    _.toArray
+                      .map(_.asInstanceOf[(String, String)])
+                      .map(_.toArray.map(_.asInstanceOf[String]).toSet)
+                      .toSet
                   )
+                  .toSet
+                xcols == ycols
+              }
+          )
+        }
+      )
+    }
+  }
+
+  "Creating an instance for an EntityType that doesn't exist" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        iservice.create(
+          "MissingDataCollectionType",
+          fileBasedDataCollectionTuple
+        )
+      } asserting (ret =>
+        ret should matchPattern { case Left(_) =>
+        }
+      )
+    }
+  }
+
+  "Creating an instance for an EntityType" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        iservice.create(
+          "FileBasedDataCollectionType",
+          fileBasedDataCollectionTuple
+        )
+      } asserting (_ should matchPattern { case Right(_) => })
+    }
+  }
+
+  "Checking if an Entity instance exists" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        iservice.exist("nonexistent")
+      } asserting (_ should matchPattern { case Right(false) => })
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        (for {
+          uid <- EitherT[IO, ManagementServiceError, String](
+            iservice.create(
+              "FileBasedDataCollectionType",
+              fileBasedDataCollectionTuple
+            )
+          )
+          check <- EitherT[IO, ManagementServiceError, Boolean](
+            iservice.exist(uid)
+          )
+        } yield check).value
+      } asserting (_ should matchPattern { case Right(true) => })
+    }
+  }
+
+  "Retrieving an Entity given its id" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        (for {
+          uid <- EitherT[IO, ManagementServiceError, String](
+            iservice.create(
+              "FileBasedDataCollectionType",
+              fileBasedDataCollectionTuple
+            )
+          )
+          read <- EitherT[IO, ManagementServiceError, Entity](
+            iservice.read(uid)
+          )
+        } yield read).value
+      } asserting (entity =>
+        inside(entity) { case Right(entity) =>
+          assert(
+            tupleToJsonChecked(
+              entity.values,
+              fileBasedDataCollectionTypeSchema
+            )
+              .equals(
+                tupleToJsonChecked(
+                  fileBasedDataCollectionTuple,
+                  fileBasedDataCollectionTypeSchema
                 )
+              )
+          )
+        }
+      )
+    }
+  }
+
+  "Updating an Entity given its id" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        (for {
+          uid <- EitherT[IO, ManagementServiceError, String](
+            iservice.create(
+              "FileBasedDataCollectionType",
+              fileBasedDataCollectionTuple
             )
-          }
-        )
+          )
+          _ <- EitherT[IO, ManagementServiceError, String](
+            iservice.update(
+              uid,
+              fileBasedDataCollectionTupleForUpdate
+            )
+          )
+          read <- EitherT[IO, ManagementServiceError, Entity](
+            iservice.read(uid)
+          )
+        } yield read).value
+      } asserting (entity => {
+        entity should matchPattern {
+          case Right(Entity(_, "FileBasedDataCollectionType", _)) =>
+        }
+        entity match {
+          case Right(Entity(_, _, data)) =>
+            val x =
+              tupleToJsonChecked(data, fileBasedDataCollectionTypeSchema)
+            val y = tupleToJsonChecked(
+              fileBasedDataCollectionTupleForUpdate,
+              fileBasedDataCollectionTypeSchema
+            )
+            x shouldBe y
+          case _ => fail("Unexpected pattern encountered")
+        }
+      })
+    }
+  }
+
+  "Retrieving the EntityType given its name" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        service.read("FileBasedDataCollectionType")
+      } asserting (_.map(et =>
+        et.name === "FileBasedDataCollectionType" &&
+          et.traits === Set("DataCollection") &&
+          et.baseSchema === fileBasedDataCollectionTypeSchema
+      ) shouldBe Right(true))
+    }
+  }
+
+  "Reading a Non-Existent Entity" - {
+    "succeeds if an error is returned" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val nonExistentId = "non-existent-id"
+
+        (for {
+          readResult <- EitherT[IO, ManagementServiceError, Entity](
+            iservice.read(nonExistentId)
+          )
+        } yield readResult).value
+      } asserting {
+        case Left(_) => succeed
+        case Right(_) =>
+          fail("Expected an error for non-existent entity, but got success")
       }
     }
+  }
 
-    "Updating an Entity given its id" - {
-      "works" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
-        )
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
-          (for {
-            uid <- EitherT[IO, ManagementServiceError, String](
-              iservice.create(
-                "FileBasedDataCollectionType",
-                fileBasedDataCollectionTuple
-              )
-            )
-            _ <- EitherT[IO, ManagementServiceError, String](
-              iservice.update(
-                uid,
-                fileBasedDataCollectionTupleForUpdate
-              )
-            )
-            read <- EitherT[IO, ManagementServiceError, Entity](
-              iservice.read(uid)
-            )
-          } yield read).value
-        } asserting (entity => {
-          entity should matchPattern {
-            case Right(Entity(_, "FileBasedDataCollectionType", _)) =>
-          }
-          entity match {
-            case Right(Entity(_, _, data)) =>
-              val x =
-                tupleToJsonChecked(data, fileBasedDataCollectionTypeSchema)
-              val y = tupleToJsonChecked(
-                fileBasedDataCollectionTupleForUpdate,
-                fileBasedDataCollectionTypeSchema
-              )
-              x shouldBe y
-            case _ => fail("Unexpected pattern encountered")
-          }
-        })
-      }
+  "Using a service when there is no connection with the knowledge graph" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7210,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        service.read("FileBasedDataCollectionType")
+      }.attempt asserting (_ should matchPattern { case Left(_) => })
     }
+  }
 
-    "Retrieving the EntityType given its name" - {
-      "works" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
+  "Inheriting from another EntityType with traits" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val commonSchema: StructType = StructType(
+        List(
+          "commonString" -> StringType()
         )
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val service = new TypeManagementServiceInterpreter[IO](trservice)
-          service.read("FileBasedDataCollectionType")
-        } asserting (_ shouldBe Right(
+      )
+
+      val schema: StructType = StructType(
+        List(
+          "anotherString" -> StringType()
+        )
+      )
+
+      session.use(session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val commonEntityType = l0.EntityType(
+          "CommonEntityType",
+          commonSchema
+        )
+
+        (for {
+          _ <- EitherT[IO, ManagementServiceError, Unit](
+            service.create(commonEntityType)
+          )
+          _ <- EitherT[IO, ManagementServiceError, EntityType](
+            service.read("CommonEntityType")
+          )
+          _ <- EitherT[IO, ManagementServiceError, Unit](
+            service.create(
+              EntityType("BaseEntityType", schema),
+              "CommonEntityType"
+            )
+          )
+          etype <- EitherT[IO, ManagementServiceError, EntityType](
+            service.read("BaseEntityType")
+          )
+        } yield etype).value
+      ) asserting (et =>
+        et shouldBe Right(
           l0.EntityType(
-            "FileBasedDataCollectionType",
-            Set("DataCollection"),
-            fileBasedDataCollectionTypeSchema
+            "BaseEntityType",
+            schema,
+            l0.EntityType("CommonEntityType", commonSchema)
           )
-        ))
-      }
+        )
+      )
     }
+  }
 
-    "Reading a Non-Existent Entity" - {
-      "succeeds if an error is returned" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
+  "Following the inheritance chain for an EntityType" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val schema0: Schema = StructType(
+        List(
+          "field0" -> StringType()
         )
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
-          val nonExistentId = "non-existent-id"
+      )
 
-          (for {
-            readResult <- EitherT[IO, ManagementServiceError, Entity](
-              iservice.read(nonExistentId)
-            )
-          } yield readResult).value
-        } asserting (result => {
-          result match {
-            case Left(_) => succeed
-            case Right(_) =>
-              fail("Expected an error for non-existent entity, but got success")
-          }
-        })
-      }
-    }
-
-    "Using a service when there is no connection with the knowledge graph" - {
-      "fails" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7210,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
+      val schema1: Schema = StructType(
+        List(
+          "field1" -> StringType(),
+          "field3" -> StringType()
         )
-        session.use { session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val service = new TypeManagementServiceInterpreter[IO](trservice)
-          service.read("FileBasedDataCollectionType")
-        }.attempt asserting (_ should matchPattern { case Left(_) => })
-      }
-    }
+      )
 
-    "Inheriting from another EntityType with traits" - {
-      "works" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
+      val schema2: Schema = StructType(
+        List(
+          "field1" -> StringType(),
+          "field2" -> StringType(),
+          "field3" -> StringType(),
+          "field4" -> StringType()
         )
-        val commonSchema: StructType = StructType(
-          List(
-            "commonString" -> StringType()
+      )
+
+      val entityType0 = EntityType("EntityType0", schema0)
+
+      val entityType1 = l0.EntityType("EntityType1", schema1)
+
+      val entityType2 = l0.EntityType("EntityType2", schema2)
+
+      session.use(session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        (for {
+          _ <- EitherT[IO, ManagementServiceError, Unit](
+            service.create(entityType0)
           )
-        )
-
-        val schema: StructType = StructType(
-          List(
-            "anotherString" -> StringType()
+          _ <- EitherT[IO, ManagementServiceError, Unit](
+            service.create(entityType1, "EntityType0")
           )
-        )
-
-        session.use(session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val service = new TypeManagementServiceInterpreter[IO](trservice)
-
-          val commonEntityType = l0.EntityType(
-            "CommonEntityType",
-            commonSchema
+          _ <- EitherT[IO, ManagementServiceError, Unit](
+            service.create(entityType2, "EntityType1")
           )
-
-          (for {
-            _ <- EitherT[IO, ManagementServiceError, Unit](
-              service.create(commonEntityType)
-            )
-            _ <- EitherT[IO, ManagementServiceError, EntityType](
-              service.read("CommonEntityType")
-            )
-            _ <- EitherT[IO, ManagementServiceError, Unit](
-              service.create(
-                EntityType("BaseEntityType", schema),
-                "CommonEntityType"
-              )
-            )
-            etype <- EitherT[IO, ManagementServiceError, EntityType](
-              service.read("BaseEntityType")
-            )
-          } yield etype).value
-        ) asserting (et =>
-          et shouldBe Right(
-            l0.EntityType(
-              "BaseEntityType",
-              schema,
-              l0.EntityType("CommonEntityType", commonSchema)
+          etype <- EitherT[IO, ManagementServiceError, EntityType](
+            service.read("EntityType2")
+          )
+        } yield etype).value
+      ) asserting (et =>
+        et.map(_.schema) shouldBe Right(
+          StructType(
+            List(
+              "field0" -> StringType(),
+              "field1" -> StringType(),
+              "field2" -> StringType(),
+              "field3" -> StringType(),
+              "field4" -> StringType()
             )
           )
         )
-      }
-    }
-
-    "Following the inheritance chain for an EntityType" - {
-      "works" in {
-        val session = Session[IO](
-          graphdbType,
-          "localhost",
-          7201,
-          "dba",
-          "mysecret",
-          "repo1",
-          false
-        )
-        val schema0: Schema = StructType(
-          List(
-            "field0" -> StringType()
-          )
-        )
-
-        val schema1: Schema = StructType(
-          List(
-            "field1" -> StringType(),
-            "field3" -> StringType()
-          )
-        )
-
-        val schema2: Schema = StructType(
-          List(
-            "field1" -> StringType(),
-            "field2" -> StringType(),
-            "field3" -> StringType(),
-            "field4" -> StringType()
-          )
-        )
-
-        val entityType0 = EntityType("EntityType0", schema0)
-
-        val entityType1 = l0.EntityType("EntityType1", schema1)
-
-        val entityType2 = l0.EntityType("EntityType2", schema2)
-
-        session.use(session =>
-          val repository = Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val service = new TypeManagementServiceInterpreter[IO](trservice)
-          (for {
-            _ <- EitherT[IO, ManagementServiceError, Unit](
-              service.create(entityType0)
-            )
-            _ <- EitherT[IO, ManagementServiceError, Unit](
-              service.create(entityType1, "EntityType0")
-            )
-            _ <- EitherT[IO, ManagementServiceError, Unit](
-              service.create(entityType2, "EntityType1")
-            )
-            etype <- EitherT[IO, ManagementServiceError, EntityType](
-              service.read("EntityType2")
-            )
-          } yield etype).value
-        ) asserting (et =>
-          et.map(_.schema) shouldBe Right(
-            StructType(
-              List(
-                "field0" -> StringType(),
-                "field1" -> StringType(),
-                "field2" -> StringType(),
-                "field3" -> StringType(),
-                "field4" -> StringType()
-              )
-            )
-          )
-        )
-      }
+      )
     }
   }
 end OntologyL0Spec

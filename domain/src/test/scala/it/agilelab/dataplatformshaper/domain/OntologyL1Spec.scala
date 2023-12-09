@@ -47,7 +47,7 @@ class OntologyL1Spec
     with Matchers
     with BeforeAndAfterAll:
 
-  val graphdbType = "graphdb"
+  val graphdbType = "virtuoso"
 
   val graphdbContainer: GenericContainer[Nothing] =
     graphdbType match
@@ -62,7 +62,13 @@ class OntologyL1Spec
         )
         container.withEnv("DBA_PASSWORD", "mysecret")
         container.addExposedPort(1111)
-        container.setPortBindings(List("0.0.0.0:" + 7201 + ":" + 1111).asJava)
+        container.addExposedPort(8890)
+        container.setPortBindings(
+          List(
+            "0.0.0.0:" + 7201 + ":" + 1111,
+            "0.0.0.0:" + 8890 + ":" + 8890
+          ).asJava
+        )
         container
     end match
 

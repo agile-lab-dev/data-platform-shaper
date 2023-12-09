@@ -322,15 +322,14 @@ private def unfoldStruct(
               val tupleFieldNames = tuples.map(_(0)).toSet
               val recordFieldNames = records.map(_(0)).toSet
               if tupleFieldNames === recordFieldNames then
-                val indexedRecords = records
                 if tuples.size == records.length then
                   func(currentPath, tpe, tuple, BeginFoldingStruct)
                   var currentRes: Either[String, Unit] = Right[String, Unit](())
                   val managedRecords =
-                    indexedRecords.takeWhile(recordWithIndex =>
+                    records.takeWhile(record =>
                       currentRes = unfoldDataType(
-                        (recordWithIndex(0), tuples(recordWithIndex(0))),
-                        recordWithIndex(1),
+                        (record(0), tuples(record(0))),
+                        record(1),
                         currentPath,
                         func
                       )
