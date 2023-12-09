@@ -383,7 +383,6 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
   ): F[Either[ManagementServiceError, Unit]] =
 
     val instanceType = iri(ns, entityType.name)
-    // val ioRepository = repository.asInstanceOf[KnowledgeGraph[IO]]
 
     val statementsForInheritance
         : F[Either[ManagementServiceError, List[Statement]]] =
@@ -562,7 +561,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
          |SELECT ?a WHERE {
          |   ?a rdf:type owl:NamedIndividual .
          |   ?a rdf:type ns:EntityType .
-         |   ?a ns:typeName "$instanceTypeName" .
+         |   ?a ns:typeName "$instanceTypeName"^^<http://www.w3.org/2001/XMLSchema#string> .
          |}
          |""".stripMargin)
     summon[Functor[F]].map(res)(res => {
