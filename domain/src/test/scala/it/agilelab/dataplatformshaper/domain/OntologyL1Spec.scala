@@ -27,6 +27,7 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.Inside.inside
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.testcontainers.containers.GenericContainer
@@ -277,7 +278,12 @@ class OntologyL1Spec
           ids <- EitherT(ims.linked(dp, Relationship.hasPart))
         } yield (ids, op1, op2)).value
       } asserting (res =>
-        res.map(r => r(0)) shouldBe res.map(r => List(r(1), r(2)))
+        inside(res) {
+          case Right(entity) =>
+            entity(0) shouldBe List(entity(1), entity(2))
+          case Left(error) =>
+            true shouldBe false
+        }
       )
     }
   }
@@ -307,7 +313,7 @@ class OntologyL1Spec
               )
             )
           )
-          dp <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp1")))
+          dp <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp2")))
           at1 <- EitherT(ims.create("AnotherType", Tuple1("name" -> "at1")))
           res <- EitherT(ims.link(dp, Relationship.hasPart, at1))
         } yield res).value
