@@ -56,7 +56,7 @@ class OntologyL0Spec
     with Matchers
     with BeforeAndAfterAll:
 
-  val graphdbType = "virtuoso"
+  val graphdbType = "graphdb"
 
   given Equality[DataType] with
     def areEqual(x: DataType, y: Any): Boolean =
