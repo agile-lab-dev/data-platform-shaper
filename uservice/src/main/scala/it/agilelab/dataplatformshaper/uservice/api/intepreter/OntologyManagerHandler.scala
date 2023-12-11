@@ -460,7 +460,7 @@ class OntologyManagerHandler[F[_]: Async](
   ): F[Resource.CreateTraitResponse] =
     val res = trms.create(body.name, Option.empty[String])
 
-    res.attempt.map {
+    res.map {
       case Left(error) =>
         logger.error(s"Error: ${error.getMessage}")
         respond.BadRequest(ValidationError(Vector(error.getMessage)))
@@ -489,10 +489,18 @@ class OntologyManagerHandler[F[_]: Async](
           s"Error linking traits or converting string to Relationship: ${error.getMessage}"
         )
         respond.BadRequest(ValidationError(Vector(error.getMessage)))
-      case Right(_) =>
-        respond.Ok(
-          s"Traits $trait1 and $trait2 linked successfully with relationship $rel"
-        )
+      case Right(res) =>
+        res match
+          case Left(serviceError) =>
+            logger.error(
+              s"Service error in linking traits: ${serviceError.getMessage}"
+            )
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          case Right(_) =>
+            respond.Ok(
+              s"Traits $trait1 and $trait2 linked successfully with relationship $rel"
+            )
+        end match
     }
   end linkTrait
 
@@ -516,10 +524,18 @@ class OntologyManagerHandler[F[_]: Async](
           s"Error unlinking traits or converting string to Relationship: ${error.getMessage}"
         )
         respond.BadRequest(ValidationError(Vector(error.getMessage)))
-      case Right(_) =>
-        respond.Ok(
-          s"Traits $trait1 and $trait2 with relationship $rel unlinked successfully"
-        )
+      case Right(res) =>
+        res match
+          case Left(serviceError) =>
+            logger.error(
+              s"Service error in unlinking traits: ${serviceError.getMessage}"
+            )
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          case Right(_) =>
+            respond.Ok(
+              s"Traits $trait1 and $trait2 with relationship $rel unlinked successfully"
+            )
+        end match
     }
   end unlinkTrait
 
@@ -542,8 +558,8 @@ class OntologyManagerHandler[F[_]: Async](
           s"Error retrieving linked traits or converting string to Relationship: ${error.getMessage}"
         )
         respond.BadRequest(ValidationError(Vector(error.getMessage)))
-      case Right(traits) =>
-        traits match {
+      case Right(res) =>
+        res match
           case Left(serviceError) =>
             logger.error(
               s"Service error in getting linked traits: ${serviceError.getMessage}"
@@ -551,7 +567,7 @@ class OntologyManagerHandler[F[_]: Async](
             respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
           case Right(traitsList) =>
             respond.Ok(traitsList.toVector)
-        }
+        end match
     }
   end linkedTraits
 
@@ -577,10 +593,18 @@ class OntologyManagerHandler[F[_]: Async](
           s"Error linking instances or converting string to Relationship: ${error.getMessage}"
         )
         respond.BadRequest(ValidationError(Vector(error.getMessage)))
-      case Right(_) =>
-        respond.Ok(
-          s"Instances with ids $instanceId1 and $instanceId2 linked successfully with relationship $rel"
-        )
+      case Right(res) =>
+        res match
+          case Left(serviceError) =>
+            logger.error(
+              s"Service error in linking traits: ${serviceError.getMessage}"
+            )
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          case Right(_) =>
+            respond.Ok(
+              s"Instances with ids $instanceId1 and $instanceId2 linked successfully with relationship $rel"
+            )
+        end match
     }
   end linkEntity
 
@@ -603,13 +627,21 @@ class OntologyManagerHandler[F[_]: Async](
     result.value.map {
       case Left(error) =>
         logger.error(
-          s"Error unlinking traits or converting string to Relationship: ${error.getMessage}"
+          s"Error unlinking instances or converting string to Relationship: ${error.getMessage}"
         )
         respond.BadRequest(ValidationError(Vector(error.getMessage)))
-      case Right(_) =>
-        respond.Ok(
-          s"Instances with ids $instanceId1 and $instanceId2 and with relationship $rel unlinked successfully"
-        )
+      case Right(res) =>
+        res match
+          case Left(serviceError) =>
+            logger.error(
+              s"Service error in getting linked traits: ${serviceError.getMessage}"
+            )
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          case Right(_) =>
+            respond.Ok(
+              s"Instances with ids $instanceId1 and $instanceId2 and with relationship $rel unlinked successfully"
+            )
+        end match
     }
   end unlinkEntity
 

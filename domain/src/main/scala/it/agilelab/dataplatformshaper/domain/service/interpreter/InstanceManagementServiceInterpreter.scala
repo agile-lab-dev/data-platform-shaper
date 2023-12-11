@@ -594,7 +594,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       Traverse[List].sequence(tuples).map(_.fold(EmptyTuple)(_ :* _))
     end fieldsToTuple
 
-    (for {
+    val res = for {
       _ <- traceT(s"About to read instance with id: $instanceId")
       fe <- EitherT[
         F,
@@ -622,7 +622,22 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         )
       )
       _ <- traceT(s"About to return the entity $entity")
-    } yield entity).value
+    } yield entity
+
+    (for {
+      exist <- EitherT(exist(instanceId))
+      r <-
+        if exist then res
+        else
+          EitherT(
+            summon[Applicative[F]].pure(
+              Left[ManagementServiceError, Entity](
+                ManagementServiceError.NonExistentInstanceError(instanceId)
+              )
+            )
+          )
+    } yield r).value
+
   end read
 
   @SuppressWarnings(
@@ -637,7 +652,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     val statementsToRemove: F[List[Statement]] = fetchStatementsForInstance(
       instanceId
     )
-    for {
+    val res = for {
       _ <- logger.trace(s"About to remove the instance $instanceId")
       stmts <- statementsToRemove
       _ <- logger.trace(
@@ -655,12 +670,26 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <- logger.trace(s"$instanceId is classified by $instanceType")
       res <- createInstanceNoCheck(instanceId, instanceType, values, stmts)
     } yield res
+
+    (for {
+      exist <- EitherT(exist(instanceId))
+      r <- EitherT(
+        if exist then res
+        else
+          summon[Applicative[F]].pure(
+            Left[ManagementServiceError, String](
+              ManagementServiceError.NonExistentInstanceError(instanceId)
+            )
+          )
+      )
+    } yield r).value
+
   end update
 
   override def delete(
       instanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
-    (for {
+    val res: F[Either[ManagementServiceError, Unit]] = (for {
       _ <- logger.trace(s"About to remove the instance $instanceId")
       stmts <- fetchStatementsForInstance(instanceId)
       _ <- logger.trace(
@@ -671,6 +700,20 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         stmts
       )
     } yield ()).map(_ => Right[ManagementServiceError, Unit](()))
+
+    (for {
+      exist <- EitherT(exist(instanceId))
+      r <- EitherT(
+        if exist then res
+        else
+          summon[Applicative[F]].pure(
+            Left[ManagementServiceError, Unit](
+              ManagementServiceError.NonExistentInstanceError(instanceId)
+            )
+          )
+      )
+    } yield r).value
+
   end delete
 
   override def exist(
@@ -681,8 +724,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
          |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-         |SELECT ?entity WHERE {
+         |SELECT ?entity ?entityType WHERE {
          |    BIND(iri("${ns.getName}$instanceId") as ?entity)
+         |    ?entity ns:isClassifiedBy ?entityType
          |  }
          |""".stripMargin)
     summon[Functor[F]].map(res)(res => {
