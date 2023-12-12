@@ -281,8 +281,45 @@ class OntologyL1Spec
         inside(res) {
           case Right(entity) =>
             entity(0) shouldBe List(entity(1), entity(2))
-          case Left(error) =>
+          case Left(_) =>
             true shouldBe false
+        }
+      )
+    }
+  }
+
+  "Deleting an instance with linked instances should trigger an error" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val tms = TypeManagementServiceInterpreter[IO](trservice)
+        val ims = InstanceManagementServiceInterpreter[IO](tms)
+        (for {
+          dp <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp1")))
+          op1 <- EitherT(ims.create("OutputPortType", Tuple1("name" -> "op1")))
+          op2 <- EitherT(ims.create("OutputPortType", Tuple1("name" -> "op2")))
+          _ <- EitherT(ims.link(dp, Relationship.hasPart, op1))
+          _ <- EitherT(ims.link(dp, Relationship.hasPart, op2))
+          le <- EitherT(ims.delete(dp))
+        } yield le).value
+      } asserting (res =>
+        inside(res) {
+          case Right(_) =>
+            false shouldBe true
+          case Left(error) =>
+            error should matchPattern {
+              case InstanceHasLinkedInstancesError(_) =>
+            }
         }
       )
     }

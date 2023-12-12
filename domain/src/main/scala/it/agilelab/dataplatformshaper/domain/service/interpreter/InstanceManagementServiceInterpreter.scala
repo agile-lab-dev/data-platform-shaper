@@ -20,7 +20,6 @@ import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
   TypeManagementService
 }
-import java.time.{LocalDate, ZonedDateTime}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
@@ -28,6 +27,7 @@ import org.eclipse.rdf4j.model.{IRI, Literal, Statement}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
+import java.time.{LocalDate, ZonedDateTime}
 import java.util.UUID
 import scala.language.{implicitConversions, postfixOps}
 
@@ -182,7 +182,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case StructType(attributes, mode) =>
+        case StructType(_, _) =>
           foldingPhase match
             case BeginFoldingStruct =>
               val structIri = iri(ns, UUID.randomUUID.toString)
@@ -701,10 +701,48 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
     } yield ()).map(_ => Right[ManagementServiceError, Unit](()))
 
+    val checkLinkedInstancesQuery =
+      s"""
+         |PREFIX ns:  <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+         |SELECT (count(*) as ?count) WHERE {
+         |        BIND(iri("${ns.getName}$instanceId") as ?instanceId)
+         |        ?instanceId ns:isClassifiedBy ?type1 .
+         |        ?type1 ns:hasTrait ?trait1 .
+         |        ?trait1 rdfs:subClassOf* ?tr1 .
+         |        ?tr1 ?rel ?tr2 .
+         |        FILTER (?rel NOT IN(rdf:type, rdfs:subClassOf)).
+         |  }
+         |""".stripMargin
+
+    val linkedInstancesExisting: F[Either[ManagementServiceError, Boolean]] =
+      logger.trace(
+        s"About to run the query $checkLinkedInstancesQuery to check if the instance $instanceId has linked instances"
+      ) *>
+        summon[Functor[F]]
+          .map(repository.evaluateQuery(checkLinkedInstancesQuery))(ibs =>
+            val count = ibs
+              .map(bs => bs.getBinding("count").getValue.stringValue())
+              .toList
+              .headOption
+            count.map(_.toInt > 0).getOrElse(false)
+          )
+          .map(Right[ManagementServiceError, Boolean](_))
+
     (for {
       exist <- EitherT(exist(instanceId))
+      linkedInstancesExisting <- EitherT(linkedInstancesExisting)
       r <- EitherT(
-        if exist then res
+        if linkedInstancesExisting then
+          summon[Applicative[F]].pure(
+            Left[ManagementServiceError, Unit](
+              ManagementServiceError.InstanceHasLinkedInstancesError(instanceId)
+            )
+          )
+        else if exist then res
         else
           summon[Applicative[F]].pure(
             Left[ManagementServiceError, Unit](

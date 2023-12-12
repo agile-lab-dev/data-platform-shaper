@@ -26,5 +26,8 @@ enum ManagementServiceError(errorMessage: String):
       extends ManagementServiceError(parsingError)
   case InvalidLinkType(inst1: String, linkType: String, inst2: String)
       extends ManagementServiceError(
-        s"Invalide link type $linkType between instance $inst1 and $inst2"
+        s"Invalid link type $linkType between instance $inst1 and $inst2"
       )
+  case InstanceHasLinkedInstancesError(inst: String)
+      extends ManagementServiceError(s"The instance $inst has linked instances")
+end ManagementServiceError
