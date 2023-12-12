@@ -551,6 +551,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     } yield definitionWithExistCheck).value
   end read
 
+  override def delete(instanceTypeName: String): F[Either[ManagementServiceError, Unit]] = ???
+
   override def exist(
       instanceTypeName: String
   ): F[Either[ManagementServiceError, Boolean]] =
@@ -571,4 +573,5 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       else Right[ManagementServiceError, Boolean](false)
     })
   end exist
+
 end TypeManagementServiceInterpreter

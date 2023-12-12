@@ -17,7 +17,9 @@ trait TypeManagementService[F[_]]:
   def read(
       instanceTypeName: String
   ): F[Either[ManagementServiceError, EntityType]]
-
+  
+  def delete(instanceTypeName: String): F[Either[ManagementServiceError, Unit]]
+  
   def exist(
       instanceTypeName: String
   ): F[Either[ManagementServiceError, Boolean]]
