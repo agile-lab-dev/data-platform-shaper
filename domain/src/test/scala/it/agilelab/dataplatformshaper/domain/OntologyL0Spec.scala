@@ -606,6 +606,66 @@ class OntologyL0Spec
     }
   }
 
+  "Deleting an EntityType instance" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val schema: StructType = StructType(
+        List(
+          "organization" -> StringType(),
+          "sub-organization" -> StringType(),
+          "domain" -> StringType(),
+          "sub-domain" -> StringType(),
+          "version" -> IntType(),
+          "foundation" -> DateType(),
+          "timestamp" -> TimestampDataType(),
+          "double" -> DoubleType(),
+          "float" -> FloatType(),
+          "aStruct" -> StructType(
+            List(
+              "nest1" -> StringType(),
+              "nest2" -> StructType(
+                List(
+                  "nest3" -> StringType(),
+                  "nest4" -> StringType()
+                )
+              )
+            )
+          )
+        )
+      )
+
+      session.use(session => {
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val entityType = EntityType(
+          "TestDeleteType",
+          schema
+        )
+
+        for {
+          _ <- service.create(entityType)
+          deleteResult <- service.delete("TestDeleteType")
+          readResult <- service.read("TestDeleteType")
+        } yield (deleteResult, readResult)
+      }) asserting {
+        case (Right(()), Left(_)) => succeed
+        case _ => fail("EntityType was not deleted successfully")
+      }
+    }
+  }
+
   "Creating the same EntityType instance" - {
     "fails" in {
       val session = Session[IO](
@@ -668,6 +728,55 @@ class OntologyL0Spec
   "Caching entity type definitions" - {
     "works" in {
       cache.get.asserting(_.size shouldBe 1)
+    }
+  }
+
+  "Deleting an EntityType instance with existing instances" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val schema: StructType = StructType(
+        List(
+          "name" -> StringType()
+        )
+      )
+
+      val testResult: IO[Either[
+        ManagementServiceError,
+        (Unit, Either[ManagementServiceError, EntityType])
+      ]] =
+        session.use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = new TraitManagementServiceInterpreter[IO](repository)
+          val service = new TypeManagementServiceInterpreter[IO](trservice)
+          val ims = new InstanceManagementServiceInterpreter[IO](service)
+
+          val entityType = EntityType(
+            "DataProductType",
+            schema
+          )
+
+          (for {
+            _ <- EitherT.right(service.create(entityType))
+            _ <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp1")))
+            deleteResult <- EitherT(service.delete("DataProductType"))
+            readResult <- EitherT.liftF(service.read("DataProductType"))
+          } yield (deleteResult, readResult)).value
+        }
+
+      testResult asserting {
+        case Left(ManagementServiceError.TypeHasInstancesError(_)) => succeed
+        case _ => fail("Unexpected result")
+      }
     }
   }
 

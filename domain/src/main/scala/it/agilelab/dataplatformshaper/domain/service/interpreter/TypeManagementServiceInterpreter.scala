@@ -12,6 +12,7 @@ import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.NonExistentInstanceTypeError
 import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
   TraitManagementService,
@@ -21,7 +22,7 @@ import org.datatools.bigdatatypes.basictypes.SqlType
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.{OWL, RDF, RDFS}
-import org.eclipse.rdf4j.model.{IRI, Statement}
+import org.eclipse.rdf4j.model.{IRI, Literal, Statement}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -228,6 +229,62 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       )
     )
   end emitStatementsFromSchema
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf"
+    )
+  )
+  private def fetchStatementsForType(typeName: String): F[List[Statement]] = {
+    val query: String =
+      s"""
+         |PREFIX ns:  <${ns.getName}>
+         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+         |SELECT ?s ?p ?o WHERE {
+         | BIND(iri("${ns.getName}$typeName") as ?s)
+         |  ?s ?p ?o .
+         |}
+         |""".stripMargin
+
+    val statements: F[List[Statement]] =
+      repository
+        .evaluateQuery(query)
+        .flatMap(ibs =>
+          Traverse[List].sequence(
+            ibs
+              .map(bs => {
+                val sb = bs.getBinding("s")
+                val pb = bs.getBinding("p")
+                val ob = bs.getBinding("o")
+                val s = iri(sb.getValue.stringValue)
+                val p = iri(pb.getValue.stringValue)
+                if (ob.getValue.isLiteral)
+                  summon[Applicative[F]].pure(
+                    List(
+                      statement(
+                        triple(s, p, ob.getValue.asInstanceOf[Literal]),
+                        L2
+                      )
+                    )
+                  )
+                else
+                  summon[Applicative[F]].pure(
+                    List(
+                      statement(
+                        triple(s, p, iri(ob.getValue.stringValue)),
+                        L2
+                      )
+                    )
+                  )
+              })
+              .toList
+          )
+        )
+        .map(_.flatten)
+
+    statements
+  }
 
   private def queryForType(entityType: IRI): String =
     s"""
@@ -551,7 +608,80 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     } yield definitionWithExistCheck).value
   end read
 
-  override def delete(instanceTypeName: String): F[Either[ManagementServiceError, Unit]] = ???
+  def hasInstances(
+      instanceTypeName: String
+  ): F[Either[ManagementServiceError, Boolean]] = {
+    val instanceCheckQuery =
+      s"""
+         |PREFIX ns:  <${ns.getName}>
+         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+         |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+         |SELECT (COUNT(?instance) as ?instanceCount) WHERE {
+         |   ?instance ns:isClassifiedBy ?type .
+         |   ?type ns:typeName "$instanceTypeName"^^xsd:string .
+         |}
+         |""".stripMargin
+
+    val instanceCheckResult = repository.evaluateQuery(instanceCheckQuery)
+    summon[Functor[F]].map(instanceCheckResult) { resultSet =>
+      val resultList = resultSet.toList
+      Right(
+        resultList.nonEmpty && resultList.head
+          .getValue("instanceCount")
+          .stringValue()
+          .toInt > 0
+      )
+    }
+  }
+
+  override def delete(
+      instanceTypeName: String
+  ): F[Either[ManagementServiceError, Unit]] = {
+    val existenceCheck = exist(instanceTypeName)
+    summon[Monad[F]].flatMap(existenceCheck) {
+      case Right(true) =>
+        val instanceCheck = hasInstances(instanceTypeName)
+        summon[Monad[F]].flatMap(instanceCheck) {
+          case Right(true) =>
+            summon[Applicative[F]].pure(
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError.TypeHasInstancesError(
+                  instanceTypeName
+                )
+              )
+            )
+
+          case Right(false) =>
+            val statementsToRemoveF = fetchStatementsForType(instanceTypeName)
+            summon[Monad[F]].flatMap(statementsToRemoveF) {
+              statementsToRemove =>
+                val res = repository.removeAndInsertStatements(
+                  List.empty,
+                  statementsToRemove
+                )
+                summon[Functor[F]].map(res)(_ =>
+                  Right[ManagementServiceError, Unit](())
+                )
+            }
+
+          case Left(error) =>
+            summon[Applicative[F]].pure(
+              Left[ManagementServiceError, Unit](error)
+            )
+        }
+
+      case Right(false) =>
+        summon[Applicative[F]].pure(
+          Left[ManagementServiceError, Unit](
+            NonExistentInstanceTypeError(instanceTypeName)
+          )
+        )
+
+      case Left(error) =>
+        summon[Applicative[F]].pure(Left[ManagementServiceError, Unit](error))
+    }
+  }
 
   override def exist(
       instanceTypeName: String
