@@ -731,7 +731,7 @@ class OntologyL0Spec
     }
   }
 
-  "Deleting an EntityType instance with existing instances" - {
+  "Deleting an EntityType with existing instances" - {
     "fails" in {
       val session = Session[IO](
         graphdbType,
@@ -770,6 +770,62 @@ class OntologyL0Spec
             _ <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp1")))
             deleteResult <- EitherT(service.delete("DataProductType"))
             readResult <- EitherT.liftF(service.read("DataProductType"))
+          } yield (deleteResult, readResult)).value
+        }
+
+      testResult asserting {
+        case Left(ManagementServiceError.TypeHasInstancesError(_)) => succeed
+        case _ => fail("Unexpected result")
+      }
+    }
+  }
+
+  "Deleting an EntityType with descendants who have instances" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val schema: StructType = StructType(
+        List(
+          "name" -> StringType()
+        )
+      )
+
+      val testResult: IO[Either[
+        ManagementServiceError,
+        (Unit, Either[ManagementServiceError, EntityType])
+      ]] =
+        session.use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = new TraitManagementServiceInterpreter[IO](repository)
+          val service = new TypeManagementServiceInterpreter[IO](trservice)
+          val ims = new InstanceManagementServiceInterpreter[IO](service)
+
+          val fatherEntityType = EntityType(
+            "FatherType",
+            schema
+          )
+
+          val sonEntityType = EntityType(
+            "SonType",
+            schema,
+            fatherEntityType
+          )
+
+          (for {
+            _ <- EitherT.right(service.create(fatherEntityType))
+            _ <- EitherT.right(service.create(sonEntityType))
+            _ <- EitherT(ims.create("SonType", Tuple1("name" -> "dp1")))
+            deleteResult <- EitherT(service.delete("FatherType"))
+            readResult <- EitherT.liftF(service.read("FatherType"))
           } yield (deleteResult, readResult)).value
         }
 

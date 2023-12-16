@@ -576,8 +576,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
          |PREFIX owl: <http://www.w3.org/2002/07/owl#>
          |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
          |SELECT (COUNT(?instance) as ?instanceCount) WHERE {
-         |   ?instance ns:isClassifiedBy ?type .
          |   ?type ns:typeName "$instanceTypeName"^^xsd:string .
+         |   ?subtype rdf:type ns:EntityType .
+         |   ?subtype ns:inheritsFrom* ?type .
+         |   ?instance ns:isClassifiedBy ?subtype .
          |}
          |""".stripMargin
 
