@@ -435,12 +435,13 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       .flatMap(_.map(StructType(_, Required)))
   end getSchemaFromEntityType
 
-  override def create(
-      entityType: EntityType
+  private def createOrDelete(
+      entityType: EntityType,
+      isCreation: Boolean
   ): F[Either[ManagementServiceError, Unit]] =
 
     val instanceType = iri(ns, entityType.name)
-
+    print(isCreation)
     val statementsForInheritance
         : F[Either[ManagementServiceError, List[Statement]]] =
       entityType.father.fold(
@@ -481,7 +482,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       emitStatementsFromSchema(instanceType, entityType.baseSchema)
     (for {
       _ <- traceT(
-        s"About to create an instance type with name ${entityType.name}"
+        s"About to ${if (isCreation) "create" else "delete"} an instance type with name ${entityType.name}"
       )
       exist <- EitherT(exist(entityType.name))
       _ <- traceT(
@@ -500,13 +501,20 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       }
       stmts <- EitherT(statementsForInheritance)
       _ <- EitherT {
-        if !exist
-        then
-          summon[Functor[F]].map(
-            repository.removeAndInsertStatements(
-              stmts ++ traitsStatements ++ typeInstanceStatements ++ attributeStatements
-            )
-          )(Right[ManagementServiceError, Unit])
+        if !exist then
+          if isCreation then
+            summon[Functor[F]].map(
+              repository.removeAndInsertStatements(
+                stmts ++ traitsStatements ++ typeInstanceStatements ++ attributeStatements
+              )
+            )(Right[ManagementServiceError, Unit])
+          else
+            summon[Functor[F]].map(
+              repository.removeAndInsertStatements(
+                List.empty[Statement],
+                stmts ++ traitsStatements ++ typeInstanceStatements ++ attributeStatements
+              )
+            )(Right[ManagementServiceError, Unit])
         else
           summon[Applicative[F]]
             .pure(
@@ -515,9 +523,9 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
               )
             )
       }
-      _ <- traceT(s"Instance type created")
+      _ <- traceT(s"Instance type ${if (isCreation) "created" else "deleted"}")
     } yield ()).value
-  end create
+  end createOrDelete
 
   override def create(
       entityType: EntityType,
@@ -526,8 +534,14 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     given TypeManagementService[F] = this
     (for {
       enrichedEntityType <- EitherT(entityType.inheritsFrom(inheritsFrom))
-      _ <- EitherT(create(enrichedEntityType))
+      _ <- EitherT(createOrDelete(enrichedEntityType, true))
     } yield ()).value
+  end create
+
+  override def create(
+      entityType: EntityType
+  ): F[Either[ManagementServiceError, Unit]] =
+    createOrDelete(entityType, true)
   end create
 
   override def read(
@@ -608,7 +622,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     } yield definitionWithExistCheck).value
   end read
 
-  def hasInstances(
+  private def hasInstances(
       instanceTypeName: String
   ): F[Either[ManagementServiceError, Boolean]] = {
     val instanceCheckQuery =
