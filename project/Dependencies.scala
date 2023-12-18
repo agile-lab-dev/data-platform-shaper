@@ -55,6 +55,11 @@ object Dependencies {
     lazy val openapiValidator = namespace % "swagger-request-validator-core" % openapiValidatorVersion
   }
 
+  private[this] object calcite {
+    lazy val namespace = "org.apache.calcite"
+    lazy val babel     = namespace % "calcite-core" % calciteVersion
+  }
+
   private[this] object logging {
     val namespace = "com.typesafe.scala-logging"
     val scala     = namespace %% "scala-logging" % scalaLogging
@@ -95,6 +100,7 @@ object Dependencies {
       circe.generic                % Compile,
       circe.parser                 % Compile,
       circe.yaml                   % Compile,
+      calcite.babel                % Compile,
       logging.scala                % Compile,
       logback.classic              % Compile,
       dataTools.dataTypesCore      % Compile,

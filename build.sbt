@@ -39,7 +39,7 @@ def clientInterfaceFile: File = {
 
 lazy val domain = (project in file("domain")).settings(
   name                     := "dataplatform.shaper.domain",
-  libraryDependencies      := Dependencies.Jars.domain,
+  libraryDependencies      := Dependencies.Jars.domain
 )
 
 lazy val userviceClientGenerated = (project in file("uservice-client-generated")).settings(

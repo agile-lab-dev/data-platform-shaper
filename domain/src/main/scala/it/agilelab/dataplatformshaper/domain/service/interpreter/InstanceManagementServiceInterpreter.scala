@@ -14,12 +14,9 @@ import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
+import it.agilelab.dataplatformshaper.domain.model.schema.searching.NamedAttributePredicate
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{
-  InstanceManagementService,
-  ManagementServiceError,
-  TypeManagementService
-}
+import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, TypeManagementService}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
@@ -774,6 +771,29 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       else Right[ManagementServiceError, Boolean](false)
     })
   end exist
+
+  override def list(instanceTypeName: String, predicate: NamedAttributePredicate): F[Either[ManagementServiceError, List[String]]] =
+    val query =
+      s"""
+         |PREFIX ns:  <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+         |SELECT DISTINCT ?i  WHERE {
+         |    {
+         |        BIND(iri("${ns.getName}$instanceTypeName") as ?entityType)
+         |        ?i rdf:type ns:Entity .
+         |
+         |        ?i ns:isClassifiedBy ?entityType .
+         |    }
+         | ${predicate.querySegment}
+         |}
+         |""".stripMargin
+
+    logger.trace(s"About to evaluate the query $query for retrieving a list of instance ids") *>
+      repository.evaluateQuery(query).map(_.map(_.getValue("i").stringValue()).toList).map(Right[ManagementServiceError, List[String]])
+  end list
 
   override def link(
       instanceId1: String,

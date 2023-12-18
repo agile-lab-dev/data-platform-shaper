@@ -34,7 +34,8 @@ enum ManagementServiceError(errorMessage: String):
       )
   case InstanceHasLinkedInstancesError(inst: String)
       extends ManagementServiceError(s"The instance $inst has linked instances")
-
   case TypeHasInstancesError(entityType: String)
       extends ManagementServiceError(s"The type $entityType has instances")
+  case InvalidSearchPredicate(error: String)
+      extends ManagementServiceError(error)
 end ManagementServiceError
