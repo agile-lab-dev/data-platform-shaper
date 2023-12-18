@@ -12,6 +12,7 @@ import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.NonExistentInstanceTypeError
 import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
   TraitManagementService,
@@ -378,12 +379,11 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       .flatMap(_.map(StructType(_, Required)))
   end getSchemaFromEntityType
 
-  override def create(
-      entityType: EntityType
+  private def createOrDelete(
+      entityType: EntityType,
+      isCreation: Boolean
   ): F[Either[ManagementServiceError, Unit]] =
-
     val instanceType = iri(ns, entityType.name)
-
     val statementsForInheritance
         : F[Either[ManagementServiceError, List[Statement]]] =
       entityType.father.fold(
@@ -424,7 +424,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       emitStatementsFromSchema(instanceType, entityType.baseSchema)
     (for {
       _ <- traceT(
-        s"About to create an instance type with name ${entityType.name}"
+        s"About to ${if (isCreation) "create" else "delete"} an instance type with name ${entityType.name}"
       )
       exist <- EitherT(exist(entityType.name))
       _ <- traceT(
@@ -443,24 +443,33 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       }
       stmts <- EitherT(statementsForInheritance)
       _ <- EitherT {
-        if !exist
-        then
+        if isCreation then
+          if !exist then
+            summon[Functor[F]].map(
+              repository.removeAndInsertStatements(
+                stmts ++ traitsStatements ++ typeInstanceStatements ++ attributeStatements
+              )
+            )(Right[ManagementServiceError, Unit])
+          else
+            summon[Applicative[F]]
+              .pure(
+                Left[ManagementServiceError, Unit](
+                  ManagementServiceError.TypeAlreadyDefinedError(
+                    entityType.name
+                  )
+                )
+              )
+        else
           summon[Functor[F]].map(
             repository.removeAndInsertStatements(
+              List.empty[Statement],
               stmts ++ traitsStatements ++ typeInstanceStatements ++ attributeStatements
             )
           )(Right[ManagementServiceError, Unit])
-        else
-          summon[Applicative[F]]
-            .pure(
-              Left[ManagementServiceError, Unit](
-                ManagementServiceError.TypeAlreadyDefinedError(entityType.name)
-              )
-            )
       }
-      _ <- traceT(s"Instance type created")
+      _ <- traceT(s"Instance type ${if (isCreation) "created" else "deleted"}")
     } yield ()).value
-  end create
+  end createOrDelete
 
   override def create(
       entityType: EntityType,
@@ -469,8 +478,14 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     given TypeManagementService[F] = this
     (for {
       enrichedEntityType <- EitherT(entityType.inheritsFrom(inheritsFrom))
-      _ <- EitherT(create(enrichedEntityType))
+      _ <- EitherT(createOrDelete(enrichedEntityType, true))
     } yield ()).value
+  end create
+
+  override def create(
+      entityType: EntityType
+  ): F[Either[ManagementServiceError, Unit]] =
+    createOrDelete(entityType, true)
   end create
 
   override def read(
@@ -551,6 +566,79 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     } yield definitionWithExistCheck).value
   end read
 
+  private def hasInstances(
+      instanceTypeName: String
+  ): F[Either[ManagementServiceError, Boolean]] = {
+    val instanceCheckQuery =
+      s"""
+         |PREFIX ns:  <${ns.getName}>
+         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+         |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+         |SELECT (COUNT(?instance) as ?instanceCount) WHERE {
+         |   ?type ns:typeName "$instanceTypeName"^^xsd:string .
+         |   ?subtype rdf:type ns:EntityType .
+         |   ?subtype ns:inheritsFrom* ?type .
+         |   ?instance ns:isClassifiedBy ?subtype .
+         |}
+         |""".stripMargin
+
+    val instanceCheckResult = repository.evaluateQuery(instanceCheckQuery)
+    summon[Functor[F]].map(instanceCheckResult) { resultSet =>
+      val resultList = resultSet.toList
+      Right(
+        resultList.nonEmpty && resultList.head
+          .getValue("instanceCount")
+          .stringValue()
+          .toInt > 0
+      )
+    }
+  }
+
+  override def delete(
+      instanceTypeName: String
+  ): F[Either[ManagementServiceError, Unit]] = {
+    val existenceCheck = exist(instanceTypeName)
+    summon[Monad[F]].flatMap(existenceCheck) {
+      case Right(true) =>
+        val instanceCheck = hasInstances(instanceTypeName)
+        summon[Monad[F]].flatMap(instanceCheck) {
+          case Right(true) =>
+            summon[Applicative[F]].pure(
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError.TypeHasInstancesError(
+                  instanceTypeName
+                )
+              )
+            )
+
+          case Right(false) =>
+            val schemaF = getSchemaFromEntityType(instanceTypeName)
+            summon[Monad[F]].flatMap(schemaF) { schema =>
+              val entityType = EntityType(instanceTypeName, schema)
+              createOrDelete(entityType, isCreation = false)
+            }
+
+          case Left(error) =>
+            summon[Applicative[F]].pure(
+              Left[ManagementServiceError, Unit](error)
+            )
+        }
+
+      case Right(false) =>
+        summon[Applicative[F]].pure(
+          Left[ManagementServiceError, Unit](
+            ManagementServiceError.NonExistentInstanceTypeError(
+              instanceTypeName
+            )
+          )
+        )
+
+      case Left(error) =>
+        summon[Applicative[F]].pure(Left[ManagementServiceError, Unit](error))
+    }
+  }
+
   override def exist(
       instanceTypeName: String
   ): F[Either[ManagementServiceError, Boolean]] =
@@ -571,4 +659,5 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       else Right[ManagementServiceError, Boolean](false)
     })
   end exist
+
 end TypeManagementServiceInterpreter
