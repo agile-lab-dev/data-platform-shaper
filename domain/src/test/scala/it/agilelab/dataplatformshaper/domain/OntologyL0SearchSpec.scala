@@ -4,13 +4,20 @@ import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.effect.{IO, Ref}
 import fs2.io.file.Path
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{InstanceManagementServiceInterpreter, TraitManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+  InstanceManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 import org.datatools.bigdatatypes.basictypes.SqlType
 import org.eclipse.rdf4j.model.*
 import org.eclipse.rdf4j.model.util.Values
@@ -95,7 +102,7 @@ class OntologyL0SearchSpec
   end beforeAll
 
   override protected def afterAll(): Unit =
-    //Thread.sleep(10000000)
+    // Thread.sleep(10000000)
     graphdbContainer.stop()
   end afterAll
 
@@ -442,11 +449,10 @@ class OntologyL0SearchSpec
           service.create(entityType) *>
           service.read("FileBasedDataCollectionType")
       } asserting (ret =>
-        inside(ret) {
-          case Right(entity) =>
-            entity.name shouldBe "FileBasedDataCollectionType"
-            entity.traits shouldBe Set("DataCollection")
-            entity.baseSchema === fileBasedDataCollectionTypeSchema shouldBe true
+        inside(ret) { case Right(entity) =>
+          entity.name shouldBe "FileBasedDataCollectionType"
+          entity.traits shouldBe Set("DataCollection")
+          entity.baseSchema === fileBasedDataCollectionTypeSchema shouldBe true
         }
       )
     }
@@ -478,7 +484,6 @@ class OntologyL0SearchSpec
 
   "Searching an instance for an EntityType" - {
     "works" in {
-      import it.agilelab.dataplatformshaper.domain.model.schema.searching.*
       val session = Session[IO](
         graphdbType,
         "localhost",
@@ -495,9 +500,12 @@ class OntologyL0SearchSpec
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         val entityType = "FileBasedDataCollectionType"
 
-        iservice.list(entityType, "longStruct" / "longRepeated" === 20 && "organization" === "HR")
+        iservice.list(
+          entityType,
+          "longStruct" / "longRepeated" =:= 20 && "organization" =:= "HR"
+        )
 
-      } asserting(resp => resp.map(_.size) shouldBe Right(1))
+      } asserting (resp => resp.map(_.size) shouldBe Right(1))
     }
   }
 

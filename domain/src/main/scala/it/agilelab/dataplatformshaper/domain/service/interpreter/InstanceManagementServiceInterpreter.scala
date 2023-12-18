@@ -14,9 +14,12 @@ import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
-import it.agilelab.dataplatformshaper.domain.model.schema.searching.NamedAttributePredicate
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{
+  InstanceManagementService,
+  ManagementServiceError,
+  TypeManagementService
+}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
@@ -772,7 +775,10 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     })
   end exist
 
-  override def list(instanceTypeName: String, predicate: NamedAttributePredicate): F[Either[ManagementServiceError, List[String]]] =
+  override def list(
+      instanceTypeName: String,
+      predicate: NamedAttributePredicate
+  ): F[Either[ManagementServiceError, List[String]]] =
     val query =
       s"""
          |PREFIX ns:  <${ns.getName}>
@@ -791,8 +797,13 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |}
          |""".stripMargin
 
-    logger.trace(s"About to evaluate the query $query for retrieving a list of instance ids") *>
-      repository.evaluateQuery(query).map(_.map(_.getValue("i").stringValue()).toList).map(Right[ManagementServiceError, List[String]])
+    logger.trace(
+      s"About to evaluate the query $query for retrieving a list of instance ids"
+    ) *>
+      repository
+        .evaluateQuery(query)
+        .map(_.map(_.getValue("i").stringValue()).toList)
+        .map(Right[ManagementServiceError, List[String]])
   end list
 
   override def link(
