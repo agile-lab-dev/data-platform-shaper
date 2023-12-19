@@ -274,7 +274,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SystemError'
 
-  /ontology/entity/yaml/{id}:
+  /ontology/entity/yaml/{updateId}:
     put:
       tags:
         - OntologyManager
@@ -282,7 +282,7 @@ paths:
       operationId: updateEntityByYaml
       parameters:
         - in: path
-          name: id
+          name: updateId
           required: true
           schema:
             type: string
@@ -314,9 +314,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-
-
-
   /ontology/entity/yaml:
     post:
       tags:
@@ -383,7 +380,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-                
   /ontology/entity/link/{instanceId1}/{rel}/{instanceId2}:
     post:
       tags:
@@ -428,7 +424,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-                
   /ontology/entity/unlink/{instanceId1}/{rel}/{instanceId2}:
     post:
       tags:
@@ -473,7 +468,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-                
   /ontology/entity/linked/{instanceId}/{rel}:
     get:
       tags:
@@ -514,8 +508,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-
-
+  /ontology/entity/query:
+    post:
+      tags:
+        - OntologyManager
+      summary: Given a query request returns a list of instance IDs
+      operationId: listEntities
+      requestBody:
+        description: A query request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+        required: true
+      responses:
+        200:
+          description: If successful, returns a list of instance IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/trait:
     post:
       tags:
@@ -548,7 +574,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-
   /ontology/trait/link/{trait1}/{rel}/{trait2}:
     put:
       tags:
@@ -593,7 +618,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-                
   /ontology/trait/unlink/{trait1}/{rel}/{trait2}:
     put:
       tags:
@@ -638,7 +662,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-
   /ontology/trait/link/{traitName}/{rel}:
     get:
       tags:
@@ -679,7 +702,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-
 components:
   schemas:
     Entity:
@@ -757,6 +779,16 @@ components:
         - Required
         - Repeated
         - Nullable
+    QueryRequest:
+      required:
+        - entityTypeName
+        - query
+      type: object
+      properties:
+        entityTypeName:
+          type: string
+        query:
+          type: string
     ValidationError:
       required:
         - errors

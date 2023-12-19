@@ -54,7 +54,7 @@ class OntologyL0SearchSpec
     with Matchers
     with BeforeAndAfterAll:
 
-  val graphdbType = "virtuoso"
+  val graphdbType = "graphdb"
 
   given Equality[DataType] with
     def areEqual(x: DataType, y: Any): Boolean =
@@ -500,9 +500,13 @@ class OntologyL0SearchSpec
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         val entityType = "FileBasedDataCollectionType"
 
+        val predicate = generateSearchPredicate(
+          " longStruct / longRepeated <= 50 AND organization = 'HR'"
+        )
+
         iservice.list(
           entityType,
-          "longStruct" / "longRepeated" =:= 20 && "organization" =:= "HR"
+          predicate
         )
 
       } asserting (resp => resp.map(_.size) shouldBe Right(1))

@@ -1,84 +1,104 @@
 package it.agilelab.dataplatformshaper.domain.model.schema
 
+import org.apache.calcite.avatica.util.Casing
+import org.apache.calcite.sql.*
+import org.apache.calcite.sql.parser.SqlParser
+import org.apache.calcite.sql.parser.impl.SqlParserImpl
+
 import java.util.UUID
+import scala.annotation.targetName
+import scala.jdk.CollectionConverters.*
 
-extension (attributePath: String)
+trait SearchPredicateTerm
 
-  def =:=(value: Any): NamedAttributePredicate =
-    value match
-      case v: String =>
-        NamedAttribute(List(attributePath)) =:= v
-      case v: AnyVal =>
-        NamedAttribute(List(attributePath)) =:= v
-    end match
-  end =:=
-
-  def <(value: AnyVal): NamedAttributePredicate =
-    NamedAttribute(List(attributePath)) < value
-
+given StringToSearchPredicateAttribute
+    : Conversion[String, SearchPredicateAttribute] with
   @SuppressWarnings(
     Array(
       "scalafix:DisableSyntax.throw"
     )
   )
-  def /(subPath: String): NamedAttribute =
-    if subPath.contains("/") then
+  override def apply(string: String): SearchPredicateAttribute =
+    if string.contains('/') then
+      throw new IllegalArgumentException(s"$string should not contain any '/'")
+    SearchPredicateAttribute(List(string))
+  end apply
+
+case class SearchPredicateValue[T](value: T) extends SearchPredicateTerm
+
+given StringToSearchPredicateValue
+    : Conversion[String, SearchPredicateValue[String]] with
+  override def apply(string: String): SearchPredicateValue[String] =
+    SearchPredicateValue(string)
+
+given AnyValToSearchPredicateValue
+    : Conversion[AnyVal, SearchPredicateValue[AnyVal]] with
+  override def apply(anyVal: AnyVal): SearchPredicateValue[AnyVal] =
+    SearchPredicateValue(anyVal)
+
+extension (namedAttribute: SearchPredicateAttribute)
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.throw"
+    )
+  )
+  def /(subPath: String): SearchPredicateAttribute =
+    if subPath.contains('/') then
       throw new IllegalArgumentException(s"$subPath should not contain any '/'")
-    if subPath.contains("/") then
-      throw new IllegalArgumentException(
-        s"$attributePath should not contain any '/'"
-      )
-    NamedAttribute(List(subPath, attributePath))
-  end /
-
-end extension
-
-extension (namedAttribute: NamedAttribute)
-  def /(subPath: String): NamedAttribute =
-    NamedAttribute(subPath :: namedAttribute.attributePath)
+    SearchPredicateAttribute(subPath.trim :: namedAttribute.attributePath)
   end /
 end extension
 
-case class NamedAttribute(attributePath: List[String]):
+@inline private def genId = UUID.randomUUID().toString.replace("-", "")
 
-  def =:=(value: AnyVal): NamedAttributePredicate = NamedAttributePredicate(
-    {
-      val s = UUID.randomUUID().toString.replace("-", "")
-      val p = UUID.randomUUID().toString.replace("-", "")
-      val v = UUID.randomUUID().toString.replace("-", "")
-      s"""
+case class SearchPredicateAttribute(attributePath: List[String])
+    extends SearchPredicateTerm:
+
+  def /(subPath: SearchPredicateAttribute): SearchPredicateAttribute =
+    SearchPredicateAttribute(subPath.attributePath ::: this.attributePath)
+  end /
+
+  def =:=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
+    SearchPredicate(
+      {
+        val s = genId
+        val p = genId
+        val v = genId
+        s"""
          |{
          |  ?$s ?$p ?$v
          |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
-          .mkString("/")}") && ?$v = ${value.toString} ) .
+            .mkString("/")}") && ?$v = ${value.value.toString} ) .
          |}
          |""".stripMargin
-    }
-  )
+      }
+    )
 
-  def =:=(value: String): NamedAttributePredicate = NamedAttributePredicate(
-    {
-      val s = UUID.randomUUID().toString.replace("-", "")
-      val p = UUID.randomUUID().toString.replace("-", "")
-      val v = UUID.randomUUID().toString.replace("-", "")
-      s"""
+  @targetName("stringEqual")
+  def =:=(value: SearchPredicateValue[String]): SearchPredicate =
+    SearchPredicate(
+      {
+        val s = genId
+        val p = genId
+        val v = genId
+        s"""
          |{
          |  ?$s ?$p ?$v
          |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
-          .mkString("/")}") && ?$v = "$value"^^xsd:string ) .
+            .mkString("/")}") && ?$v = "${value.value}"^^xsd:string ) .
          |}
          |""".stripMargin
-    }
-  )
+      }
+    )
 
   private def generateComparison(
       comparisonOperator: String,
       value: AnyVal
-  ): NamedAttributePredicate = NamedAttributePredicate(
+  ): SearchPredicate = SearchPredicate(
     {
-      val s = UUID.randomUUID().toString.replace("-", "")
-      val p = UUID.randomUUID().toString.replace("-", "")
-      val v = UUID.randomUUID().toString.replace("-", "")
+      val s = genId
+      val p = genId
+      val v = genId
       s"""
          |{
          |  ?$s ?$p ?$v
@@ -89,21 +109,23 @@ case class NamedAttribute(attributePath: List[String]):
     }
   )
 
-  def <(value: AnyVal): NamedAttributePredicate = generateComparison("<", value)
+  def <(value: SearchPredicateValue[AnyVal]): SearchPredicate =
+    generateComparison("<", value.value)
 
-  def <=(value: AnyVal): NamedAttributePredicate =
-    generateComparison("<=", value)
+  def <=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
+    generateComparison("<=", value.value)
 
-  def >(value: AnyVal): NamedAttributePredicate = generateComparison(">", value)
+  def >(value: SearchPredicateValue[AnyVal]): SearchPredicate =
+    generateComparison(">", value.value)
 
-  def >=(value: AnyVal): NamedAttributePredicate =
-    generateComparison(">=", value)
+  def >=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
+    generateComparison(">=", value.value)
 
-end NamedAttribute
+end SearchPredicateAttribute
 
-case class NamedAttributePredicate(querySegment: String):
-  def &&(pred: NamedAttributePredicate): NamedAttributePredicate =
-    NamedAttributePredicate(
+case class SearchPredicate(querySegment: String) extends SearchPredicateTerm:
+  def &&(pred: SearchPredicate): SearchPredicate =
+    SearchPredicate(
       s"""
          |{
          |   ${this.querySegment}
@@ -113,8 +135,8 @@ case class NamedAttributePredicate(querySegment: String):
     )
   end &&
 
-  def ||(pred: NamedAttributePredicate): NamedAttributePredicate =
-    NamedAttributePredicate(
+  def ||(pred: SearchPredicate): SearchPredicate =
+    SearchPredicate(
       s"""
          |{
          |   {
@@ -126,4 +148,123 @@ case class NamedAttributePredicate(querySegment: String):
          |""".stripMargin
     )
   end ||
-end NamedAttributePredicate
+end SearchPredicate
+
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.asInstanceOf"
+  )
+)
+def generateSearchPredicate(query: String): SearchPredicate =
+
+  val sqlParserConfig = SqlParser
+    .config()
+    .withCaseSensitive(true)
+    .withParserFactory(SqlParserImpl.FACTORY)
+    .withQuotedCasing(Casing.UNCHANGED)
+    .withUnquotedCasing(Casing.UNCHANGED)
+
+  val node = SqlParser.create(query, sqlParserConfig).parseExpression()
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.throw"
+    )
+  )
+  def generateCode(node: SqlNode): SearchPredicateTerm =
+    node match
+      case call: SqlCall =>
+        val operator = call.getOperator
+        operator.kind match
+          case SqlKind.AND =>
+            val operandList = call.getOperandList.asScala.toList
+            val head = operandList.head
+            val tail = operandList.tail
+            tail.foldRight(generateCode(head))((n1, n2) =>
+              generateCode(n1)
+                .asInstanceOf[SearchPredicate]
+                .&&(n2.asInstanceOf[SearchPredicate])
+            )
+          case SqlKind.OR =>
+            val operandList = call.getOperandList.asScala.toList
+            val head = operandList.head
+            val tail = operandList.tail
+            tail.foldRight(generateCode(head))((n1, n2) =>
+              generateCode(n1)
+                .asInstanceOf[SearchPredicate]
+                .||(n2.asInstanceOf[SearchPredicate])
+            )
+          case SqlKind.EQUALS =>
+            val operandList = call.getOperandList.asScala.toList
+            val operand1 = operandList.head
+            val operand2 = operandList.tail.head
+            operand2 match
+              case _: SqlCharStringLiteral =>
+                generateCode(operand1)
+                  .asInstanceOf[SearchPredicateAttribute] =:= generateCode(
+                  operand2
+                ).asInstanceOf[SearchPredicateValue[String]]
+              case _: SqlNumericLiteral =>
+                generateCode(operand1)
+                  .asInstanceOf[SearchPredicateAttribute] =:= generateCode(
+                  operand2
+                ).asInstanceOf[SearchPredicateValue[AnyVal]]
+            end match
+          case SqlKind.LESS_THAN =>
+            val operandList = call.getOperandList.asScala.toList
+            val operand1 = operandList.head
+            val operand2 = operandList.tail.head
+            generateCode(operand1)
+              .asInstanceOf[SearchPredicateAttribute] < generateCode(operand2)
+              .asInstanceOf[SearchPredicateValue[AnyVal]]
+          case SqlKind.LESS_THAN_OR_EQUAL =>
+            val operandList = call.getOperandList.asScala.toList
+            val operand1 = operandList.head
+            val operand2 = operandList.tail.head
+            generateCode(operand1)
+              .asInstanceOf[SearchPredicateAttribute] <= generateCode(operand2)
+              .asInstanceOf[SearchPredicateValue[AnyVal]]
+          case SqlKind.GREATER_THAN =>
+            val operandList = call.getOperandList.asScala.toList
+            val operand1 = operandList.head
+            val operand2 = operandList.tail.head
+            generateCode(operand1)
+              .asInstanceOf[SearchPredicateAttribute] > generateCode(operand2)
+              .asInstanceOf[SearchPredicateValue[AnyVal]]
+          case SqlKind.GREATER_THAN_OR_EQUAL =>
+            val operandList = call.getOperandList.asScala.toList
+            val operand1 = operandList.head
+            val operand2 = operandList.tail.head
+            generateCode(operand1)
+              .asInstanceOf[SearchPredicateAttribute] >= generateCode(operand2)
+              .asInstanceOf[SearchPredicateValue[AnyVal]]
+          case SqlKind.DIVIDE =>
+            val operandList = call.getOperandList.asScala.toList.reverse
+            val head = operandList.head
+            val tail = operandList.tail
+            tail.foldRight(generateCode(head))((n1, n2) =>
+              generateCode(n1)
+                .asInstanceOf[SearchPredicateAttribute]
+                ./(n2.asInstanceOf[SearchPredicateAttribute])
+            )
+          case _ =>
+            throw new IllegalStateException()
+        end match
+      case id: SqlIdentifier =>
+        SearchPredicateAttribute(List(s"""${id.toString}"""))
+      case string: SqlCharStringLiteral =>
+        SearchPredicateValue[String](
+          s"""${string.toString.replaceAll("'", "")}"""
+        )
+      case num: SqlNumericLiteral =>
+        val value =
+          try num.toString.toLong
+          catch case _ => num.toString.toDouble
+        SearchPredicateValue[AnyVal](value)
+      case _ =>
+        throw new IllegalStateException()
+    end match
+  end generateCode
+
+  generateCode(node).asInstanceOf[SearchPredicate]
+end generateSearchPredicate

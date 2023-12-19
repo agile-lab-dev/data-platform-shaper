@@ -3,7 +3,7 @@ package it.agilelab.dataplatformshaper.domain.service
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.l0.Entity
 import it.agilelab.dataplatformshaper.domain.model.l1.Relationship
-import it.agilelab.dataplatformshaper.domain.model.schema.NamedAttributePredicate
+import it.agilelab.dataplatformshaper.domain.model.schema.SearchPredicate
 
 trait InstanceManagementService[F[_]]:
 
@@ -29,7 +29,7 @@ trait InstanceManagementService[F[_]]:
 
   def list(
       instanceTypeName: String,
-      predicate: NamedAttributePredicate
+      predicate: SearchPredicate
   ): F[Either[ManagementServiceError, List[String]]]
 
   def link(

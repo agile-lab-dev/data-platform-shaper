@@ -100,6 +100,7 @@ class ApiSpec
   end beforeAll
 
   override protected def afterAll(): Unit =
+    // Thread.sleep(1000000000)
     server.foreach(_.cancel.unsafeRunSync())
     graphdbContainer.stop()
   end afterAll
