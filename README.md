@@ -41,7 +41,7 @@ Then run everything with:
 docker compose up
 ```
 
-After a while you can connect to the Swagger UI [here](http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/swagger-ui/index.html).
+After a while, you can connect to the Swagger UI [here](http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/swagger-ui/index.html).
 
 Then, you can try to create a user-defined type:
 
@@ -154,6 +154,237 @@ curl -X 'GET' \
   -H 'accept: application/json'
 ```
 
+### A more complex example
+In this example, we will create two traits and link them to show how the trait relationship is automatically inherited by the instances of types linked to those traits.
+
+Let's create the first trait, representing a data collection: 
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/trait' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "DataCollection"
+}'
+```
+
+Let's create the second trait representing a table schema:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/trait' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "TableSchema"
+}'
+```
+
+Now, we link the two traits, representing the fact that a data collection could be associated with a table schema:
+
+```
+curl -X 'PUT' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/trait/link/DataCollection/hasPart/TableSchema' \
+  -H 'accept: application/json'
+```
+
+Now, let's create a type DataCollectionType using the trait DataCollection:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "DataCollectionType",
+  "traits": [
+    "DataCollection"
+  ],
+  "schema": [
+    {
+      "name": "name",
+      "typeName": "String",
+      "mode": "Required"
+    },
+    {
+      "name": "organization",
+      "typeName": "String",
+      "mode": "Required"
+    },
+    {
+      "name": "domain",
+      "typeName": "String",
+      "mode": "Required"
+    }
+  ]
+}'
+```
+
+Alternatively, you could use the following YAML file:
+
+```
+name: DataCollectionType
+traits:
+- DataCollection
+schema:
+- name: name
+  typeName: String
+  mode: Required
+- name: organization
+  typeName: String
+  mode: Required
+- name: domain
+  typeName: String
+  mode: Required
+
+```
+And the following call:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary '@data-collection-type.yaml'
+```
+
+Next, let's create a type TableSchemaType using the trait TableSchema:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "TableSchemaType",
+  "traits": [
+    "TableSchema"
+  ],
+  "schema": [
+    {
+      "name": "tableName",
+      "typeName": "String",
+      "mode": "Required"
+    },
+    {
+      "name": "columns",
+      "typeName": "Struct",
+      "mode": "Repeated",
+      "attributeTypes": [
+            {
+              "name": "columnName",
+              "typeName": "String",
+              "mode": "Required"
+            },
+            {
+              "name": "columnType",
+              "typeName": "String",
+              "mode": "Required"
+            }
+      ]
+    }
+  ]
+}'
+```
+
+Or by using the following YAML file:
+
+```
+name: TableSchemaType
+traits:
+- TableSchema
+schema:
+- name: tableName
+  typeName: String
+  mode: Required
+- name: columns
+  typeName: Struct
+  mode: Repeated
+  attributeTypes:
+    - name: columnName
+      typeName: String 
+      mode: Required
+    - name: columnType
+      typeName: String
+      mode: Required
+```
+
+And the corresponding call:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary '@table-schema-type.yaml'
+```
+
+At this point, we have two types, DataCollectionType and TableSchemaType, associated with the traits DataCollection and TableSchema. So, since we have this relationship in place, we can associate any instance of DataCollectionType with any instance of TableSchemaType with the relationship we used for linking the two traits.
+
+Let's first create an instance of a DataCollectionType:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "entityId": "",
+  "entityTypeName": "DataCollectionType",
+  "values": {
+     "name": "Person",
+     "organization": "HR",
+     "domain": "Registrations"
+   }
+}
+'
+```
+
+This call will return the id of the newly created instance, for example: ```29147f92-db7a-41be-abe1-a28f29418ce1```
+
+Next, let's create an instance of a TableSchemaType:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "entityId": "",
+  "entityTypeName": "TableSchemaType",
+  "values": {
+    "tableName": "Person",
+    "columns": [
+       {
+         "columnName": "firstName",
+         "columnType": "String"
+       },
+       {
+         "columnName": "familyName",
+         "columnType": "String"
+       },
+       {
+         "columnName": "age",
+         "columnType": "Int"
+       }
+    ]
+  }
+}'
+```
+
+catching the instance id: ```51a2af02-6504-4c12-8cc4-8dd3874af5c4```.
+
+At this point, it is possible to link the two instances with the same relationship we used for linking the two traits associated with the two instance types:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/link/29147f92-db7a-41be-abe1-a28f29418ce1/hasPart/51a2af02-6504-4c12-8cc4-8dd3874af5c4' \
+  -H 'accept: application/text'
+```
+
+That's all!
+
 **After a run with ```docker compose up``` you should always run ```docker compose rm``` to clean up everything.**
 
 #Attention
@@ -176,7 +407,7 @@ domain/src/test/scala/it/agilelab/dataplatformshaper/domain/OntologyL0Spec.scala
 ```
 domain/src/test/scala/it/agilelab/dataplatformshaper/domain/OntologyL1Spec.scala
 ```
-* This test suite shows the REST APIs usage:
+* This test suite shows the REST API usage:
 ```
 uservice/src/test/scala/it/agilelab/dataplatformshaper/uservice/api/ApiSpec.scala
 ```
