@@ -710,11 +710,14 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |PREFIX owl: <http://www.w3.org/2002/07/owl#>
          |SELECT (count(*) as ?count) WHERE {
          |        BIND(iri("${ns.getName}$instanceId") as ?instanceId)
-         |        ?instanceId ns:isClassifiedBy ?type1 .
+         |        ?instanceId1 ?rel ?instanceId2 . 
+         |        ?instanceId1 ns:isClassifiedBy ?type1 .
+         |        ?instanceId2 ns:isClassifiedBy ?type2 .
          |        ?type1 ns:hasTrait ?trait1 .
+         |        ?type2 ns:hasTrait ?trait2 .
          |        ?trait1 rdfs:subClassOf* ?tr1 .
+         |        ?trait2 rdfs:subClassOf* ?tr2 .
          |        ?tr1 ?rel ?tr2 .
-         |        FILTER (?rel NOT IN(rdf:type, rdfs:subClassOf)).
          |  }
          |""".stripMargin
 
@@ -728,13 +731,16 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
               .map(bs => bs.getBinding("count").getValue.stringValue())
               .toList
               .headOption
-            count.map(_.toInt > 0).getOrElse(false)
+            count.map(_.toInt > 1).getOrElse(false)
           )
           .map(Right[ManagementServiceError, Boolean](_))
 
     (for {
       exist <- EitherT(exist(instanceId))
       linkedInstancesExisting <- EitherT(linkedInstancesExisting)
+      _ <- traceT(
+        s"Instance $instanceId has linked instances: $linkedInstancesExisting"
+      )
       r <- EitherT(
         if linkedInstancesExisting then
           summon[Applicative[F]].pure(
@@ -774,6 +780,39 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       else Right[ManagementServiceError, Boolean](false)
     })
   end exist
+
+  override def list(
+      instanceTypeName: String,
+      predicate: SearchPredicate
+  ): F[Either[ManagementServiceError, List[String]]] =
+    val query =
+      s"""
+         |PREFIX ns:  <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+         |SELECT DISTINCT ?i  WHERE {
+         |    {
+         |        BIND(iri("${ns.getName}$instanceTypeName") as ?entityType)
+         |        ?i rdf:type ns:Entity .
+         |
+         |        ?i ns:isClassifiedBy ?entityType .
+         |    }
+         | ${predicate.querySegment}
+         |}
+         |""".stripMargin
+
+    logger.trace(
+      s"About to evaluate the query $query for retrieving a list of instance ids"
+    ) *>
+      repository
+        .evaluateQuery(query)
+        .map(
+          _.map(bs => iri(bs.getValue("i").stringValue()).getLocalName).toList
+        )
+        .map(Right[ManagementServiceError, List[String]])
+  end list
 
   override def link(
       instanceId1: String,

@@ -16,6 +16,7 @@ import it.agilelab.dataplatformshaper.domain.model.l1.{
 }
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
@@ -23,6 +24,7 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
 }
 import it.agilelab.dataplatformshaper.uservice.Resource.CreateTypeResponse
 import it.agilelab.dataplatformshaper.uservice.definitions.{
+  QueryRequest,
   Trait,
   ValidationError,
   Entity as OpenApiEntity,
@@ -676,3 +678,36 @@ class OntologyManagerHandler[F[_]: Async](
         }
     }
   end linkedEntities
+
+  override def listEntities(respond: Resource.ListEntitiesResponse.type)(
+      body: QueryRequest
+  ): F[Resource.ListEntitiesResponse] =
+
+    val predicate: Either[Throwable, SearchPredicate] =
+      Either.catchNonFatal(generateSearchPredicate(body.query))
+
+    val result = for {
+      pred <- EitherT.fromEither[F](predicate)
+      listEntities <- EitherT(ims.list(body.entityTypeName, pred).attempt)
+    } yield listEntities
+
+    result.value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${error.getMessage}"
+        )
+        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+      case Right(entities) =>
+        entities match {
+          case Left(serviceError) =>
+            logger.error(
+              s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${serviceError.getMessage}"
+            )
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          case Right(entitiesList) =>
+            respond.Ok(entitiesList.toVector)
+        }
+    }
+  end listEntities
+
+end OntologyManagerHandler

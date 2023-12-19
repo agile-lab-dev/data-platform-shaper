@@ -50,9 +50,9 @@ object Dependencies {
     lazy val yaml      = namespace %% "circe-yaml"    % circeYamlVersion
   }
 
-  private[this] object atlassian {
-    lazy val namespace = "com.atlassian.oai"
-    lazy val openapiValidator = namespace % "swagger-request-validator-core" % openapiValidatorVersion
+  private[this] object calcite {
+    lazy val namespace = "org.apache.calcite"
+    lazy val babel     = namespace % "calcite-core" % calciteVersion
   }
 
   private[this] object logging {
@@ -95,6 +95,7 @@ object Dependencies {
       circe.generic                % Compile,
       circe.parser                 % Compile,
       circe.yaml                   % Compile,
+      calcite.babel                % Compile,
       logging.scala                % Compile,
       logback.classic              % Compile,
       dataTools.dataTypesCore      % Compile,
