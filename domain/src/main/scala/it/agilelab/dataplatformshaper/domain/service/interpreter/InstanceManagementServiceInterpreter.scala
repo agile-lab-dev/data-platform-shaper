@@ -783,7 +783,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
   override def list(
       instanceTypeName: String,
-      predicate: SearchPredicate
+      predicate: Option[SearchPredicate]
   ): F[Either[ManagementServiceError, List[String]]] =
     val query =
       s"""
@@ -799,7 +799,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |
          |        ?i ns:isClassifiedBy ?entityType .
          |    }
-         | ${predicate.querySegment}
+         | ${predicate.fold("")(_.querySegment)}
          |}
          |""".stripMargin
 

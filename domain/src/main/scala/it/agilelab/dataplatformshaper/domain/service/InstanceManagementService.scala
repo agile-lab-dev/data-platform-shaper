@@ -29,7 +29,7 @@ trait InstanceManagementService[F[_]]:
 
   def list(
       instanceTypeName: String,
-      predicate: SearchPredicate
+      predicate: Option[SearchPredicate]
   ): F[Either[ManagementServiceError, List[String]]]
 
   def link(

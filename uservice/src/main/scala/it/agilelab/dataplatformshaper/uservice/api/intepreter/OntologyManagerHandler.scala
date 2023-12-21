@@ -683,8 +683,9 @@ class OntologyManagerHandler[F[_]: Async](
       body: QueryRequest
   ): F[Resource.ListEntitiesResponse] =
 
-    val predicate: Either[Throwable, SearchPredicate] =
-      Either.catchNonFatal(generateSearchPredicate(body.query))
+    val predicate: Either[Throwable, Option[SearchPredicate]] =
+      if body.query.trim.isEmpty then Either.right(None)
+      else Either.catchNonFatal(Some(generateSearchPredicate(body.query)))
 
     val result = for {
       pred <- EitherT.fromEither[F](predicate)

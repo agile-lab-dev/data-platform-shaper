@@ -15,6 +15,7 @@ import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
+  QueryRequest,
   ValidationError,
   AttributeType as OpenApiAttributeType,
   Entity as OpenApiEntity,
@@ -32,12 +33,13 @@ import it.agilelab.dataplatformshaper.uservice.{
   LinkTraitResponse,
   LinkedEntitiesResponse,
   LinkedTraitsResponse,
+  ListEntitiesResponse,
   ReadEntityResponse,
   ReadTypeResponse,
   UnlinkEntityResponse,
   UnlinkTraitResponse,
-  UpdateEntityResponse,
-  UpdateEntityByYamlResponse
+  UpdateEntityByYamlResponse,
+  UpdateEntityResponse
 }
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
@@ -71,7 +73,7 @@ class ApiSpec
   val graphdbContainer: GenericContainer[Nothing] =
     graphdbType match
       case "graphdb" =>
-        val container = new GenericContainer("ontotext/graphdb:10.3.1")
+        val container = new GenericContainer("ontotext/graphdb:10.5.0")
         container.addExposedPort(7200)
         container.setPortBindings(List("0.0.0.0:" + 7202 + ":" + 7200).asJava)
         container
@@ -366,6 +368,28 @@ class ApiSpec
             case ReadEntityResponse
                   .Ok(OpenApiEntity(_, "DataCollectionType", json)) =>
               json should be(entityJson)
+          }
+        )
+    }
+  }
+
+  "Listing user defined type instances" - {
+    "works" in {
+      val resp: Resource[IO, ListEntitiesResponse] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        ids <- Resource.liftK(
+          client.listEntities(QueryRequest("DataCollectionType", ""))
+        )
+      } yield ids
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          inside(resp) { case ListEntitiesResponse.Ok(value) =>
+            value.size should be(2)
           }
         )
     }

@@ -80,7 +80,7 @@ class OntologyL0Spec
   val graphdbContainer: GenericContainer[Nothing] =
     graphdbType match
       case "graphdb" =>
-        val container = new GenericContainer("ontotext/graphdb:10.3.1")
+        val container = new GenericContainer("ontotext/graphdb:10.5.0")
         container.addExposedPort(7200)
         container.setPortBindings(List("0.0.0.0:" + 7201 + ":" + 7200).asJava)
         container
