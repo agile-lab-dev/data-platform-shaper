@@ -13,6 +13,7 @@ import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
@@ -506,10 +507,31 @@ class OntologyL0SearchSpec
 
         iservice.list(
           entityType,
-          Some(predicate)
+          Some(predicate),
+          returnEntities = true
         )
 
-      } asserting (resp => resp.map(_.size) shouldBe Right(1))
+      } asserting (resp =>
+        inside(resp) { case Right(list) =>
+          list.head match
+            case entity: Entity =>
+              assert(list.size === 1)
+              assert(
+                tupleToJsonChecked(
+                  entity.values,
+                  fileBasedDataCollectionTypeSchema
+                ).equals(
+                  tupleToJsonChecked(
+                    fileBasedDataCollectionTuple,
+                    fileBasedDataCollectionTypeSchema
+                  )
+                )
+              )
+            case entity: String =>
+              assert(false)
+          end match
+        }
+      )
     }
   }
 

@@ -14,7 +14,7 @@ import it.agilelab.dataplatformshaper.domain.model.l1.{
   Relationship,
   given_Conversion_String_Relationship
 }
-import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
+import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
@@ -22,7 +22,10 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
-import it.agilelab.dataplatformshaper.uservice.Resource.CreateTypeResponse
+import it.agilelab.dataplatformshaper.uservice.Resource.{
+  CreateTypeResponse,
+  ListEntitiesResponse
+}
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   QueryRequest,
   Trait,
@@ -679,6 +682,11 @@ class OntologyManagerHandler[F[_]: Async](
     }
   end linkedEntities
 
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.throw"
+    )
+  )
   override def listEntities(respond: Resource.ListEntitiesResponse.type)(
       body: QueryRequest
   ): F[Resource.ListEntitiesResponse] =
@@ -690,6 +698,75 @@ class OntologyManagerHandler[F[_]: Async](
     val result = for {
       pred <- EitherT.fromEither[F](predicate)
       listEntities <- EitherT(ims.list(body.entityTypeName, pred).attempt)
+    } yield listEntities
+
+    tms
+      .read(body.entityTypeName)
+      .map(_.map(_.schema))
+      .map {
+        case Left(serviceError) =>
+          logger.error(
+            s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${serviceError.getMessage}"
+          )
+          summon[Applicative[F]].pure(
+            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+          )
+        case Right(schema) =>
+          result.value.map {
+            case Left(error) =>
+              logger.error(
+                s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${error.getMessage}"
+              )
+              respond.BadRequest(ValidationError(Vector(error.getMessage)))
+            case Right(entities) =>
+              entities match {
+                case Left(serviceError) =>
+                  logger.error(
+                    s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${serviceError.getMessage}"
+                  )
+                  respond.BadRequest(
+                    ValidationError(Vector(serviceError.getMessage))
+                  )
+                case Right(entitiesList) =>
+                  val y: ListEntitiesResponse.Ok = respond.Ok(
+                    entitiesList.toVector.map(
+                      {
+                        case et: Entity =>
+                          tupleToJson(et.values, schema) match
+                            case Left(error) =>
+                              logger.error(
+                                s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${error.getMessage}"
+                              )
+                              throw new Exception("It shouldn't be here")
+                            case Right(json) =>
+                              OpenApiEntity(
+                                et.entityId,
+                                et.entityTypeName,
+                                json
+                              )
+                        case _ => throw new Exception("It shouldn't be here")
+                      }
+                    )
+                  )
+                  y
+              }
+          }
+      }
+      .flatten
+  end listEntities
+
+  override def listEntitiesByIds(
+      respond: Resource.ListEntitiesByIdsResponse.type
+  )(body: QueryRequest): F[Resource.ListEntitiesByIdsResponse] =
+    val predicate: Either[Throwable, Option[SearchPredicate]] =
+      if body.query.trim.isEmpty then Either.right(None)
+      else Either.catchNonFatal(Some(generateSearchPredicate(body.query)))
+
+    val result = for {
+      pred <- EitherT.fromEither[F](predicate)
+      listEntities <- EitherT(
+        ims.list(body.entityTypeName, pred, false).attempt
+      )
     } yield listEntities
 
     result.value.map {
@@ -706,9 +783,12 @@ class OntologyManagerHandler[F[_]: Async](
             )
             respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
           case Right(entitiesList) =>
-            respond.Ok(entitiesList.toVector)
+            respond.Ok(entitiesList.toVector.map {
+              case str: String => str
+              case _           => "" // TODO
+            }: Vector[String])
         }
     }
-  end listEntities
+  end listEntitiesByIds
 
 end OntologyManagerHandler

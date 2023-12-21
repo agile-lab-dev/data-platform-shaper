@@ -29,8 +29,9 @@ trait InstanceManagementService[F[_]]:
 
   def list(
       instanceTypeName: String,
-      predicate: Option[SearchPredicate]
-  ): F[Either[ManagementServiceError, List[String]]]
+      predicate: Option[SearchPredicate],
+      returnEntities: Boolean = false
+  ): F[Either[ManagementServiceError, List[String | Entity]]]
 
   def link(
       instanceId1: String,

@@ -13,6 +13,22 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 }
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
+import it.agilelab.dataplatformshaper.uservice.{
+  Client,
+  CreateEntityByYamlResponse,
+  CreateEntityResponse,
+  LinkEntityResponse,
+  LinkTraitResponse,
+  LinkedEntitiesResponse,
+  LinkedTraitsResponse,
+  ListEntitiesByIdsResponse,
+  ReadEntityResponse,
+  ReadTypeResponse,
+  UnlinkEntityResponse,
+  UnlinkTraitResponse,
+  UpdateEntityByYamlResponse,
+  UpdateEntityResponse
+}
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
   QueryRequest,
@@ -24,23 +40,6 @@ import it.agilelab.dataplatformshaper.uservice.definitions.{
   Trait as OpenApiTrait
 }
 import it.agilelab.dataplatformshaper.uservice.server.impl.Server
-import it.agilelab.dataplatformshaper.uservice.{
-  Client,
-  CreateEntityByYamlResponse,
-  CreateEntityResponse,
-  DeleteEntityResponse,
-  LinkEntityResponse,
-  LinkTraitResponse,
-  LinkedEntitiesResponse,
-  LinkedTraitsResponse,
-  ListEntitiesResponse,
-  ReadEntityResponse,
-  ReadTypeResponse,
-  UnlinkEntityResponse,
-  UnlinkTraitResponse,
-  UpdateEntityByYamlResponse,
-  UpdateEntityResponse
-}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.http4s.ember.client.EmberClientBuilder
@@ -228,7 +227,7 @@ class ApiSpec
         Some("father")
       )
 
-      val resp: Resource[IO, ReadTypeResponse] = for {
+      val resp = for {
         client <- EmberClientBuilder
           .default[IO]
           .build
@@ -375,20 +374,20 @@ class ApiSpec
 
   "Listing user defined type instances" - {
     "works" in {
-      val resp: Resource[IO, ListEntitiesResponse] = for {
+      val resp = for {
         client <- EmberClientBuilder
           .default[IO]
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
         ids <- Resource.liftK(
-          client.listEntities(QueryRequest("DataCollectionType", ""))
+          client.listEntitiesByIds(QueryRequest("DataCollectionType", ""))
         )
       } yield ids
 
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          inside(resp) { case ListEntitiesResponse.Ok(value) =>
+          inside(resp) { case ListEntitiesByIdsResponse.Ok(value) =>
             value.size should be(2)
           }
         )

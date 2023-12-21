@@ -508,12 +508,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-  /ontology/entity/query:
+  /ontology/entity/queryForEntityIds:
     post:
       tags:
         - OntologyManager
       summary: Given a query request returns a list of instance IDs
-      operationId: listEntities
+      operationId: listEntitiesByIds
       requestBody:
         description: A query request
         content:
@@ -530,6 +530,40 @@ paths:
                 type: array
                 items:
                   type: string
+        400:
+          description: Invalid input, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+  /ontology/entity/queryForEntities:
+    post:
+      tags:
+        - OntologyManager
+      summary: Given a query request returns a list of instances
+      operationId: listEntities
+      requestBody:
+        description: A query request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+        required: true
+      responses:
+        200:
+          description: If successful, returns a list of instance
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entity'
         400:
           description: Invalid input, details of the error are provided
           content:

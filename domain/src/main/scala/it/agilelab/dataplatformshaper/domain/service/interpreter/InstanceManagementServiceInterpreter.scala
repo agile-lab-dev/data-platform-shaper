@@ -781,10 +781,16 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     })
   end exist
 
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.defaultArgs"
+    )
+  )
   override def list(
       instanceTypeName: String,
-      predicate: Option[SearchPredicate]
-  ): F[Either[ManagementServiceError, List[String]]] =
+      predicate: Option[SearchPredicate],
+      returnEntities: Boolean = false
+  ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val query =
       s"""
          |PREFIX ns:  <${ns.getName}>
@@ -803,15 +809,36 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |}
          |""".stripMargin
 
-    logger.trace(
-      s"About to evaluate the query $query for retrieving a list of instance ids"
-    ) *>
-      repository
-        .evaluateQuery(query)
-        .map(
-          _.map(bs => iri(bs.getValue("i").stringValue()).getLocalName).toList
+    if !returnEntities then
+      logger.trace(
+        s"About to evaluate the query $query for retrieving a list of instance ids"
+      ) *>
+        repository
+          .evaluateQuery(query)
+          .map(
+            _.map(bs => iri(bs.getValue("i").stringValue()).getLocalName).toList
+          )
+          .map(Right[ManagementServiceError, List[String]])
+    else
+      (for {
+        _ <- traceT(
+          s"About to evaluate the query $query for retrieving a list of instance ids"
         )
-        .map(Right[ManagementServiceError, List[String]])
+        ids <- EitherT(
+          repository
+            .evaluateQuery(query)
+            .map(
+              _.map(bs =>
+                iri(bs.getValue("i").stringValue()).getLocalName
+              ).toList
+            )
+            .map(Right[ManagementServiceError, List[String]])
+        )
+        entities <- EitherT(
+          summon[Functor[F]].map(ids.map(id => read(id)).sequence)(_.sequence)
+        )
+      } yield entities).value
+    end if
   end list
 
   override def link(
