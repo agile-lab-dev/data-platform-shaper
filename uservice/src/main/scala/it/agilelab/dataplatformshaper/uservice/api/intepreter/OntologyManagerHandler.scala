@@ -697,7 +697,7 @@ class OntologyManagerHandler[F[_]: Async](
 
     val result = for {
       pred <- EitherT.fromEither[F](predicate)
-      listEntities <- EitherT(ims.list(body.entityTypeName, pred).attempt)
+      listEntities <- EitherT(ims.list(body.entityTypeName, pred, true).attempt)
     } yield listEntities
 
     tms
