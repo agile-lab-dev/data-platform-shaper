@@ -614,11 +614,11 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
 
           case Right(false) =>
             val schemaF = getSchemaFromEntityType(instanceTypeName)
-            summon[Monad[F]].flatMap(schemaF) { schema =>
-              val entityType = EntityType(instanceTypeName, schema)
-              createOrDelete(entityType, isCreation = false)
-            }
-
+            cache.modify(m => (m, m - instanceTypeName)) *>
+              summon[Monad[F]].flatMap(schemaF) { schema =>
+                val entityType = EntityType(instanceTypeName, schema)
+                createOrDelete(entityType, isCreation = false)
+              }
           case Left(error) =>
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Unit](error)
