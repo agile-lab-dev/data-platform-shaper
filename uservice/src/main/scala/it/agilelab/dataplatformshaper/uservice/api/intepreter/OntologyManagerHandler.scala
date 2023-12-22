@@ -702,7 +702,7 @@ class OntologyManagerHandler[F[_]: Async](
 
     tms
       .read(body.entityTypeName)
-      .map(_.map(_.schema))
+      .map(_.map(et => et.schema))
       .map {
         case Left(serviceError) =>
           logger.error(

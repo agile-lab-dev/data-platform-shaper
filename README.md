@@ -52,9 +52,7 @@ curl -X 'POST' \
   -H 'Content-Type: application/json' \
   -d '{
   "name": "DataCollectionType",
-  "traits": [
-    "DataCollection"
-  ],
+  "traits": [],
   "schema": [
     {
       "name": "name",
@@ -80,7 +78,6 @@ You could create a user-defined type posting a YAML file:
 ```
 name: DataCollectionType
 traits:
-- DataCollection
 schema:
 - name: name
   typeName: String
@@ -381,6 +378,32 @@ At this point, it is possible to link the two instances with the same relationsh
 curl -X 'POST' \
   'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/link/29147f92-db7a-41be-abe1-a28f29418ce1/hasPart/51a2af02-6504-4c12-8cc4-8dd3874af5c4' \
   -H 'accept: application/text'
+```
+
+It's also possible to search instances by attribute values:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/queryForEntityIds' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "entityTypeName": "DataCollectionType",
+  "query": "name = '\''Person'\''"
+}'
+```
+Given a search string, this API returns a list of instance IDs.
+Another API given a search string returns a list of instances:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/queryForEntities' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "entityTypeName": "DataCollectionType",
+  "query": "name = '\''Person'\''"
+}'
 ```
 
 That's all!
