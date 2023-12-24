@@ -656,11 +656,19 @@ class OntologyL0Spec
 
         for {
           _ <- service.create(entityType)
+          _ <- service.read(entityType.name)
+          inCacheAfterRead <- cache.get.map(_.keySet(entityType.name))
           deleteResult <- service.delete("TestDeleteType")
           readResult <- service.read("TestDeleteType")
-        } yield (deleteResult, readResult)
+          inCacheAfterDeleted <- cache.get.map(_.keySet(entityType.name))
+        } yield (
+          inCacheAfterRead,
+          deleteResult,
+          readResult,
+          inCacheAfterDeleted
+        )
       }) asserting {
-        case (Right(()), Left(_)) => succeed
+        case (true, Right(()), Left(_), false) => succeed
         case _ => fail("EntityType was not deleted successfully")
       }
     }
