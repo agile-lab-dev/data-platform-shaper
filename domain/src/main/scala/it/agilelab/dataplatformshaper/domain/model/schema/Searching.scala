@@ -73,6 +73,7 @@ case class SearchPredicateAttribute(attributePath: List[String])
          |""".stripMargin
       }
     )
+  end =:=
 
   @targetName("stringEqual")
   def =:=(value: SearchPredicateValue[String]): SearchPredicate =
@@ -90,6 +91,25 @@ case class SearchPredicateAttribute(attributePath: List[String])
          |""".stripMargin
       }
     )
+  end =:=
+
+  def like(value: SearchPredicateValue[String]): SearchPredicate =
+    SearchPredicate(
+      {
+        val s = genId
+        val p = genId
+        val v = genId
+        s"""
+           |{
+           |  ?$s ?$p ?$v
+           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
+            .mkString("/")}")) .
+           |  FILTER REGEX(?$v, "${value.value}") .
+           |}
+           |""".stripMargin
+      }
+    )
+  end like
 
   private def generateComparison(
       comparisonOperator: String,
@@ -238,6 +258,15 @@ def generateSearchPredicate(query: String): SearchPredicate =
             generateCode(operand1)
               .asInstanceOf[SearchPredicateAttribute] >= generateCode(operand2)
               .asInstanceOf[SearchPredicateValue[AnyVal]]
+          case SqlKind.LIKE =>
+            val operandList = call.getOperandList.asScala.toList
+            val operand1 = operandList.head
+            val operand2 = operandList.tail.head
+            generateCode(operand1)
+              .asInstanceOf[SearchPredicateAttribute] like generateCode(
+              operand2
+            )
+              .asInstanceOf[SearchPredicateValue[String]]
           case SqlKind.DIVIDE =>
             val operandList = call.getOperandList.asScala.toList.reverse
             val head = operandList.head

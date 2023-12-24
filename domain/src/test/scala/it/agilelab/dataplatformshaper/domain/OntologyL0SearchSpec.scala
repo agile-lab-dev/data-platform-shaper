@@ -502,7 +502,7 @@ class OntologyL0SearchSpec
         val entityType = "FileBasedDataCollectionType"
 
         val predicate = generateSearchPredicate(
-          " longStruct / longRepeated <= 50 AND organization = 'HR'"
+          " longStruct / longRepeated <= 50 AND organization LIKE 'H' "
         )
 
         iservice.list(
