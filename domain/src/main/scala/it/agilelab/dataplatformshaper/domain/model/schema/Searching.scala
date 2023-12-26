@@ -75,6 +75,25 @@ case class SearchPredicateAttribute(attributePath: List[String])
     )
   end =:=
 
+  def =!=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
+    SearchPredicate(
+      {
+        val s = genId
+        val p = genId
+        val v = genId
+        s"""
+           |{
+           |  ?$s ?$p ?$v
+           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${
+          attributePath.reverse
+            .mkString("/")
+        }") && ?$v != ${value.value.toString} ) .
+           |}
+           |""".stripMargin
+      }
+    )
+  end =!=
+
   @targetName("stringEqual")
   def =:=(value: SearchPredicateValue[String]): SearchPredicate =
     SearchPredicate(
@@ -92,6 +111,26 @@ case class SearchPredicateAttribute(attributePath: List[String])
       }
     )
   end =:=
+
+  @targetName("stringDifferent")
+  def =!=(value: SearchPredicateValue[String]): SearchPredicate =
+    SearchPredicate(
+      {
+        val s = genId
+        val p = genId
+        val v = genId
+        s"""
+           |{
+           |  ?$s ?$p ?$v
+           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${
+          attributePath.reverse
+            .mkString("/")
+        }") && ?$v != "${value.value}"^^xsd:string ) .
+           |}
+           |""".stripMargin
+      }
+    )
+  end =!=
 
   def like(value: SearchPredicateValue[String]): SearchPredicate =
     SearchPredicate(
@@ -227,6 +266,22 @@ def generateSearchPredicate(query: String): SearchPredicate =
               case _: SqlNumericLiteral =>
                 generateCode(operand1)
                   .asInstanceOf[SearchPredicateAttribute] =:= generateCode(
+                  operand2
+                ).asInstanceOf[SearchPredicateValue[AnyVal]]
+            end match
+          case SqlKind.NOT_EQUALS =>
+            val operandList = call.getOperandList.asScala.toList
+            val operand1 = operandList.head
+            val operand2 = operandList.tail.head
+            operand2 match
+              case _: SqlCharStringLiteral =>
+                generateCode(operand1)
+                  .asInstanceOf[SearchPredicateAttribute] =!= generateCode(
+                  operand2
+                ).asInstanceOf[SearchPredicateValue[String]]
+              case _: SqlNumericLiteral =>
+                generateCode(operand1)
+                  .asInstanceOf[SearchPredicateAttribute] =!= generateCode(
                   operand2
                 ).asInstanceOf[SearchPredicateValue[AnyVal]]
             end match
