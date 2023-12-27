@@ -68,7 +68,7 @@ lazy val uservice = (project in file("uservice")).settings(
     val buildVersion = (ThisBuild / version).value
     if (buildVersion == "latest") buildVersion else s"v$buildVersion"
   }".toLowerCase,
-  Docker / dockerExposedPorts             := Seq(8093),
+  Docker / dockerExposedPorts             := Seq(8093)
 ).dependsOn(domain, userviceGenerated, userviceClientGenerated % "test->compile").enablePlugins(JavaAppPackaging).setupBuildInfo
 
 lazy val docs = (project in file("docs")).
