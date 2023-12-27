@@ -10,11 +10,11 @@ import fs2.{Stream, text}
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.l0
+import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.l1.{
   Relationship,
   given_Conversion_String_Relationship
 }
-import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
@@ -690,105 +690,65 @@ class OntologyManagerHandler[F[_]: Async](
   override def listEntities(respond: Resource.ListEntitiesResponse.type)(
       body: QueryRequest
   ): F[Resource.ListEntitiesResponse] =
-
-    val predicate: Either[Throwable, Option[SearchPredicate]] =
-      if body.query.trim.isEmpty then Either.right(None)
-      else Either.catchNonFatal(Some(generateSearchPredicate(body.query)))
-
-    val result = for {
-      pred <- EitherT.fromEither[F](predicate)
-      listEntities <- EitherT(ims.list(body.entityTypeName, pred, true).attempt)
-    } yield listEntities
-
-    tms
-      .read(body.entityTypeName)
-      .map(_.map(et => et.schema))
-      .map {
-        case Left(serviceError) =>
-          logger.error(
-            s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${serviceError.getMessage}"
-          )
-          summon[Applicative[F]].pure(
-            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
-          )
-        case Right(schema) =>
-          result.value.map {
-            case Left(error) =>
-              logger.error(
-                s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${error.getMessage}"
-              )
-              respond.BadRequest(ValidationError(Vector(error.getMessage)))
-            case Right(entities) =>
-              entities match {
-                case Left(serviceError) =>
-                  logger.error(
-                    s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${serviceError.getMessage}"
-                  )
-                  respond.BadRequest(
-                    ValidationError(Vector(serviceError.getMessage))
-                  )
-                case Right(entitiesList) =>
-                  val y: ListEntitiesResponse.Ok = respond.Ok(
-                    entitiesList.toVector.map(
-                      {
-                        case et: Entity =>
-                          tupleToJson(et.values, schema) match
-                            case Left(error) =>
-                              logger.error(
-                                s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${error.getMessage}"
-                              )
-                              throw new Exception("It shouldn't be here")
-                            case Right(json) =>
-                              OpenApiEntity(
-                                et.entityId,
-                                et.entityTypeName,
-                                json
-                              )
-                        case _ => throw new Exception("It shouldn't be here")
-                      }
+    (for {
+      schema <- EitherT(tms.read(body.entityTypeName).map(_.map(_.schema)))
+      listEntities <- EitherT(ims.list(body.entityTypeName, body.query, true))
+    } yield (schema, listEntities)).value
+      .map(
+        _.map(p =>
+          p(1).toVector.map(
+            {
+              case et: Entity =>
+                tupleToJson(et.values, p(0)) match
+                  case Left(error) =>
+                    logger.error(
+                      s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${error.getMessage}"
                     )
-                  )
-                  y
-              }
-          }
-      }
-      .flatten
+                    throw new Exception("It shouldn't be here")
+                  case Right(json) =>
+                    OpenApiEntity(
+                      et.entityId,
+                      et.entityTypeName,
+                      json
+                    )
+                end match
+              case _: String => throw new Exception("It shouldn't be here")
+            }
+          )
+        )
+      )
+      .map(
+        {
+          case Left(error) =>
+            respond.BadRequest(ValidationError(Vector(error.getMessage)))
+          case Right(entities) =>
+            respond.Ok(entities)
+        }
+      )
   end listEntities
 
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.throw"
+    )
+  )
   override def listEntitiesByIds(
       respond: Resource.ListEntitiesByIdsResponse.type
   )(body: QueryRequest): F[Resource.ListEntitiesByIdsResponse] =
-    val predicate: Either[Throwable, Option[SearchPredicate]] =
-      if body.query.trim.isEmpty then Either.right(None)
-      else Either.catchNonFatal(Some(generateSearchPredicate(body.query)))
-
-    val result = for {
-      pred <- EitherT.fromEither[F](predicate)
-      listEntities <- EitherT(
-        ims.list(body.entityTypeName, pred, false).attempt
-      )
-    } yield listEntities
-
-    result.value.map {
-      case Left(error) =>
-        logger.error(
-          s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${error.getMessage}"
-        )
-        respond.BadRequest(ValidationError(Vector(error.getMessage)))
-      case Right(entities) =>
-        entities match {
-          case Left(serviceError) =>
-            logger.error(
-              s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${serviceError.getMessage}"
-            )
-            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
-          case Right(entitiesList) =>
-            respond.Ok(entitiesList.toVector.map {
-              case str: String => str
-              case _           => "" // TODO
-            }: Vector[String])
-        }
-    }
+    ims
+      .list(body.entityTypeName, body.query, false)
+      .map({
+        case Left(error) =>
+          logger.error(
+            s"Error querying instances with type ${body.entityTypeName} and query ${body.query}: ${error.getMessage}"
+          )
+          respond.BadRequest(ValidationError(Vector(error.getMessage)))
+        case Right(entities) =>
+          respond.Ok(entities.toVector.map {
+            case str: String => str
+            case _           => throw new Exception("It shouldn't be here")
+          }: Vector[String])
+      })
   end listEntitiesByIds
 
 end OntologyManagerHandler

@@ -781,15 +781,10 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     })
   end exist
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.defaultArgs"
-    )
-  )
   override def list(
       instanceTypeName: String,
       predicate: Option[SearchPredicate],
-      returnEntities: Boolean = false
+      returnEntities: Boolean
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val query =
       s"""
@@ -839,6 +834,24 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         )
       } yield entities).value
     end if
+  end list
+
+  override def list(
+      instanceTypeName: String,
+      query: String,
+      returnEntities: Boolean
+  ): F[Either[ManagementServiceError, List[String | Entity]]] =
+    val predicate: F[Either[ManagementServiceError, Option[SearchPredicate]]] =
+      summon[Applicative[F]].pure(
+        (if query.trim.isEmpty then Either.right(None)
+         else Either.catchNonFatal(Some(generateSearchPredicate(query)))).left
+          .map(t => ManagementServiceError.InvalidSearchPredicate(t.getMessage))
+      )
+
+    (for {
+      pred <- EitherT(predicate)
+      list <- EitherT(list(instanceTypeName, pred, returnEntities))
+    } yield list).value
   end list
 
   override def link(

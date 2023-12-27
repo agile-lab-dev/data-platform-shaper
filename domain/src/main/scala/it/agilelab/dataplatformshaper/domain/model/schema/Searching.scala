@@ -84,10 +84,8 @@ case class SearchPredicateAttribute(attributePath: List[String])
         s"""
            |{
            |  ?$s ?$p ?$v
-           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${
-          attributePath.reverse
-            .mkString("/")
-        }") && ?$v != ${value.value.toString} ) .
+           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
+            .mkString("/")}") && ?$v != ${value.value.toString} ) .
            |}
            |""".stripMargin
       }
@@ -122,10 +120,8 @@ case class SearchPredicateAttribute(attributePath: List[String])
         s"""
            |{
            |  ?$s ?$p ?$v
-           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${
-          attributePath.reverse
-            .mkString("/")
-        }") && ?$v != "${value.value}"^^xsd:string ) .
+           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
+            .mkString("/")}") && ?$v != "${value.value}"^^xsd:string ) .
            |}
            |""".stripMargin
       }

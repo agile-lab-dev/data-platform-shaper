@@ -501,13 +501,12 @@ class OntologyL0SearchSpec
         val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
         val entityType = "FileBasedDataCollectionType"
 
-        val predicate = generateSearchPredicate(
+        val predicate =
           " longStruct / longRepeated <= 50 AND organization LIKE 'H' AND organization <> 'HN' "
-        )
 
         iservice.list(
           entityType,
-          Some(predicate),
+          predicate,
           returnEntities = true
         )
 
@@ -527,7 +526,7 @@ class OntologyL0SearchSpec
                   )
                 )
               )
-            case entity: String =>
+            case _: String =>
               assert(false)
           end match
         }
