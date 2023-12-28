@@ -199,7 +199,3 @@ object Main extends IOApp:
   end run
 end Main
 ```
-=======
-
-
->>>>>>> 00ca1ec (some code restructuring)
