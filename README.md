@@ -28,6 +28,11 @@ git clone https://github.com/agile-lab-dev/data-platform-shaper.git
 cd data-platform-shaper
 sbt compile test
 ```
+### Build the documentation
+```
+sbt paradox previewSite
+```
+Then open this [URL](http://localhost:4000/paradox/site/main/).
 ### Run everything
 You can run GraphDB and the microservice together using a docker-compose file, so first build the image locally:
 
