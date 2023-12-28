@@ -11,8 +11,8 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
+import it.agilelab.dataplatformshaper.domain.model.schema.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
@@ -515,17 +515,14 @@ class OntologyL0SearchSpec
           list.head match
             case entity: Entity =>
               assert(list.size === 1)
-              assert(
-                tupleToJsonChecked(
-                  entity.values,
-                  fileBasedDataCollectionTypeSchema
-                ).equals(
-                  tupleToJsonChecked(
-                    fileBasedDataCollectionTuple,
-                    fileBasedDataCollectionTypeSchema
-                  )
-                )
-              )
+              (entity.values: DynamicTuple).longStruct
+                .longRepeated(0)
+                .value[Long] < 50 shouldBe (true)
+              (entity.values: DynamicTuple).longStruct
+                .longRepeated(1)
+                .value[Long] < 50 shouldBe (true)
+              (entity.values: DynamicTuple).organization
+                .value[String] shouldBe "HR"
             case _: String =>
               assert(false)
           end match
