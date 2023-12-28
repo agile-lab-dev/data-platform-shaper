@@ -4,6 +4,9 @@ import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.query.BindingSet
 
 trait KnowledgeGraph[F[_]]:
+
+  def loadBaseOntologies(): F[Unit]
+
   def removeAndInsertStatements(
       statement: List[Statement],
       deleteStatements: List[Statement] = List.empty[Statement]

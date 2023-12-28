@@ -9,7 +9,6 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
@@ -21,10 +20,6 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TypeManagementServiceInterpreter
 }
 import org.datatools.bigdatatypes.basictypes.SqlType
-import org.eclipse.rdf4j.model.*
-import org.eclipse.rdf4j.model.util.Values
-import org.eclipse.rdf4j.model.util.Values.iri
-import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
@@ -44,7 +39,6 @@ import scala.util.Right
 
 @SuppressWarnings(
   Array(
-    "scalafix:DisableSyntax.null",
     "scalafix:DisableSyntax.asInstanceOf",
     "scalafix:DisableSyntax.isInstanceOf",
     "scalafix:DisableSyntax.=="
@@ -164,25 +158,7 @@ class OntologyL0Spec
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val model1 = Rio.parse(
-          Thread.currentThread.getContextClassLoader
-            .getResourceAsStream("dp-ontology-l0.ttl"),
-          ns.getName,
-          RDFFormat.TURTLE,
-          L0
-        )
-        val model2 = Rio.parse(
-          Thread.currentThread.getContextClassLoader
-            .getResourceAsStream("dp-ontology-l1.ttl"),
-          ns.getName,
-          RDFFormat.TURTLE,
-          L1
-        )
-        val statements1 = model1.getStatements(null, null, null, iri(ns, "L0"))
-        val statements2 = model2.getStatements(null, null, null, iri(ns, "L1"))
-        repository.removeAndInsertStatements(
-          statements1.asScala.toList ++ statements2.asScala.toList
-        )
+        repository.loadBaseOntologies()
       } asserting (_ => true shouldBe true)
     }
   }
