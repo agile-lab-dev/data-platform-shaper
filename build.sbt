@@ -74,6 +74,5 @@ lazy val uservice = (project in file("uservice")).settings(
 lazy val docs = (project in file("docs")).
   enablePlugins(ParadoxPlugin).
   settings(
-    name := "Hello Project",
     paradoxTheme := Some(builtinParadoxTheme("generic"))
   )
