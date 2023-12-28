@@ -72,7 +72,7 @@ lazy val uservice = (project in file("uservice")).settings(
 ).dependsOn(domain, userviceGenerated, userviceClientGenerated % "test->compile").enablePlugins(JavaAppPackaging).setupBuildInfo
 
 lazy val docs = (project in file("docs")).
-  enablePlugins(ParadoxPlugin).
+  enablePlugins(SitePreviewPlugin, ParadoxPlugin).
   settings(
     paradoxTheme := Some(builtinParadoxTheme("generic"))
   )
