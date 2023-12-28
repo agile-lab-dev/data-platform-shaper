@@ -199,3 +199,222 @@ object Main extends IOApp:
   end run
 end Main
 ```
+##How to define a schema
+To define a schema, you have to import: ```it.agilelab.dataplatformshaper.domain.model.schema```, then you have the following attribute types available:
+
+```
+StringType         //A Scala String
+IntType            //A Scala Int
+DateType           //Mapped to java.time.LocalDate 
+TimestampDataType  //Mapped to java.time.ZonedDateTime
+DoubleType         //A Scala Double
+FloatType          //A Scala Float
+LongType           //A Scala Long
+BooleanType        //A Scala Boolean
+StructType         //A structure meant to hold attributes in a nested structure
+```
+
+Each attribute type has an attribute ```mode``` with type SqlTypeMode. Mode is an enum with values: Nullable, Required, Repeated.
+
+* Nullable means an attribute can be optional; the value will be mapped into a specific Option type.
+* Required means that an attribute is mandatory.
+* Repeated means that the attribute contains a list of values of the specified type.
+
+Let's start to define a schema. Before, from the project root run: ```sbt 'domain/console'```.
+Now, you have a Scala shell with all the domain library classes available.
+
+### A simple flat schema with a list of attributes
+
+```
+import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
+import it.agilelab.dataplatformshaper.domain.model.schema.{*, given}
+import io.circe.yaml.*
+import io.circe.yaml.syntax.*
+
+val schema: Schema = StructType(
+      List(
+        "organization" -> StringType(),
+        "sub-organization" -> StringType(),
+        "domain" -> StringType(),
+        "sub-domain" -> StringType()
+        )
+      )  
+```
+A schema is a StructType with Required SqlTypeMode. In the example above, all the attributes are *Required*. A conformed tuple should have the following structure:
+
+```scala
+val tuple = (
+     "organization" -> "Italy",
+     "sub-organization" -> "HR",
+     "domain" -> "Registration",
+     "sub-domain" -> "People"
+  )
+```
+It's possible to parse a tuple to check if it's conform to the schema:
+
+```scala
+parseTuple(tuple, schema: Schema)
+```
+
+We can also convert a tuple into a JSON ([Circe](https://circe.github.io/circe/)) representation:
+
+```scala
+val json = tupleToJson(tuple, schema).toOption.get
+```
+
+And, convert back a JSON into a tuple:
+
+```scala
+val tuple = jsonToTuple(json, schema)
+```
+
+###A schema with deep nesting
+
+```scala
+val schema: Schema = StructType(
+      List(
+        "organization" -> StringType(),
+        "sub-organization" -> StringType(),
+        "domain" -> StringType(),
+        "sub-domain" -> StringType(),
+        "nested" -> StructType(List(
+             "nestedField1" -> StringType(),
+             "nestedField2" -> StringType(),
+             "furtherNested" -> StructType(List(
+                 "furtherNested1" -> StringType(),
+                 "furtherNested2" -> StringType()
+               )
+             )
+           )  
+        )
+       )
+     )  
+```
+A conformed tuple:
+
+```scala
+val tuple = (
+     "organization" -> "Italy",
+     "sub-organization" -> "HR",
+     "domain" -> "Registration",
+     "sub-domain" -> "People",
+     "nested" -> (
+       "nestedField1" -> "nest1",
+       "nestedField2" -> "nest2",
+       "furtherNested" -> (
+          "furtherNested1" -> "fnest3",
+          "furtherNested2" -> "fnest4"
+       )
+     )
+  )
+  
+val json = tupleToJson(tuple, schema).toOption.get
+val tuple = jsonToTuple(json, schema)
+  
+```
+###Nullable and repeated attributes
+
+```scala
+val schema: Schema = StructType(
+      List(
+        "organization" -> StringType(),
+        "sub-organization" -> StringType(),
+        "domain" -> StringType(),
+        "sub-domain" -> StringType(),
+        "nested" -> StructType(List(
+             "nestedField1" -> StringType(),
+             "nestedField2" -> StringType(),
+             "furtherNested" -> StructType(List(
+                 "furtherNested1" -> StringType(),
+                 "furtherNested2" -> StringType()
+               )
+             )
+           )  
+        ),
+       "repeated" -> StringType(Repeated),
+       "nullable" -> StringType(Nullable),
+       "anotherNullable" -> StringType(Nullable)
+       )
+     )
+```
+A conformed tuple:
+
+```scala
+val tuple = (
+     "organization" -> "Italy",
+     "sub-organization" -> "HR",
+     "domain" -> "Registration",
+     "sub-domain" -> "People",
+     "nested" -> (
+       "nestedField1" -> "nest1",
+       "nestedField2" -> "nest2",
+       "furtherNested" -> (
+          "furtherNested1" -> "fnest3",
+          "furtherNested2" -> "fnest4"
+       )
+     ),
+     "repeated" -> List("label2", "label2", "label3"),
+     "nullable" -> None,
+     "anotherNullable" -> Some("someString")
+  )
+  
+val json = tupleToJson(tuple, schema).toOption.get
+val tuple = jsonToTuple(json, schema)
+```
+Let's see the YAML generated starting from a tuple:
+
+```scala
+println(json.asYaml.spaces2)
+
+```
+###Repeated struct
+
+```scala
+val schema: Schema = StructType(
+      List(
+        "organization" -> StringType(),
+        "sub-organization" -> StringType(),
+        "domain" -> StringType(),
+        "sub-domain" -> StringType(),
+        "repeated" -> StructType(
+                        List(
+                          "nestedField1"  -> StringType(),
+                          "nestedField2"  -> StringType(),
+                        ),   
+                        Repeated
+                      )
+      )
+   )    
+```
+A conformed tuple:
+
+```scala
+val tuple = (
+     "organization" -> "Italy",
+     "sub-organization" -> "HR",
+     "domain" -> "Registration",
+     "sub-domain" -> "People",
+     "repeated" -> List(
+       (
+         "nestedField1" -> "nest1",
+         "nestedField2" -> "nest2",
+       ),
+       (
+         "nestedField1" -> "nest3",
+         "nestedField2" -> "nest4",
+       ),
+       (
+         "nestedField1" -> "nest5",
+         "nestedField2" -> "nest6",
+       ),
+       (
+         "nestedField1" -> "nest7",
+         "nestedField2" -> "nest8",
+       ),         
+     )
+  )
+  
+val json = tupleToJson(tuple, schema).toOption.get
+val tuple = jsonToTuple(json, schema)
+println(json.asYaml.spaces2)
+```
