@@ -54,7 +54,9 @@ object Session:
           if tls then s"https://$host:$port" else s"http://$host:$port"
         val manager = new RemoteRepositoryManager(rdf4jServer)
         manager.init()
-        Session(manager.getRepository(repositoryId).getConnection)
+        val conn: RepositoryConnection =
+          manager.getRepository(repositoryId).getConnection
+        Session(conn)
       case "virtuoso" =>
         val virtuosoRepository =
           new VirtuosoRepository(s"jdbc:virtuoso://$host:$port", user, pwd)
