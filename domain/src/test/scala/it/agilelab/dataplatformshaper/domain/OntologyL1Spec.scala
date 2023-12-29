@@ -297,6 +297,31 @@ class OntologyL1Spec
     }
   }
 
+  "Unlinking two traits that have associated linked instances should trigger an error" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        trservice.unlink("DataProduct", Relationship.hasPart, "OutputPort")
+      } asserting (res =>
+        res should matchPattern {
+          case Left(
+                TraitsHaveLinkedInstancesError("DataProduct", "OutputPort")
+              ) =>
+        }
+      )
+    }
+  }
+
   "Link with relationship hasPart two instances and one of them is not related to the proper trait" - {
     "fails" in {
       val session = Session[IO](

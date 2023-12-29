@@ -22,10 +22,6 @@ enum ManagementServiceError(errorMessage: String):
       extends ManagementServiceError(
         s"The trait with name $traitName does not exist"
       )
-  case NonExistentTypeError(instanceType: String)
-      extends ManagementServiceError(
-        s"The entity type $instanceType does not exist"
-      )
   case TupleIsNotConformToSchema(parsingError: String)
       extends ManagementServiceError(parsingError)
   case InvalidLinkType(inst1: String, linkType: String, inst2: String)
@@ -36,6 +32,10 @@ enum ManagementServiceError(errorMessage: String):
       extends ManagementServiceError(s"The instance $inst has linked instances")
   case TypeHasInstancesError(entityType: String)
       extends ManagementServiceError(s"The type $entityType has instances")
+  case TraitsHaveLinkedInstancesError(traitName1: String, traitName2: String)
+      extends ManagementServiceError(
+        s"The traits $traitName1 and $traitName2 have associated linked instances"
+      )
   case InvalidSearchPredicate(error: String)
       extends ManagementServiceError(error)
 end ManagementServiceError

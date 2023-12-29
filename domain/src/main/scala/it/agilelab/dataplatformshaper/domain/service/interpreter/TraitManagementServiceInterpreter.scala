@@ -196,6 +196,33 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       linkType: Relationship,
       traitName2: String
   ): F[Either[ManagementServiceError, Unit]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+         |SELECT  (count(*) as ?count) WHERE {
+         |        BIND(iri("${ns.getName}$traitName1") as ?trait1)
+         |        BIND(iri("${ns.getName}$traitName2") as ?trait2)
+         |        ?tr1 <${linkType.getNamespace}$linkType>  ?tr2 .
+         |        ?instance1 <${linkType.getNamespace}$linkType> ?instance2 .
+         |        ?instance1 ns:isClassifiedBy ?type1 .
+         |        ?instance2 ns:isClassifiedBy ?type2 .
+         |        ?type1 ns:hasTrait ?trait1 .
+         |        ?type2 ns:hasTrait ?trait2 .
+         |        ?trait1 rdfs:subClassOf* ?tr1 .
+         |        ?trait2 rdfs:subClassOf* ?tr2 .
+         |  }
+         |""".stripMargin
+    val res =
+      logger.trace(
+        s"Querying if there are linked instances using using this $linkType associated with traits $traitName1 and $traitName2"
+      ) *> logger.trace(s"Using query $query") *> repository.evaluateQuery(
+        query
+      )
+
     val statements = List(
       statement(
         triple(
@@ -215,12 +242,28 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       res <- EitherT(
         if exist1 && exist2
         then
-          summon[Functor[F]].map(
-            repository.removeAndInsertStatements(
-              List.empty,
-              statements
+          summon[Functor[F]]
+            .map(res)(ibs =>
+              val count = ibs
+                .map(bs => bs.getBinding("count").getValue.stringValue().toInt)
+                .toList
+                .head
+              if count === 0 then
+                summon[Functor[F]].map(
+                  repository.removeAndInsertStatements(
+                    List.empty,
+                    statements
+                  )
+                )(_ => Right[ManagementServiceError, Unit](()))
+              else
+                summon[Applicative[F]].pure(
+                  Left[ManagementServiceError, Unit](
+                    TraitsHaveLinkedInstancesError(traitName1, traitName2)
+                  )
+                )
+              end if
             )
-          )(_ => Right[ManagementServiceError, Unit](()))
+            .flatten
         else
           if !exist1
           then
