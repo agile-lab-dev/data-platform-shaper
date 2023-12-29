@@ -681,4 +681,3 @@ The meaning of the methods should be pretty straightforward. The *create* method
 The list methods provide ways to retrieve a list of entities as a list of IDs or the actual entity instances.
 
 The link, unlink, and linked methods have similar semantics to the trait counterparts.
-
