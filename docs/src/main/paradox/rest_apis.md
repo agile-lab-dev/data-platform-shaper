@@ -3,4 +3,4 @@
 ## OpenAPI Interface
 At the link below, you can find the complete OpenApi specification:
 
-[***OpenAPI Specification***](./openapi_interface.html)
+@extref[**OpenAPI Specification**](site:openapi_interface.html)

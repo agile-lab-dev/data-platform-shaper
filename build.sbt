@@ -74,5 +74,8 @@ lazy val uservice = (project in file("uservice")).settings(
 lazy val docs = (project in file("docs")).
   enablePlugins(SitePreviewPlugin, ParadoxPlugin).
   settings(
-    paradoxTheme := Some(builtinParadoxTheme("generic"))
+    paradoxTheme := Some(builtinParadoxTheme("generic")),
+    Compile / paradoxProperties ++= Map(
+     "extref.site.base_url" -> "./%s"
+    )
   )

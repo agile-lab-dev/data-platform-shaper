@@ -278,7 +278,7 @@ paths:
     put:
       tags:
         - OntologyManager
-      summary: Update a user-define type instance using a Yaml file
+      summary: Update a user-defined type instance using a Yaml file
       operationId: updateEntityByYaml
       parameters:
         - in: path
