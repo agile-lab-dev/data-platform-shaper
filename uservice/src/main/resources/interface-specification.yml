@@ -7,7 +7,7 @@ servers:
   - #__URL__
 tags:
   - name: OntologyManager
-    description: All the ontology related operations
+    description: All the ontology-related operations
 paths:
   /ontology/entity-type:
     post:
@@ -55,7 +55,7 @@ paths:
             description: user-defined type name
       responses:
         200:
-          description: If successful return an EntityType object
+          description: If successful, return an EntityType object
           content:
             application/json:
               schema:
@@ -79,7 +79,7 @@ paths:
       summary: Create a user-defined type
       operationId: createTypeByYaml
       requestBody:
-        description: An YAML file containing an Entity Type spec
+        description: A YAML file containing an Entity Type spec
         required: true
         content:
           application/octet-stream:
@@ -108,7 +108,7 @@ paths:
     get:
       tags:
         - OntologyManager
-      summary: Get a user-defined type as YAML file
+      summary: Get a user-defined type as a YAML file
       operationId: readTypeAsYaml
       parameters:
         - in: query
@@ -119,7 +119,7 @@ paths:
             description: user-defined type name
       responses:
         200:
-          description: If successful return an EntityType object as a YAML file
+          description: If successful, return an EntityType object as a YAML file
           content:
             application/octet-stream:
               schema:
@@ -184,7 +184,7 @@ paths:
             description: user-defined type instance id
       responses:
         200:
-          description: If successful return an EntityType object
+          description: If successful, return an EntityType object
           content:
             application/json:
               schema:
@@ -213,7 +213,7 @@ paths:
           required: true
           schema:
             type: string
-            description: user-defined type instance id to be deleted
+            description: user-defined type instance ID to be deleted
       responses:
         200:
           description: If successful, returns "OK"
@@ -246,7 +246,7 @@ paths:
           required: true
           schema:
             type: string
-          description: User-defined type instance id to be updated
+          description: User-defined type instance ID to be updated
       requestBody:
         description: The new entity data
         required: true
@@ -256,7 +256,7 @@ paths:
               $ref: '#/components/schemas/Entity'
       responses:
         200:
-          description: If successful, returns the id of the updated entity
+          description: If successful, returns the ID of the updated entity
           content:
             application/json:
               schema:
@@ -286,9 +286,9 @@ paths:
           required: true
           schema:
             type: string
-          description: User-defined type instance id to be updated
+          description: User-defined type instance ID to be updated
       requestBody:
-        description: An YAML file containing the new entity data
+        description: A YAML file containing the new entity data
         required: true
         content:
           application/octet-stream:
@@ -297,7 +297,7 @@ paths:
               format: binary
       responses:
         200:
-          description: If successful, returns the id of the updated entity
+          description: If successful, returns the ID of the updated entity
           content:
             application/text:
               schema:
@@ -321,7 +321,7 @@ paths:
       summary: Create a user-defined type instance
       operationId: createEntityByYaml
       requestBody:
-        description: An YAML file containing an Entity spec
+        description: A YAML file containing an Entity spec
         required: true
         content:
           application/octet-stream:
@@ -362,7 +362,7 @@ paths:
             description: user-defined type instance id
       responses:
         200:
-          description: If successful return an Entity object as a YAML file
+          description: If successful, return an Entity object as a YAML file
           content:
             application/octet-stream:
               schema:
@@ -477,13 +477,13 @@ paths:
       parameters:
         - in: path
           name: instanceId
-          description: 'The instance ID for which linked instances are being queried'
+          description: The instance ID for which linked instances are being queried
           required: true
           schema:
             type: string
         - in: path
           name: rel
-          description: 'The relationship through which instances are linked'
+          description: The relationship through which instances are linked.
           required: true
           schema:
             type: string
@@ -497,7 +497,7 @@ paths:
                 items:
                   type: string
         400:
-          description: Invalid input, details of the error are provided
+          description: Invalid input; details of the error are provided
           content:
             application/json:
               schema:
@@ -531,7 +531,7 @@ paths:
                 items:
                   type: string
         400:
-          description: Invalid input, details of the error are provided
+          description: Invalid input; details of the error are provided
           content:
             application/json:
               schema:
@@ -565,7 +565,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Entity'
         400:
-          description: Invalid input, details of the error are provided
+          description: Invalid input; details of the error are provided
           content:
             application/json:
               schema:
@@ -597,7 +597,7 @@ paths:
               schema:
                 type: string
         400:
-          description: Invalid input, details of the error are provided
+          description: Invalid input; details of the error are provided
           content:
             application/json:
               schema:
@@ -617,19 +617,19 @@ paths:
       parameters:
         - in: path
           name: trait1
-          description: 'First trait'
+          description: First trait
           required: true
           schema:
-            type: 'string'
+            type: string
         - in: path
           name: rel
-          description: 'Relationship between the two traits'
+          description: Relationship between the two traits
           required: true
           schema:
             type: string
         - in: path
           name: trait2
-          description: 'Second trait'
+          description: The second trait
           required: true
           schema:
             type: string
@@ -641,7 +641,7 @@ paths:
               schema:
                 type: string
         400:
-          description: Invalid input, details of the error are provided
+          description: Invalid input; details of the error are provided
           content:
             application/json:
               schema:
@@ -661,19 +661,19 @@ paths:
       parameters:
         - in: path
           name: trait1
-          description: 'First trait'
+          description: First trait
           required: true
           schema:
-            type: 'string'
+            type: string
         - in: path
           name: rel
-          description: 'Relationship between the two traits'
+          description: Relationship between the two traits
           required: true
           schema:
             type: string
         - in: path
           name: trait2
-          description: 'Second trait'
+          description: The second trait
           required: true
           schema:
             type: string
@@ -685,7 +685,7 @@ paths:
               schema:
                 type: string
         400:
-          description: Invalid input, details of the error are provided
+          description: Invalid input; details of the error are provided
           content:
             application/json:
               schema:
@@ -705,13 +705,13 @@ paths:
       parameters:
         - in: path
           name: traitName
-          description: 'The trait for which linked traits are being queried'
+          description: The trait for which linked traits are being queried
           required: true
           schema:
             type: string
         - in: path
           name: rel
-          description: 'The relationship through which traits are linked'
+          description: The relationship through which traits are linked
           required: true
           schema:
             type: string
@@ -725,7 +725,7 @@ paths:
                 items:
                   type: string
         400:
-          description: Invalid input, details of the error are provided
+          description: Invalid input; details of the error are provided
           content:
             application/json:
               schema:
