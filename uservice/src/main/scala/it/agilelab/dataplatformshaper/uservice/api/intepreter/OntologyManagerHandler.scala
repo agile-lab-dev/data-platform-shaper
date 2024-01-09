@@ -463,7 +463,7 @@ class OntologyManagerHandler[F[_]: Async](
   override def createTrait(respond: Resource.CreateTraitResponse.type)(
       body: Trait
   ): F[Resource.CreateTraitResponse] =
-    val res = trms.create(body.name, Option.empty[String])
+    val res = trms.create(body.name, body.inheritsFrom)
 
     res.map {
       case Left(error) =>

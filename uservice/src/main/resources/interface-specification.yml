@@ -780,6 +780,8 @@ components:
       properties:
         name:
           type: string
+        inheritsFrom:
+          type: string
     AttributeType:
       type: object
       required:
