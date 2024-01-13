@@ -18,7 +18,6 @@ import it.agilelab.dataplatformshaper.domain.service.{
   TraitManagementService,
   TypeManagementService
 }
-import org.datatools.bigdatatypes.basictypes.SqlType
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.{OWL, RDF, RDFS}
@@ -77,8 +76,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
   private def stringToDataType(
       stringType: String,
       stringMode: String,
-      records: Option[List[(String, SqlType)]] = None
-  ): SqlType =
+      records: Option[List[(String, DataType)]] = None
+  ): DataType =
     stringType match
       case "StringAttributeType" =>
         StringType(modeStringToMode(stringMode))
@@ -116,7 +115,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
 
   private def emitStatements(
       fatherEntity: IRI,
-      dataType: SqlType,
+      dataType: DataType,
       childEntity: IRI,
       currentPath: String
   ): List[Statement] =
@@ -246,12 +245,12 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
 
   private def getStructTypeRecords(
       structIri: IRI
-  ): F[List[(String, SqlType)]] =
+  ): F[List[(String, DataType)]] =
     val query = queryForType(structIri)
     repository
       .evaluateQuery(query)
       .map(ibs =>
-        val records: Iterator[F[(String, SqlType)]] = ibs.map(bs =>
+        val records: Iterator[F[(String, DataType)]] = ibs.map(bs =>
           val fieldName =
             iri(bs.getBinding("field").getValue.stringValue()).getLocalName
           val fieldType =

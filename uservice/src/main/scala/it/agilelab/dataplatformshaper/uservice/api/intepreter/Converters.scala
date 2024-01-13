@@ -8,7 +8,6 @@ import it.agilelab.dataplatformshaper.uservice.definitions.{
   EntityType as OpenApiEntityType,
   Mode as OpenApiMode
 }
-import org.datatools.bigdatatypes.basictypes.SqlType
 
 import scala.language.implicitConversions
 

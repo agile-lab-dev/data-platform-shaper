@@ -19,7 +19,6 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
-import org.datatools.bigdatatypes.basictypes.SqlType
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
@@ -64,8 +63,8 @@ class OntologyL0Spec
 
   given Equality[StructType] with
     def areEqual(x: StructType, y: Any): Boolean =
-      val c1: Map[String, SqlType] = x.records.toMap
-      val c2: Map[String, SqlType] = y.asInstanceOf[StructType].records.toMap
+      val c1: Map[String, DataType] = x.records.toMap
+      val c2: Map[String, DataType] = y.asInstanceOf[StructType].records.toMap
       val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
       ret
     end areEqual
