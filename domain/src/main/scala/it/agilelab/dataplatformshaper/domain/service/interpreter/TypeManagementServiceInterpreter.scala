@@ -85,6 +85,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         IntType(modeStringToMode(stringMode))
       case "DateAttributeType" =>
         DateType(modeStringToMode(stringMode))
+      case "JsonAttributeType" =>
+        JsonType(modeStringToMode(stringMode))
       case "TimestampAttributeType" =>
         TimestampDataType(modeStringToMode(stringMode))
       case "DoubleAttributeType" =>
@@ -152,6 +154,16 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
           statement(
             triple(childEntity, RDFS.RANGE, NS.DATEATTRIBUTETYPE),
+            L2
+          ),
+          modeToStatement(childEntity, mode)
+        )
+      case JsonType(mode) =>
+        List(
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(
+            triple(childEntity, RDFS.RANGE, NS.JSONATTRIBUTETYPE),
             L2
           ),
           modeToStatement(childEntity, mode)
