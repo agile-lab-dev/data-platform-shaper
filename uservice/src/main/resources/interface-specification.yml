@@ -809,6 +809,7 @@ components:
         - Double
         - Float
         - Bool
+        - Json
     Mode:
       type: string
       enum:

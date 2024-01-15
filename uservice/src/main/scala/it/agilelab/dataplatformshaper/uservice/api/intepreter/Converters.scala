@@ -80,6 +80,13 @@ given OpenApiAttributeTypeToAttributeType
             oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
           )
         )
+      case AttributeTypeName.members.Json =>
+        (
+          oaAttributeType.name,
+          JsonType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+          )
+        )
       case AttributeTypeName.members.Struct =>
         (
           oaAttributeType.name,
