@@ -8,7 +8,6 @@ import it.agilelab.dataplatformshaper.uservice.definitions.{
   EntityType as OpenApiEntityType,
   Mode as OpenApiMode
 }
-import org.datatools.bigdatatypes.basictypes.SqlType
 
 import scala.language.implicitConversions
 
@@ -78,6 +77,13 @@ given OpenApiAttributeTypeToAttributeType
         (
           oaAttributeType.name,
           BooleanType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+          )
+        )
+      case AttributeTypeName.members.Json =>
+        (
+          oaAttributeType.name,
+          JsonType(
             oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
           )
         )

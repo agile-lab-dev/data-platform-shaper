@@ -4,6 +4,7 @@ import cats.*
 import cats.data.*
 import cats.effect.*
 import cats.implicits.*
+import io.circe.Json
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
@@ -109,6 +110,20 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
               case Nullable =>
                 value
                   .asInstanceOf[Option[LocalDate]]
+                  .fold(literal("null"))(literal)
+            end match
+          statements = statement(
+            triple(currentEntityIri, iri(ns, currentPath), lit),
+            L3
+          ) :: statements
+        case JsonType(mode) =>
+          val lit =
+            mode match
+              case Required | Repeated =>
+                literal(value.asInstanceOf[Json])
+              case Nullable =>
+                value
+                  .asInstanceOf[Option[Json]]
                   .fold(literal("null"))(literal)
             end match
           statements = statement(
@@ -431,6 +446,24 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(LocalDate.parse(value(0)(1)))
             case None =>
               fieldName -> List[LocalDate]()
+        case JsonType(mode) =>
+          fieldValue match
+            case Some(value) =>
+              mode match
+                case Required =>
+                  fieldName -> io.circe.parser.parse(value(0)(1)).getOrElse("")
+                case Repeated =>
+                  fieldName -> value
+                    .map(date => io.circe.parser.parse(date(1)).getOrElse(""))
+                    .reverse
+                case Nullable =>
+                  if value(0)(1) === "null" then fieldName -> Option.empty[Json]
+                  else
+                    fieldName -> Some(
+                      io.circe.parser.parse(value(0)(1)).getOrElse("")
+                    )
+            case None =>
+              fieldName -> List[Json]()
         case TimestampDataType(mode) =>
           fieldValue match
             case Some(value) =>
@@ -576,6 +609,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             case _: IntType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case _: DateType =>
+              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
+            case _: JsonType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case _: TimestampDataType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)

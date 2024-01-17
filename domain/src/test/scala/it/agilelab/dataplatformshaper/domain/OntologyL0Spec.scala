@@ -19,7 +19,6 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
-import org.datatools.bigdatatypes.basictypes.SqlType
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
@@ -31,6 +30,8 @@ import org.scalatest.matchers.should.Matchers
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 
+import io.circe._
+import io.circe.parser._
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.collection.immutable.List
 import scala.jdk.CollectionConverters.*
@@ -64,8 +65,8 @@ class OntologyL0Spec
 
   given Equality[StructType] with
     def areEqual(x: StructType, y: Any): Boolean =
-      val c1: Map[String, SqlType] = x.records.toMap
-      val c2: Map[String, SqlType] = y.asInstanceOf[StructType].records.toMap
+      val c1: Map[String, DataType] = x.records.toMap
+      val c2: Map[String, DataType] = y.asInstanceOf[StructType].records.toMap
       val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
       ret
     end areEqual
@@ -183,6 +184,9 @@ class OntologyL0Spec
       "timestamp" -> TimestampDataType(Required),
       "repeatedTimestamp" -> TimestampDataType(Repeated),
       "optionalTimestamp" -> TimestampDataType(Nullable),
+      "json" -> JsonType(Required),
+      "repeatedJson" -> JsonType(Repeated),
+      "optionalJson" -> JsonType(Nullable),
       "timestampStruct" -> StructType(
         List(
           "timestamp" -> TimestampDataType(Required),
@@ -275,6 +279,25 @@ class OntologyL0Spec
     "labels" -> List("label1", "label2", "label3"),
     "string" -> "str",
     "optionalString" -> Some("str"),
+    "json" -> parse(
+      "{\n  \"MagicLamp\": {\n    \"color\": \"golden\",\n    \"age\": \"centuries old\",\n    \"origin\": \"mystical realm\",\n    \"size\": {\n      \"height\": \"15cm\",\n      \"width\": \"30cm\"\n    },\n    \"abilities\": [\n      \"granting wishes\",\n      \"glowing in the dark\",\n      \"levitation\"\n    ],\n    \"previousOwners\": [\n      \"Elminster Aumar\",\n      \"a lost pirate\",\n      \"an unknown traveler\"\n    ],\n    \"currentLocation\": \"hidden in an ancient cave\",\n    \"condition\": \"slightly worn but still functional\"\n  }\n}"
+    ).getOrElse(""),
+    "repeatedJson" -> List(
+      parse(
+        "{\n  \"name\": \"John Doe\",\n  \"age\": 30,\n  \"city\": \"New York\"\n}"
+      ).getOrElse(""),
+      parse(
+        "{\n  \"name\": \"Eleanor Smith\",\n  \"age\": 42,\n  \"city\": \"Miami\"\n}"
+      ).getOrElse(""),
+      parse(
+        "{\n  \"name\": \"David Johnson\",\n  \"age\": 35,\n  \"city\": \"Seattle\"\n}"
+      ).getOrElse("")
+    ),
+    "optionalJson" -> Some(
+      parse(
+        "{\n  \"name\": \"Sophie Williams\",\n  \"age\": 28,\n  \"city\": \"Denver\"\n}"
+      ).getOrElse("")
+    ),
     "emptyOptionalString" -> None,
     "repeatedString" -> List("str1", "str2", "str3"),
     "emptyRepeatedString" -> List(),
@@ -390,6 +413,25 @@ class OntologyL0Spec
     "labels" -> List("label1", "label2", "label3"),
     "string" -> "str",
     "optionalString" -> Some("str"),
+    "json" -> parse(
+      "{\n  \"MagicLamp\": {\n    \"color\": \"golden\",\n    \"age\": \"centuries old\",\n    \"origin\": \"mystical realm\",\n    \"size\": {\n      \"height\": \"15cm\",\n      \"width\": \"30cm\"\n    },\n    \"abilities\": [\n      \"granting wishes\",\n      \"glowing in the dark\",\n      \"levitation\"\n    ],\n    \"previousOwners\": [\n      \"Elminster Aumar\",\n      \"a famous wizard\",\n      \"an unknown traveler\"\n    ],\n    \"currentLocation\": \"hidden in an ancient cave\",\n    \"condition\": \"slightly worn but still functional\"\n  }\n}"
+    ).getOrElse(""),
+    "repeatedJson" -> List(
+      parse(
+        "{\n  \"name\": \"John Doe\",\n  \"age\": 33,\n  \"city\": \"New York\"\n}"
+      ).getOrElse(""),
+      parse(
+        "{\n  \"name\": \"Eleanor Smith\",\n  \"age\": 45,\n  \"city\": \"Miami\"\n}"
+      ).getOrElse(""),
+      parse(
+        "{\n  \"name\": \"David Johnson\",\n  \"age\": 18,\n  \"city\": \"Seattle\"\n}"
+      ).getOrElse("")
+    ),
+    "optionalJson" -> Some(
+      parse(
+        "{\n  \"name\": \"Sophie Williams\",\n  \"age\": 28,\n  \"city\": \"Austin\"\n}"
+      ).getOrElse("")
+    ),
     "emptyOptionalString" -> None,
     "repeatedString" -> List("str1", "str2", "str3"),
     "emptyRepeatedString" -> List(),

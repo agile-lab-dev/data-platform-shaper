@@ -20,6 +20,7 @@ object NS:
   val ISCLASSIFIEDBY = iri(ns, "isClassifiedBy")
   val STRINGATTRIBUTETYPE = iri(ns, "StringAttributeType")
   val DATEATTRIBUTETYPE = iri(ns, "DateAttributeType")
+  val JSONATTRIBUTETYPE = iri(ns, "JsonAttributeType")
   val TIMESTAMPATTRIBUTETYPE = iri(ns, "TimestampAttributeType")
   val DOUBLEATTRIBUTETYPE = iri(ns, "DoubleAttributeType")
   val FLOATATTRIBUTETYPE = iri(ns, "FloatAttributeType")

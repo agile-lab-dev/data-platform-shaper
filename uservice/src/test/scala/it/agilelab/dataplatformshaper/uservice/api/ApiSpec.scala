@@ -313,6 +313,54 @@ class ApiSpec
     }
   }
 
+  "Creating a user defined type instance with a json attribute" - {
+    "works" in {
+
+      val entityType = OpenApiEntityType(
+        name = "JsonCollectionType",
+        Some(Vector("DataCollection")),
+        Vector(
+          OpenApiAttributeType(
+            "json",
+            AttributeTypeName.Json,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val rawJson: String =
+        """
+        {
+          "json": {"name": "Olivia Davis", "age": 31, "city": "Houston"},
+          "repeatedJson": [{"name": "William Johnson", "age": 28, "city": "New Orleans"},
+          {"name": "Sophia Anderson", "age": 36, "city": "Denver"}]
+        }
+        """
+
+      val entityJson = parse(rawJson).getOrElse(Json.Null)
+
+      val entity = OpenApiEntity("", "JsonCollectionType", entityJson)
+
+      val resp: Resource[IO, CreateEntityResponse] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(entityType))
+        resp <- Resource.liftK(client.createEntity(entity))
+      } yield resp
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          resp should matchPattern { case CreateEntityResponse.Ok(_) =>
+          }
+        )
+    }
+  }
+
   "Creating a user defined type instance using a YAML file" - {
     "works" in {
 

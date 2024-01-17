@@ -21,6 +21,7 @@ package parsing {
 
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
 
+implicit val jsonOrdering: Ordering[Json] = Ordering.by(_.toString())
 @SuppressWarnings(
   Array(
     "scalafix:DisableSyntax.asInstanceOf",
@@ -130,6 +131,38 @@ private def unfoldPrimitive(
           Right[String, Unit](())
         case wrong =>
           Left[String, Unit](s"$wrong is not a LocalDate")
+      end match
+    case tpe @ JsonType(mode) =>
+      value match
+        case value: Json if mode === Required =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+          try
+            value
+              .asInstanceOf[List[Json]]
+              .sorted
+              .foreach(date =>
+                unfoldPrimitive(
+                  name,
+                  date,
+                  tpe.copy(mode = Required),
+                  currentPath,
+                  func
+                )
+              )
+            Right[String, Unit](())
+          catch
+            case _: Throwable =>
+              Left[String, Unit](s"$value is not a List[Json]")
+        case value @ Some(_: Json) if mode === Nullable =>
+          func(currentPath, tpe, value, FoldingPrimitive)
+          Right[String, Unit](())
+        case None if mode === Nullable =>
+          func(currentPath, tpe, None: Option[Json], FoldingPrimitive)
+          Right[String, Unit](())
+        case wrong =>
+          Left[String, Unit](s"$wrong is not a Json")
       end match
     case tpe @ TimestampDataType(mode) =>
       value match
@@ -429,6 +462,8 @@ private def unfoldDataType(
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case tpe @ DateType(_) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
+    case tpe @ JsonType(_) =>
+      unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case tpe @ TimestampDataType(_) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case tpe @ DoubleType(_) =>
@@ -536,6 +571,21 @@ def jsonToTupleChecked(
                   .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[LocalDate].toOption
+            end match
+          case JsonType(mode) =>
+            mode match
+              case Required =>
+                obj
+                  .as[Json]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Repeated =>
+                obj
+                  .as[List[Json]]
+                  .toOption
+                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+              case Nullable =>
+                obj.as[Json].toOption
             end match
           case TimestampDataType(mode) =>
             mode match
@@ -709,6 +759,27 @@ def tupleToJsonChecked(
                 case Nullable =>
                   tupleFieldValue
                     .asInstanceOf[Option[LocalDate]]
+                    .fold(Json.Null)(date => Json.fromString(date.toString))
+              end match
+            case JsonType(mode) =>
+              mode match
+                case Required =>
+                  Json.fromString(
+                    tupleFieldValue.toString
+                      .asInstanceOf[String]
+                  )
+                case Repeated =>
+                  Json.fromValues(
+                    tupleFieldValue
+                      .asInstanceOf[List[Json]]
+                      .sorted
+                      .map(json => json.toString)
+                      .asInstanceOf[List[String]]
+                      .map(Json.fromString)
+                  )
+                case Nullable =>
+                  tupleFieldValue
+                    .asInstanceOf[Option[Json]]
                     .fold(Json.Null)(date => Json.fromString(date.toString))
               end match
             case TimestampDataType(mode) =>

@@ -32,6 +32,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "double" -> DoubleType(),
         "doubleRepeated" -> DoubleType(Repeated),
         "doubleNullable" -> DoubleType(Nullable),
+        "json" -> JsonType(Required),
+        "jsonRepeated" -> JsonType(Repeated),
+        "jsonNullable" -> JsonType(Nullable),
         "float" -> FloatType(),
         "floatRepeated" -> FloatType(Repeated),
         "floatNullable" -> FloatType(Nullable),
@@ -96,6 +99,22 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "double" -> 1.23,
       "doubleRepeated" -> List(1.23, 3.21),
       "doubleNullable" -> Some(3.21),
+      "json" -> parse(
+        "{\"name\": \"Michael Johnson\", \"age\": 33, \"city\": \"Los Angeles\"}"
+      ).getOrElse(""),
+      "jsonRepeated" -> List(
+        parse(
+          "{\"name\": \"Alice Williams\", \"age\": 29, \"city\": \"San Francisco\"}"
+        ).getOrElse(""),
+        parse(
+          "{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}"
+        ).getOrElse("")
+      ),
+      "jsonNullable" -> Some(
+        parse(
+          "{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}"
+        ).getOrElse("")
+      ),
       "float" -> 1.23f,
       "floatRepeated" -> List(1.23f, 3.21f),
       "floatNullable" -> Some(1.23f),
@@ -150,6 +169,22 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "double" -> 1.23,
         "doubleRepeated" -> List(1.23, 3.21),
         "doubleNullable" -> Some(3.21),
+        "json" -> parse(
+          "{\"name\": \"Michael Johnson\", \"age\": 33, \"city\": \"Los Angeles\"}"
+        ).getOrElse(""),
+        "jsonRepeated" -> List(
+          parse(
+            "{\"name\": \"Alice Williams\", \"age\": 29, \"city\": \"San Francisco\"}"
+          ).getOrElse(""),
+          parse(
+            "{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}"
+          ).getOrElse("")
+        ),
+        "jsonNullable" -> Some(
+          parse(
+            "{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}"
+          ).getOrElse("")
+        ),
         "float" -> 1.23f,
         "floatRepeated" -> List(1.23f, 3.21f),
         "floatNullable" -> Some(1.23f),
@@ -202,6 +237,9 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "double" -> DoubleType(),
         "doubleRepeated" -> DoubleType(Repeated),
         "doubleNullable" -> DoubleType(Nullable),
+        "json" -> JsonType(Required),
+        "jsonRepeated" -> JsonType(Repeated),
+        "jsonNullable" -> JsonType(Nullable),
         "float" -> FloatType(),
         "floatRepeated" -> FloatType(Repeated),
         "floatNullable" -> FloatType(Nullable),
@@ -245,6 +283,10 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       "double": 1.23,
       "doubleRepeated": [1.23, 3.21],
       "doubleNullable": 3.21,
+      "json": {"name": "Michael Johnson", "age": 33, "city": "Los Angeles"},
+      "jsonRepeated" : [{"name": "Alice Williams", "age": 29, "city": "San Francisco"},
+      {"name": "Robert Brown", "age": 45, "city": "Chicago"}],
+      "jsonNullable": {"name": "Olivia Davis", "age": 31, "city": "Houston"},
       "float": 1.23,
       "floatRepeated": [1.23, 3.21],
       "floatNullable": 1.23,
@@ -296,6 +338,10 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
           "double": 1.23,
           "doubleRepeated": [1.23, 3.21],
           "doubleNullable": 3.21,
+          "json": {"name": "Michael Johnson", "age": 33, "city": "Los Angeles"},
+          "jsonRepeated": [{"name": "Alice Williams", "age": 29, "city": "San Francisco"},
+          "jsonNullable": {"name": "Olivia Davis", "age": 31, "city": "Houston"},
+          {"name": "Robert Brown", "age": 45, "city": "Chicago"}],
           "float": 1.23,
           "floatRepeated": [1.23, 3.21],
           "floatNullable": 1.23,
