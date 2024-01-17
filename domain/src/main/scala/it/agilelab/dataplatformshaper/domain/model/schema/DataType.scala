@@ -9,31 +9,31 @@ enum DataType {
   def changeMode(mode: Mode): DataType =
     if (this.mode.isValidConversion(mode))
       this match {
-        case SqlInt(_)             => SqlInt(mode)
-        case SqlLong(_)            => SqlLong(mode)
-        case SqlFloat(_)           => SqlFloat(mode)
-        case SqlDouble(_)          => SqlDouble(mode)
-        case SqlDecimal(_)         => SqlDecimal(mode)
-        case SqlBool(_)            => SqlBool(mode)
-        case SqlString(_)          => SqlString(mode)
-        case SqlTimestamp(_)       => SqlTimestamp(mode)
-        case SqlDate(_)            => SqlDate(mode)
-        case SqlJson(_)            => SqlJson(mode)
-        case SqlStruct(records, _) => SqlStruct(records, mode)
+        case IntType(_)             => IntType(mode)
+        case LongType(_)            => LongType(mode)
+        case FloatType(_)           => FloatType(mode)
+        case DoubleType(_)          => DoubleType(mode)
+        case SqlDecimal(_)          => SqlDecimal(mode)
+        case BooleanType(_)         => BooleanType(mode)
+        case StringType(_)          => StringType(mode)
+        case TimestampDataType(_)   => TimestampDataType(mode)
+        case DateType(_)            => DateType(mode)
+        case JsonType(_)            => JsonType(mode)
+        case StructType(records, _) => StructType(records, mode)
       }
     else this
 
-  case SqlInt(mode: Mode = Required)
-  case SqlLong(mode: Mode = Required)
-  case SqlFloat(mode: Mode = Required)
-  case SqlDouble(mode: Mode = Required)
+  case IntType(mode: Mode = Required)
+  case LongType(mode: Mode = Required)
+  case FloatType(mode: Mode = Required)
+  case DoubleType(mode: Mode = Required)
   case SqlDecimal(mode: Mode = Required)
-  case SqlBool(mode: Mode = Required)
-  case SqlString(mode: Mode = Required)
-  case SqlTimestamp(mode: Mode = Required)
-  case SqlDate(mode: Mode = Required)
-  case SqlJson(mode: Mode = Required)
-  case SqlStruct(records: List[(String, DataType)], mode: Mode = Required)
+  case BooleanType(mode: Mode = Required)
+  case StringType(mode: Mode = Required)
+  case TimestampDataType(mode: Mode = Required)
+  case DateType(mode: Mode = Required)
+  case JsonType(mode: Mode = Required)
+  case StructType(records: List[(String, DataType)], mode: Mode = Required)
 }
 
 enum Mode {
@@ -51,16 +51,19 @@ enum Mode {
   case Required
 }
 
-export DataType.SqlString as StringType
-export DataType.SqlInt as IntType
-export DataType.SqlDate as DateType
-export DataType.SqlTimestamp as TimestampDataType
-export DataType.SqlStruct as StructType
-export DataType.SqlDouble as DoubleType
-export DataType.SqlFloat as FloatType
-export DataType.SqlLong as LongType
-export DataType.SqlBool as BooleanType
-export DataType.SqlJson as JsonType
+export DataType.{
+  IntType,
+  LongType,
+  FloatType,
+  DoubleType,
+  SqlDecimal,
+  BooleanType,
+  StringType,
+  TimestampDataType,
+  DateType,
+  JsonType,
+  StructType
+}
 
 type Schema = StructType
 
