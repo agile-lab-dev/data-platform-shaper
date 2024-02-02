@@ -1,4 +1,5 @@
 import ProjectSettings.ProjectFrom
+import com.typesafe.sbt.packager.docker.{Cmd, ExecCmd}
 
 import java.io.{BufferedWriter, PrintWriter}
 import java.nio.file.Files
@@ -68,6 +69,15 @@ lazy val uservice = (project in file("uservice")).settings(
     val buildVersion = (ThisBuild / version).value
     if (buildVersion == "latest") buildVersion else s"v$buildVersion"
   }".toLowerCase,
+  Docker / dockerCommands                ++= Seq(
+    // setting the run script executable
+    Cmd("USER", "root"),
+    ExecCmd("RUN", "curl", "-L", "https://github.com/cue-lang/cue/releases/download/v0.7.0/cue_v0.7.0_linux_amd64.tar.gz", "-o", "cue.tar.gz"),
+    ExecCmd("RUN", "mkdir", "/usr/local/cue"),
+    ExecCmd("RUN", "tar", "-C", "/usr/local/cue", "-xzf", "cue.tar.gz"),
+    ExecCmd("RUN", "rm", "cue.tar.gz"),
+    ExecCmd("RUN", "ln", "-sf", "/usr/local/cue/cue", "/usr/local/bin")
+  ),
   Docker / dockerExposedPorts             := Seq(8093)
 ).dependsOn(domain, userviceGenerated, userviceClientGenerated % "test->compile").enablePlugins(JavaAppPackaging).setupBuildInfo
 
