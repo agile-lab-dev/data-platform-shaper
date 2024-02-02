@@ -41,8 +41,8 @@ class ValidatingSpec extends AnyFlatSpec with Matchers:
         "aFloat" -> FloatType(),
         "aFloatRepeated" -> FloatType(Repeated),
         "aFloatNullable" -> FloatType(Nullable),
-        "aLong" -> LongType(),
-        "aLongRepeated" -> LongType(Repeated),
+        "aLong" -> LongType(constraints = Some("(> 0 | < 2) & < 2")),
+        "aLongRepeated" -> LongType(Repeated, constraints = Some(">=1")),
         "aLongNullable" -> LongType(Nullable),
         "aBool" -> BooleanType(),
         "aBoolRepeated" -> BooleanType(Repeated),
@@ -145,17 +145,16 @@ class ValidatingSpec extends AnyFlatSpec with Matchers:
     yamlFile.deleteOnExit()
     cueFile.deleteOnExit()
     val pw1 = new PrintWriter(yamlFile)
-    pw1.write(
-      tupleToJson(tuple, schema)
-        .map(_.asYaml.spaces2)
-        .toOption
-        .get
-        .replace("null", "nil")
-    )
+    val doc = tupleToJson(tuple, schema)
+      .map(_.asYaml.spaces2)
+      .toOption
+      .get
+    pw1.write(doc)
     pw1.close
 
     val pw2 = new PrintWriter(cueFile)
-    pw2.write(generateCueModel(schema))
+    val model = generateCueModel(schema)
+    pw2.write(model)
     pw2.close
 
     val errors: mutable.Builder[String, List[String]] = List.newBuilder[String]
@@ -163,6 +162,7 @@ class ValidatingSpec extends AnyFlatSpec with Matchers:
       _ => (),
       errors += _
     )
+    println(errors.result())
     errors.result().size shouldBe 0
   }
 

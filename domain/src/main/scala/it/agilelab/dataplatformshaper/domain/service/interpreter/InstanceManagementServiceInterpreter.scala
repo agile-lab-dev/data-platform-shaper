@@ -77,7 +77,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         foldingPhase: FoldingPhase
     ): Unit =
       tpe match
-        case StringType(mode) =>
+        case StringType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated => literal(value.asInstanceOf[String])
@@ -90,7 +90,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case IntType(mode) =>
+        case IntType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -102,7 +102,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case DateType(mode) =>
+        case DateType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -130,7 +130,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case TimestampDataType(mode) =>
+        case TimestampDataType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -145,7 +145,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case DoubleType(mode) =>
+        case DoubleType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -159,7 +159,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case FloatType(mode) =>
+        case FloatType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -171,7 +171,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case LongType(mode) =>
+        case LongType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -183,7 +183,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case BooleanType(mode) =>
+        case BooleanType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -416,7 +416,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         fieldValue: Option[List[(String, String)]]
     ): F[Tuple] =
       val tuple = dataType match
-        case StringType(mode) =>
+        case StringType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -430,7 +430,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1))
             case None =>
               fieldName -> List[String]()
-        case DateType(mode) =>
+        case DateType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -464,7 +464,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                     )
             case None =>
               fieldName -> List[Json]()
-        case TimestampDataType(mode) =>
+        case TimestampDataType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -480,7 +480,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(ZonedDateTime.parse(value(0)(1)))
             case None =>
               fieldName -> List[ZonedDateTime]()
-        case DoubleType(mode) =>
+        case DoubleType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -494,7 +494,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toDouble)
             case None =>
               fieldName -> List[Double]()
-        case FloatType(mode) =>
+        case FloatType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -508,7 +508,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toFloat)
             case None =>
               fieldName -> List[Float]()
-        case LongType(mode) =>
+        case LongType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -521,7 +521,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toLong)
             case None =>
               fieldName -> List[Long]()
-        case BooleanType(mode) =>
+        case BooleanType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -535,7 +535,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toBoolean)
             case None =>
               fieldName -> List[Boolean]()
-        case IntType(mode) =>
+        case IntType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match

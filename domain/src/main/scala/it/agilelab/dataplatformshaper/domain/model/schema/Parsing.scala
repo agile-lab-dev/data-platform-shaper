@@ -36,7 +36,7 @@ private def unfoldPrimitive(
     func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   dataType match
-    case tpe @ StringType(mode) =>
+    case tpe @ StringType(mode, _) =>
       value match
         case value: String if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
@@ -68,7 +68,7 @@ private def unfoldPrimitive(
         case wrong =>
           Left[String, Unit](s"$wrong is not a string")
       end match
-    case tpe @ IntType(mode) =>
+    case tpe @ IntType(mode, _) =>
       value match
         case value: Int if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
@@ -100,7 +100,7 @@ private def unfoldPrimitive(
         case wrong =>
           Left[String, Unit](s"$wrong is not an int")
       end match
-    case tpe @ DateType(mode) =>
+    case tpe @ DateType(mode, _) =>
       value match
         case value: LocalDate if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
@@ -164,7 +164,7 @@ private def unfoldPrimitive(
         case wrong =>
           Left[String, Unit](s"$wrong is not a Json")
       end match
-    case tpe @ TimestampDataType(mode) =>
+    case tpe @ TimestampDataType(mode, _) =>
       value match
         case value: ZonedDateTime if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
@@ -195,7 +195,7 @@ private def unfoldPrimitive(
           Right[String, Unit](())
         case wrong =>
           Left[String, Unit](s"$wrong is not a ZonedDateTime")
-    case tpe @ DoubleType(mode) =>
+    case tpe @ DoubleType(mode, _) =>
       value match
         case value: Double if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
@@ -227,7 +227,7 @@ private def unfoldPrimitive(
         case wrong =>
           Left[String, Unit](s"$wrong is not a Double")
       end match
-    case tpe @ FloatType(mode) =>
+    case tpe @ FloatType(mode, _) =>
       value match
         case value: Float if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
@@ -259,7 +259,7 @@ private def unfoldPrimitive(
         case wrong =>
           Left[String, Unit](s"$wrong is not a float")
       end match
-    case tpe @ LongType(mode) =>
+    case tpe @ LongType(mode, _) =>
       value match
         case value: Long if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
@@ -291,7 +291,7 @@ private def unfoldPrimitive(
         case wrong =>
           Left[String, Unit](s"$wrong is not a long")
       end match
-    case tpe @ BooleanType(mode) =>
+    case tpe @ BooleanType(mode, _) =>
       value match
         case value: Boolean if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
@@ -456,23 +456,23 @@ private def unfoldDataType(
   schema match
     case tpe @ StructType(_, _) =>
       unfoldStruct(name, tuple2(1), tpe, s"$cp", func)
-    case tpe @ StringType(_) =>
+    case tpe @ StringType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
-    case tpe @ IntType(_) =>
+    case tpe @ IntType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
-    case tpe @ DateType(_) =>
+    case tpe @ DateType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case tpe @ JsonType(_) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
-    case tpe @ TimestampDataType(_) =>
+    case tpe @ TimestampDataType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
-    case tpe @ DoubleType(_) =>
+    case tpe @ DoubleType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
-    case tpe @ FloatType(_) =>
+    case tpe @ FloatType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
-    case tpe @ LongType(_) =>
+    case tpe @ LongType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
-    case tpe @ BooleanType(_) =>
+    case tpe @ BooleanType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case wrong =>
       Left[String, Unit](s"$wrong type is unknown")
@@ -542,7 +542,7 @@ def jsonToTupleChecked(
       pair(0), {
         val obj: ACursor = json.hcursor.downField(pair(0))
         pair(1) match
-          case IntType(mode) =>
+          case IntType(mode, _) =>
             mode match
               case Required =>
                 obj
@@ -557,7 +557,7 @@ def jsonToTupleChecked(
               case Nullable =>
                 obj.as[Int].toOption
             end match
-          case DateType(mode) =>
+          case DateType(mode, _) =>
             mode match
               case Required =>
                 obj
@@ -587,7 +587,7 @@ def jsonToTupleChecked(
               case Nullable =>
                 obj.as[Json].toOption
             end match
-          case TimestampDataType(mode) =>
+          case TimestampDataType(mode, _) =>
             mode match
               case Required =>
                 obj
@@ -602,7 +602,7 @@ def jsonToTupleChecked(
               case Nullable =>
                 obj.as[ZonedDateTime].toOption
             end match
-          case DoubleType(mode) =>
+          case DoubleType(mode, _) =>
             mode match
               case Required =>
                 obj
@@ -617,7 +617,7 @@ def jsonToTupleChecked(
               case Nullable =>
                 obj.as[Double].toOption
             end match
-          case FloatType(mode) =>
+          case FloatType(mode, _) =>
             mode match
               case Required =>
                 obj
@@ -632,7 +632,7 @@ def jsonToTupleChecked(
               case Nullable =>
                 obj.as[Float].toOption
             end match
-          case LongType(mode) =>
+          case LongType(mode, _) =>
             mode match
               case Required =>
                 obj
@@ -647,7 +647,7 @@ def jsonToTupleChecked(
               case Nullable =>
                 obj.as[Long].toOption
             end match
-          case BooleanType(mode) =>
+          case BooleanType(mode, _) =>
             mode match
               case Required =>
                 obj
@@ -662,7 +662,7 @@ def jsonToTupleChecked(
               case Nullable =>
                 obj.as[Boolean].toOption
             end match
-          case StringType(mode) =>
+          case StringType(mode, _) =>
             mode match
               case Required =>
                 obj
@@ -724,7 +724,7 @@ def tupleToJsonChecked(
             throw new IllegalArgumentException(s"Wrong value")
           )
           pair(1) match
-            case IntType(mode) =>
+            case IntType(mode, _) =>
               mode match
                 case Required =>
                   Json.fromInt(tupleFieldValue.asInstanceOf[Int])
@@ -740,7 +740,7 @@ def tupleToJsonChecked(
                     .asInstanceOf[Option[Int]]
                     .fold(Json.Null)(Json.fromInt)
               end match
-            case DateType(mode) =>
+            case DateType(mode, _) =>
               mode match
                 case Required =>
                   Json.fromString(
@@ -782,7 +782,7 @@ def tupleToJsonChecked(
                     .asInstanceOf[Option[Json]]
                     .fold(Json.Null)(date => Json.fromString(date.toString))
               end match
-            case TimestampDataType(mode) =>
+            case TimestampDataType(mode, _) =>
               mode match
                 case Required =>
                   Json.fromString(
@@ -803,7 +803,7 @@ def tupleToJsonChecked(
                     .asInstanceOf[Option[ZonedDateTime]]
                     .fold(Json.Null)(date => Json.fromString(date.toString))
               end match
-            case DoubleType(mode) =>
+            case DoubleType(mode, _) =>
               mode match
                 case Required =>
                   Json
@@ -835,7 +835,7 @@ def tupleToJsonChecked(
                         )
                     )
               end match
-            case FloatType(mode) =>
+            case FloatType(mode, _) =>
               mode match
                 case Required =>
                   Json
@@ -867,7 +867,7 @@ def tupleToJsonChecked(
                         )
                     )
               end match
-            case LongType(mode) =>
+            case LongType(mode, _) =>
               mode match
                 case Required =>
                   Json.fromLong(tupleFieldValue.asInstanceOf[Long])
@@ -883,7 +883,7 @@ def tupleToJsonChecked(
                     .asInstanceOf[Option[Long]]
                     .fold(Json.Null)(Json.fromLong)
               end match
-            case BooleanType(mode) =>
+            case BooleanType(mode, _) =>
               mode match
                 case Required =>
                   Json.fromBoolean(tupleFieldValue.asInstanceOf[Boolean])
@@ -899,7 +899,7 @@ def tupleToJsonChecked(
                     .asInstanceOf[Option[Boolean]]
                     .fold(Json.Null)(Json.fromBoolean)
               end match
-            case StringType(mode) =>
+            case StringType(mode, _) =>
               mode match
                 case Required =>
                   Json.fromString(tupleFieldValue.asInstanceOf[String])

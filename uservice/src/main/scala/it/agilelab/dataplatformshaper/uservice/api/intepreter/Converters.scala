@@ -107,9 +107,9 @@ given AttributeTypeToOpenApiAttributeType
     val name = pair(0)
     val oaAttributeType =
       pair(1) match
-        case StringType(mode) =>
+        case StringType(mode, _) =>
           OpenApiAttributeType(name, AttributeTypeName.String, Some(mode), None)
-        case IntType(mode) =>
+        case IntType(mode, _) =>
           OpenApiAttributeType(
             name,
             AttributeTypeName.Integer,

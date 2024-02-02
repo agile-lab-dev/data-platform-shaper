@@ -30,6 +30,7 @@ object NS:
   val HASATTRIBUTETYPE = iri(ns, "hasAttributeType")
   val ENTITY = iri(ns, "Entity")
   val MODE = iri(ns, "mode")
+  val CONSTRAINTS = iri(ns, "constraints")
   val REQUIRED = iri(ns, "Required")
   val REPEATED = iri(ns, "Repeated")
   val NULLABLE = iri(ns, "Nullable")
