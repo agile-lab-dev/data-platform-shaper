@@ -1,12 +1,12 @@
 object Versions {
    lazy val http4sVersion                    = "0.23.25"
-   lazy val rdf4jVersion                     = "4.3.8"
+   lazy val rdf4jVersion                     = "4.3.9"
    lazy val virtuosoJDBCVersion              = "3.123"
    lazy val virtuosoRDF4JVersion             = "1.17"
    lazy val dataToolsVersion                 = "1.3.2"
    lazy val typesafeConfig                   = "1.4.3"
    lazy val catsVersion                      = "2.10.0"
-   lazy val catsEffectVersion                = "3.5.2"
+   lazy val catsEffectVersion                = "3.5.3"
    lazy val catEffectTestingVersion          = "1.5.0"
    lazy val catsEffectLoggingVersion         = "2.6.0"
    lazy val circeVersion                     = "0.14.6"
@@ -15,5 +15,5 @@ object Versions {
    lazy val scalaLogging                     = "3.9.5"
    lazy val logbackVersion                   = "1.4.14"
    lazy val scalatestVersion                 = "3.2.17"
-   lazy val testContainersVersion            = "1.19.3"
+   lazy val testContainersVersion            = "1.19.4"
  }
