@@ -159,7 +159,11 @@ def cueValidate(schema: Schema, values: Tuple): Either[List[String], Unit] =
     if errors.isEmpty then Right(()) else Left(errors)
   } match
     case Failure(error) =>
-      Left(List(s"Impossible to validate, the following error occurred during the validation: ${error.getMessage}}"))
+      Left(
+        List(
+          s"Impossible to validate, the following error occurred during the validation: ${error.getMessage}}"
+        )
+      )
     case Success(either) =>
       either
   end match

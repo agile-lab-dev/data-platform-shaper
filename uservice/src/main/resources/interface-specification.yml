@@ -794,6 +794,8 @@ components:
           $ref: '#/components/schemas/AttributeTypeName'
         mode:
           $ref: '#/components/schemas/Mode'
+        constraints:
+          type: string
         attributeTypes:
           type: array
           items:
@@ -803,13 +805,14 @@ components:
       enum:
         - String
         - Integer
-        - Struct
+        - Long
+        - Float
+        - Double
+        - Bool
         - Date
         - Timestamp
-        - Double
-        - Float
-        - Bool
         - Json
+        - Struct
     Mode:
       type: string
       enum:
