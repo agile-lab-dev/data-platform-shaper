@@ -7,206 +7,109 @@ def generateCueModel(schema: Schema): String =
   ): String =
     val stringBuilder = new StringBuilder()
 
-    @inline def sanitezeAttributName(attributeName: String) =
+    @inline def sanitizeAttributeName(attributeName: String) =
       if attributeName.contains("-") then s"'$attributeName'" else attributeName
-    end sanitezeAttributName
+    end sanitizeAttributeName
 
     @inline def blanks: Int ?=> String = n ?=> List.fill(n)(' ').mkString
+
+    def genCueConstraintsForAttribute(
+        attributeName: String,
+        mode: Mode,
+        constraints: Option[String],
+        cueType: String
+    )(using currentIndentation: Int) = {
+      mode match
+        case Mode.Required =>
+          stringBuilder.append(
+            s"$blanks${sanitizeAttributeName(attributeName)}!: $cueType ${constraints
+                .fold("")(constr => s"& ($constr)")}"
+          )
+        case Mode.Repeated =>
+          stringBuilder.append(
+            s"$blanks${sanitizeAttributeName(attributeName)}: [ ...$cueType ${constraints
+                .fold("")(constr => s"& ($constr)")}]"
+          )
+        case Mode.Nullable =>
+          stringBuilder.append(
+            s"$blanks${sanitizeAttributeName(attributeName)}?: null | ($cueType ${constraints
+                .fold("")(constr => s"& ($constr)")})"
+          )
+      end match
+    }
 
     schema.records.foreach(rec =>
       given n: Int = currentIndentation
       rec match
         case (attributeName, StringType(mode, constraints)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: string ${constraints
-                    .fold("")(constr => s"& ($constr)")}"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...string ${constraints
-                    .fold("")(constr => s"& ($constr)")}]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: null | (string ${constraints
-                    .fold("")(constr => s"& ($constr)")})"
-              )
-          end match
+          genCueConstraintsForAttribute(
+            attributeName,
+            mode,
+            constraints,
+            "string"
+          )
         case (attributeName, IntType(mode, constraints)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: int ${constraints
-                    .fold("")(constr => s"& ($constr)")}"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...int ${constraints
-                    .fold("")(constr => s"& ($constr)")}]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: null | (int ${constraints
-                    .fold("")(constr => s"& ($constr)")})"
-              )
-          end match
+          genCueConstraintsForAttribute(attributeName, mode, constraints, "int")
         case (attributeName, LongType(mode, constraints)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: int ${constraints
-                    .fold("")(constr => s"& ($constr)")}"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...int ${constraints
-                    .fold("")(constr => s"& ($constr)")}]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: null | (int ${constraints
-                    .fold("")(constr => s"& ($constr)")})"
-              )
-          end match
+          genCueConstraintsForAttribute(attributeName, mode, constraints, "int")
         case (attributeName, FloatType(mode, constraints)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: float ${constraints
-                    .fold("")(constr => s"& ($constr)")}"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...float ${constraints
-                    .fold("")(constr => s"& ($constr)")}]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: null | (float ${constraints
-                    .fold("")(constr => s"| ($constr)")})"
-              )
-          end match
+          genCueConstraintsForAttribute(
+            attributeName,
+            mode,
+            constraints,
+            "float"
+          )
         case (attributeName, DoubleType(mode, constraints)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: float ${constraints
-                    .fold("")(constr => s"& ($constr)")}"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...float ${constraints
-                    .fold("")(constr => s"& ($constr)")}]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: null | (float ${constraints
-                    .fold("")(constr => s"& ($constr)")})"
-              )
-          end match
+          genCueConstraintsForAttribute(
+            attributeName,
+            mode,
+            constraints,
+            "float"
+          )
         case (attributeName, BooleanType(mode, constraints)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: bool ${constraints
-                    .fold("")(constr => s"& ($constr)")}"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...bool ${constraints
-                    .fold("")(constr => s"& ($constr)")}]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: null | (bool ${constraints
-                    .fold("")(constr => s"& ($constr)")})"
-              )
-          end match
+          genCueConstraintsForAttribute(
+            attributeName,
+            mode,
+            constraints,
+            "bool"
+          )
         case (attributeName, SqlDecimal(mode, constraints)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: number ${constraints
-                    .fold("")(constr => s"& ($constr)")}"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...number ${constraints
-                    .fold("")(constr => s"& ($constr)")}]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: null | (number ${constraints
-                    .fold("")(constr => s"& ($constr)")})"
-              )
-          end match
+          genCueConstraintsForAttribute(
+            attributeName,
+            mode,
+            constraints,
+            "number"
+          )
         case (attributeName, DateType(mode, constraints)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: string ${constraints
-                    .fold("")(constr => s"& ($constr)")}"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...string ${constraints
-                    .fold("")(constr => s"& ($constr)")}]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: null | (string ${constraints
-                    .fold("")(constr => s"& ($constr)")})"
-              )
-          end match
+          genCueConstraintsForAttribute(
+            attributeName,
+            mode,
+            constraints,
+            "string"
+          )
         case (attributeName, TimestampDataType(mode, constraints)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: string ${constraints
-                    .fold("")(constr => s"& ($constr)")}"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...string ${constraints
-                    .fold("")(constr => s"& ($constr)")}]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: null | (string ${constraints
-                    .fold("")(constr => s"& ($constr)")})"
-              )
-          end match
+          genCueConstraintsForAttribute(
+            attributeName,
+            mode,
+            constraints,
+            "string"
+          )
         case (attributeName, JsonType(mode)) =>
-          mode match
-            case Mode.Required =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: string"
-              )
-            case Mode.Repeated =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...string]"
-              )
-            case Mode.Nullable =>
-              stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: string"
-              )
-          end match
+          genCueConstraintsForAttribute(attributeName, mode, None, "string")
         case (attributeName, str @ StructType(_, mode)) =>
           given n: Int = currentIndentation
           mode match
             case Mode.Required =>
               stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}!: {\n${internalGenerateCueModel(str, n + 2)}}"
+                s"$blanks${sanitizeAttributeName(attributeName)}!: {\n${internalGenerateCueModel(str, n + 2)}}"
               )
             case Mode.Repeated =>
               stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}: [ ...{\n${internalGenerateCueModel(str, n + 2)}$blanks}]"
+                s"$blanks${sanitizeAttributeName(attributeName)}: [ ...{\n${internalGenerateCueModel(str, n + 2)}$blanks}]"
               )
             case Mode.Nullable =>
               stringBuilder.append(
-                s"$blanks${sanitezeAttributName(attributeName)}?: {\n${internalGenerateCueModel(str, n + 2)}}"
+                s"$blanks${sanitizeAttributeName(attributeName)}?: {\n${internalGenerateCueModel(str, n + 2)}}"
               )
           end match
       end match

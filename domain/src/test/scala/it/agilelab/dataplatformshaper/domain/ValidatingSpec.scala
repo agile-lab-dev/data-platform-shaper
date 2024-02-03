@@ -150,19 +150,18 @@ class ValidatingSpec extends AnyFlatSpec with Matchers:
       .toOption
       .get
     pw1.write(doc)
-    pw1.close
+    pw1.close()
 
     val pw2 = new PrintWriter(cueFile)
     val model = generateCueModel(schema)
     pw2.write(model)
-    pw2.close
+    pw2.close()
 
     val errors: mutable.Builder[String, List[String]] = List.newBuilder[String]
     s"cue eval ${yamlFile.getAbsolutePath} ${cueFile.getAbsolutePath} -c" ! ProcessLogger(
       _ => (),
       errors += _
     )
-    println(errors.result())
     errors.result().size shouldBe 0
   }
 
