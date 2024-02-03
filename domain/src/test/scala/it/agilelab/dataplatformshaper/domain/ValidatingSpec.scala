@@ -2,17 +2,13 @@ package it.agilelab.dataplatformshaper.domain
 
 import io.circe.*
 import io.circe.parser.*
-import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.io.*
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
-import scala.collection.mutable
 import scala.language.{dynamics, implicitConversions}
-import scala.sys.process.*
 
 class ValidatingSpec extends AnyFlatSpec with Matchers:
 
@@ -29,9 +25,9 @@ class ValidatingSpec extends AnyFlatSpec with Matchers:
         "foundation" -> DateType(),
         "foundationRepeated" -> DateType(Repeated),
         "foundationNullable" -> DateType(Nullable),
-        "aTimestamp" -> TimestampDataType(),
-        "aTimestampRepeated" -> TimestampDataType(Repeated),
-        "aTimestampNullable" -> TimestampDataType(Nullable),
+        "aTimestamp" -> TimestampType(),
+        "aTimestampRepeated" -> TimestampType(Repeated),
+        "aTimestampNullable" -> TimestampType(Nullable),
         "aDouble" -> DoubleType(),
         "aDoubleRepeated" -> DoubleType(Repeated),
         "aDoubleNullable" -> DoubleType(Nullable),
@@ -140,29 +136,10 @@ class ValidatingSpec extends AnyFlatSpec with Matchers:
       )
     )
 
-    val yamlFile = File.createTempFile("test", ".yaml")
-    val cueFile = File.createTempFile("test", ".cue")
-    yamlFile.deleteOnExit()
-    cueFile.deleteOnExit()
-    val pw1 = new PrintWriter(yamlFile)
-    val doc = tupleToJson(tuple, schema)
-      .map(_.asYaml.spaces2)
-      .toOption
-      .get
-    pw1.write(doc)
-    pw1.close()
+    val res = cueValidate(schema, tuple)
 
-    val pw2 = new PrintWriter(cueFile)
-    val model = generateCueModel(schema)
-    pw2.write(model)
-    pw2.close()
-
-    val errors: mutable.Builder[String, List[String]] = List.newBuilder[String]
-    s"cue eval ${yamlFile.getAbsolutePath} ${cueFile.getAbsolutePath} -c" ! ProcessLogger(
-      _ => (),
-      errors += _
-    )
-    errors.result().size shouldBe 0
+    res should matchPattern { case Right(()) =>
+    }
   }
 
 end ValidatingSpec

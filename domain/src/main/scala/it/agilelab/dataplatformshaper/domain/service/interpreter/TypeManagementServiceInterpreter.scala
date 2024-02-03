@@ -108,7 +108,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       case "JsonAttributeType" =>
         JsonType(modeStringToMode(stringMode))
       case "TimestampAttributeType" =>
-        TimestampDataType(
+        TimestampType(
           modeStringToMode(stringMode),
           constraintsStringToConstraints(constraints)
         )
@@ -212,7 +212,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, None)
         )
-      case TimestampDataType(mode, constraints) =>
+      case TimestampType(mode, constraints) =>
         List(
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),

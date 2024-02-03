@@ -130,7 +130,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case TimestampDataType(mode, _) =>
+        case TimestampType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -464,7 +464,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                     )
             case None =>
               fieldName -> List[Json]()
-        case TimestampDataType(mode, _) =>
+        case TimestampType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -612,7 +612,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case _: JsonType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: TimestampDataType =>
+            case _: TimestampType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case _: DoubleType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)

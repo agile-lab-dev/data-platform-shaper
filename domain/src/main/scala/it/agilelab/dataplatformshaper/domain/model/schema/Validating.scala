@@ -1,5 +1,14 @@
 package it.agilelab.dataplatformshaper.domain.model.schema
 
+import io.circe.*
+import io.circe.yaml.syntax.*
+
+import java.io.{File, PrintWriter}
+import scala.collection.mutable
+import scala.sys.process.*
+import scala.util.Using.Releasable
+import scala.util.{Failure, Success, Using}
+
 def generateCueModel(schema: Schema): String =
   def internalGenerateCueModel(
       schema: StructType,
@@ -87,7 +96,7 @@ def generateCueModel(schema: Schema): String =
             constraints,
             "string"
           )
-        case (attributeName, TimestampDataType(mode, constraints)) =>
+        case (attributeName, TimestampType(mode, constraints)) =>
           genCueConstraintsForAttribute(
             attributeName,
             mode,
@@ -120,3 +129,38 @@ def generateCueModel(schema: Schema): String =
 
   internalGenerateCueModel(schema: StructType, 0)
 end generateCueModel
+
+def cueValidate(schema: Schema, values: Tuple): Either[List[String], Unit] =
+
+  given Releasable[File] with
+    def release(file: File): Unit =
+      val _ = file.delete()
+    end release
+  end given
+
+  Using.Manager { use =>
+    val yamlFile = use(File.createTempFile("test", ".yaml"))
+    val cueFile = use(File.createTempFile("test", ".cue"))
+    val pw1 = use(new PrintWriter(yamlFile))
+    val pw2 = use(new PrintWriter(cueFile))
+    val doc = tupleToJson(values, schema)
+      .map(_.asYaml.spaces2)
+      .toOption
+      .get
+    pw1.write(doc)
+    val model = generateCueModel(schema)
+    pw2.write(model)
+    val errorsBuffer = List.newBuilder[String]
+    s"cue eval ${yamlFile.getAbsolutePath} ${cueFile.getAbsolutePath} -c" ! ProcessLogger(
+      _ => (),
+      errorsBuffer += _
+    )
+    val errors = errorsBuffer.result().filter(error => !error.contains("test"))
+    if errors.isEmpty then Right(()) else Left(errors)
+  } match
+    case Failure(error) =>
+      Left(List(s"Impossible to validate, the following error occurred during the validation: ${error.getMessage}}"))
+    case Success(either) =>
+      either
+  end match
+end cueValidate

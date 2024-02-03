@@ -93,12 +93,6 @@ ns:Entity rdf:type owl:Class .
 ###  https://w3id.org/agile-dm/ontology/EntityType
 ns:EntityType rdf:type owl:Class .
 
-
-###  https://w3id.org/agile-dm/ontology/IntAttributeType
-ns:IntAttributeType rdf:type owl:Class ;
-                    rdfs:subClassOf ns:AttributeType .
-
-
 ###  https://w3id.org/agile-dm/ontology/Mode
 ns:Mode rdf:type owl:Class ;
         owl:equivalentClass [ rdf:type owl:Class ;
@@ -108,11 +102,46 @@ ns:Mode rdf:type owl:Class ;
                                         )
                             ] .
 
+###  https://w3id.org/agile-dm/ontology/IntAttributeType
+ns:IntAttributeType rdf:type owl:Class ;
+                    rdfs:subClassOf ns:AttributeType .
+
 
 ###  https://w3id.org/agile-dm/ontology/StringAttributeType
 ns:StringAttributeType rdf:type owl:Class ;
                        rdfs:subClassOf ns:AttributeType .
 
+###  https://w3id.org/agile-dm/ontology/LongAttributeType
+ns:LongAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/FloatAttributeType
+ns:FloatAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/DoubleAttributeType
+ns:DoubleAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/SqlDecimalAttributeType
+ns:SqlDecimalAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/BooleanAttributeType
+ns:BooleanAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/DateAttributeType
+ns:DateAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/TimestampAttributeType
+ns:TimestampAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/JsonAttributeType
+ns:JsonAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
 
 ###  https://w3id.org/agile-dm/ontology/Struct
 ns:Struct rdf:type owl:Class .

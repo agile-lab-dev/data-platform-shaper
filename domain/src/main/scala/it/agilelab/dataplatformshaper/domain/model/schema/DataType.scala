@@ -13,7 +13,7 @@ enum DataType {
   case SqlDecimal(mode: Mode = Required, constraints: Option[String] = None)
   case BooleanType(mode: Mode = Required, constraints: Option[String] = None)
   case StringType(mode: Mode = Required, constraints: Option[String] = None)
-  case TimestampDataType(
+  case TimestampType(
       mode: Mode = Required,
       constraints: Option[String] = None
   )
@@ -39,7 +39,7 @@ export DataType.{
   SqlDecimal,
   BooleanType,
   StringType,
-  TimestampDataType,
+  TimestampType,
   DateType,
   JsonType,
   StructType

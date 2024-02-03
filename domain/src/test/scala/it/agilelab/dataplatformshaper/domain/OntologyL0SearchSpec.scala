@@ -182,14 +182,14 @@ class OntologyL0SearchSpec
       "emptyOptionalDate" -> DateType(Nullable),
       "repeatedDate" -> DateType(Repeated),
       "emptyRepeatedDate" -> DateType(Repeated),
-      "timestamp" -> TimestampDataType(Required),
-      "repeatedTimestamp" -> TimestampDataType(Repeated),
-      "optionalTimestamp" -> TimestampDataType(Nullable),
+      "timestamp" -> TimestampType(Required),
+      "repeatedTimestamp" -> TimestampType(Repeated),
+      "optionalTimestamp" -> TimestampType(Nullable),
       "timestampStruct" -> StructType(
         List(
-          "timestamp" -> TimestampDataType(Required),
-          "repeatedTimestamp" -> TimestampDataType(Repeated),
-          "optionalTimestamp" -> TimestampDataType(Nullable)
+          "timestamp" -> TimestampType(Required),
+          "repeatedTimestamp" -> TimestampType(Repeated),
+          "optionalTimestamp" -> TimestampType(Nullable)
         )
       ),
       "dateStruct" -> StructType(

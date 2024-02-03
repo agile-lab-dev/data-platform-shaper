@@ -55,7 +55,7 @@ given OpenApiAttributeTypeToAttributeType
       case AttributeTypeName.members.Timestamp =>
         (
           oaAttributeType.name,
-          TimestampDataType(
+          TimestampType(
             oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
           )
         )

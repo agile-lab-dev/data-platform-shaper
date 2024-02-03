@@ -181,17 +181,17 @@ class OntologyL0Spec
       "emptyOptionalDate" -> DateType(Nullable),
       "repeatedDate" -> DateType(Repeated),
       "emptyRepeatedDate" -> DateType(Repeated),
-      "timestamp" -> TimestampDataType(Required),
-      "repeatedTimestamp" -> TimestampDataType(Repeated),
-      "optionalTimestamp" -> TimestampDataType(Nullable),
+      "timestamp" -> TimestampType(Required),
+      "repeatedTimestamp" -> TimestampType(Repeated),
+      "optionalTimestamp" -> TimestampType(Nullable),
       "json" -> JsonType(Required),
       "repeatedJson" -> JsonType(Repeated),
       "optionalJson" -> JsonType(Nullable),
       "timestampStruct" -> StructType(
         List(
-          "timestamp" -> TimestampDataType(Required),
-          "repeatedTimestamp" -> TimestampDataType(Repeated),
-          "optionalTimestamp" -> TimestampDataType(Nullable)
+          "timestamp" -> TimestampType(Required),
+          "repeatedTimestamp" -> TimestampType(Repeated),
+          "optionalTimestamp" -> TimestampType(Nullable)
         )
       ),
       "dateStruct" -> StructType(
@@ -591,7 +591,7 @@ class OntologyL0Spec
           "sub-domain" -> StringType(),
           "version" -> IntType(),
           "foundation" -> DateType(),
-          "timestamp" -> TimestampDataType(),
+          "timestamp" -> TimestampType(),
           "double" -> DoubleType(),
           "float" -> FloatType(),
           "aStruct" -> StructType(
@@ -644,7 +644,7 @@ class OntologyL0Spec
           "sub-domain" -> StringType(),
           "version" -> IntType(),
           "foundation" -> DateType(),
-          "timestamp" -> TimestampDataType(),
+          "timestamp" -> TimestampType(),
           "double" -> DoubleType(),
           "float" -> FloatType(),
           "aStruct" -> StructType(

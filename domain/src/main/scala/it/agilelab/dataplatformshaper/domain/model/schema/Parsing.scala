@@ -164,7 +164,7 @@ private def unfoldPrimitive(
         case wrong =>
           Left[String, Unit](s"$wrong is not a Json")
       end match
-    case tpe @ TimestampDataType(mode, _) =>
+    case tpe @ TimestampType(mode, _) =>
       value match
         case value: ZonedDateTime if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
@@ -464,7 +464,7 @@ private def unfoldDataType(
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case tpe @ JsonType(_) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
-    case tpe @ TimestampDataType(_, _) =>
+    case tpe @ TimestampType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
     case tpe @ DoubleType(_, _) =>
       unfoldPrimitive(name, tuple2(1), tpe, s"$cp", func)
@@ -587,7 +587,7 @@ def jsonToTupleChecked(
               case Nullable =>
                 obj.as[Json].toOption
             end match
-          case TimestampDataType(mode, _) =>
+          case TimestampType(mode, _) =>
             mode match
               case Required =>
                 obj
@@ -782,7 +782,7 @@ def tupleToJsonChecked(
                     .asInstanceOf[Option[Json]]
                     .fold(Json.Null)(date => Json.fromString(date.toString))
               end match
-            case TimestampDataType(mode, _) =>
+            case TimestampType(mode, _) =>
               mode match
                 case Required =>
                   Json.fromString(
