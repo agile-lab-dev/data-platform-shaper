@@ -38,4 +38,12 @@ enum ManagementServiceError(errorMessage: String):
       )
   case InvalidSearchPredicate(error: String)
       extends ManagementServiceError(error)
+  case ValidationError(inst1: String, errors: List[String])
+    extends ManagementServiceError(
+      s"""
+         |  Validation errors validating the instance with id $inst1
+         |  Errors:
+         |  ${errors.mkString("\n")}
+         |   """.stripMargin
+    )
 end ManagementServiceError
