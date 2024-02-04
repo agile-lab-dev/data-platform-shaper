@@ -138,8 +138,7 @@ class ValidatingSpec extends AnyFlatSpec with Matchers:
 
     val res = cueValidate(schema, tuple)
 
-    res should matchPattern { case Right(()) =>
-    }
+    res should matchPattern { case Right(()) => }
   }
 
 end ValidatingSpec

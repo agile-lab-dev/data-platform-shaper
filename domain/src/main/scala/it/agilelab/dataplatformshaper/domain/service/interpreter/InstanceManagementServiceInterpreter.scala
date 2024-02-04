@@ -225,6 +225,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     (for {
       schema <- EitherT[F, ManagementServiceError, Schema](getSchema)
       _ <- traceT(s"Retrieved schema $schema for type name $instanceTypeName")
+      _ <- EitherT[F, ManagementServiceError, Unit](
+        summon[Applicative[F]].pure(
+          cueValidate(schema, tuple).leftMap(errors => ValidationError(errors))
+        )
+      )
       es <- EitherT[F, ManagementServiceError, String](
         summon[Applicative[F]].pure(
           unfoldTuple(

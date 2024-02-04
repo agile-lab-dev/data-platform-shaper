@@ -230,20 +230,28 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.entityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(_.getMessage))
+          .map(_.leftMap(l => Vector(l.getMessage)))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
-          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+          .pure(
+            jsonToTuple(body.values, schema).leftMap(l => Vector(l.getMessage))
+          )
       )
       entityId <- EitherT(
-        ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage))
+        ims
+          .create(body.entityTypeName, tuple)
+          .map(_.leftMap {
+            case err: ManagementServiceError.ValidationError =>
+              err.errors.toVector
+            case err: ManagementServiceError =>
+              Vector(err.getMessage)
+          })
       )
     } yield entityId).value
-
     res
       .map {
-        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Left(errors)    => respond.BadRequest(ValidationError(errors))
         case Right(entityId) => respond.Ok(entityId)
       }
       .onError(t =>
@@ -275,20 +283,29 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.entityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(_.getMessage))
+          .map(_.leftMap(l => Vector(l.getMessage)))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
-          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+          .pure(
+            jsonToTuple(body.values, schema).leftMap(l => Vector(l.getMessage))
+          )
       )
       entityId <- EitherT(
-        ims.update(updateId, tuple).map(_.leftMap(_.getMessage))
+        ims
+          .update(updateId, tuple)
+          .map(_.leftMap {
+            case err: ManagementServiceError.ValidationError =>
+              err.errors.toVector
+            case err: ManagementServiceError =>
+              Vector(err.getMessage)
+          })
       )
     } yield entityId).value
 
     res
       .map {
-        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Left(errors)    => respond.BadRequest(ValidationError(errors))
         case Right(entityId) => respond.Ok(entityId)
       }
       .onError(t =>
