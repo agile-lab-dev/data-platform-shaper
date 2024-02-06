@@ -692,38 +692,46 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     val statementsToRemove: F[List[Statement]] = fetchStatementsForInstance(
       instanceId
     )
-    val res = for {
-      _ <- logger.trace(s"About to remove the instance $instanceId")
-      stmts <- statementsToRemove
-      _ <- logger.trace(
-        s"Statements for removing the previous version \n${stmts.mkString("\n")}"
+    val res: F[Either[ManagementServiceError, String]] = (for {
+      _ <- EitherT.liftF(
+        logger.trace(s"About to remove the instance $instanceId")
       )
-      instanceType <- summon[Applicative[F]].pure(
-        iri(
-          stmts
-            .filter(_.getPredicate == NS.ISCLASSIFIEDBY)
-            .head
-            .getObject
-            .stringValue()
-        ).getLocalName
+      stmts <- EitherT.liftF(statementsToRemove)
+      _ <- EitherT.liftF(
+        logger.trace(
+          s"Statements for removing the previous version \n${stmts.mkString("\n")}"
+        )
       )
-      _ <- logger.trace(s"$instanceId is classified by $instanceType")
-      res <- createInstanceNoCheck(instanceId, instanceType, values, stmts)
-    } yield res
-
-    (for {
-      exist <- EitherT(exist(instanceId))
-      r <- EitherT(
-        if exist then res
-        else
-          summon[Applicative[F]].pure(
-            Left[ManagementServiceError, String](
-              ManagementServiceError.NonExistentInstanceError(instanceId)
-            )
+      instanceType = iri(
+        stmts
+          .filter(_.getPredicate == NS.ISCLASSIFIEDBY)
+          .head
+          .getObject
+          .stringValue()
+      ).getLocalName
+      entityType <- EitherT(typeManagementService.read(instanceType))
+      _ <- EitherT[F, ManagementServiceError, Unit](
+        summon[Applicative[F]].pure(
+          cueValidate(entityType.schema, values).leftMap(errors =>
+            ValidationError(errors)
           )
+        )
       )
-    } yield r).value
+      _ <- EitherT.liftF(
+        logger.trace(s"$instanceId is classified by $instanceType")
+      )
+      result <- EitherT(
+        createInstanceNoCheck(instanceId, instanceType, values, stmts)
+      )
+    } yield result).value
 
+    EitherT(exist(instanceId)).flatMapF { exist =>
+      if exist then res
+      else
+        summon[Applicative[F]].pure(
+          Left(ManagementServiceError.NonExistentInstanceError(instanceId))
+        )
+    }.value
   end update
 
   override def delete(
