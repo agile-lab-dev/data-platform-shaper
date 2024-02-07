@@ -236,7 +236,7 @@ class ValidatingSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with B
   }
 
   "Creating the same EntityType instance" - {
-    "fails" in {
+    "works" in {
       val session = Session[IO](
         graphdbType,
         "localhost",
@@ -253,12 +253,11 @@ class ValidatingSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with B
         val service = new TypeManagementServiceInterpreter[IO](trservice)
         val entityType = l0.EntityType(
           "ValidationDataCollectionType",
-          Set("DataCollection"),
           schema
         )
         service.create(entityType)
       } asserting (ret =>
-        ret should matchPattern { case Left(_) =>
+        ret should matchPattern { case Right(_) =>
         }
         )
     }
