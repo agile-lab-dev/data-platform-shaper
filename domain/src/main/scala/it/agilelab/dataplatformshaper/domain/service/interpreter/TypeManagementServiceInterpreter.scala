@@ -34,6 +34,44 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     extends TypeManagementService[F]:
 
   val repository: KnowledgeGraph[F] = traitManagementService.repository
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.=="
+    )
+  )
+  implicit val dataTypeEq: Eq[DataType] = Eq.instance[DataType] { (x, y) =>
+    (x, y) match {
+      case (a: IntType, b: IntType)             => a.mode == b.mode
+      case (a: LongType, b: LongType)           => a.mode == b.mode
+      case (a: FloatType, b: FloatType)         => a.mode == b.mode
+      case (a: DoubleType, b: DoubleType)       => a.mode == b.mode
+      case (a: SqlDecimal, b: SqlDecimal)       => a.mode == b.mode
+      case (a: BooleanType, b: BooleanType)     => a.mode == b.mode
+      case (a: StringType, b: StringType)       => a.mode == b.mode
+      case (a: TimestampType, b: TimestampType) => a.mode == b.mode
+      case (a: DateType, b: DateType)           => a.mode == b.mode
+      case (a: JsonType, b: JsonType)           => a.mode == b.mode
+      case (a: StructType, b: StructType)       => structTypeEq.eqv(a, b)
+      case _                                    => false
+    }
+  }
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.=="
+    )
+  )
+  implicit val structTypeEq: Eq[StructType] = Eq.instance[StructType] {
+    (x, y) =>
+      val c1: Map[String, DataType] = x.records.toMap
+      val c2: Map[String, DataType] = y.records.toMap
+
+      c1.keys.forall { key =>
+        (c1.get(key), c2.get(key)) match {
+          case (Some(a), Some(b)) => dataTypeEq.eqv(a, b)
+          case _                  => false
+        }
+      }
+  }
 
   extension (entityType: EntityType)
     def inheritsFrom(fatherName: String)(using
@@ -503,13 +541,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     val attributeStatements =
       emitStatementsFromSchema(instanceType, entityType.baseSchema)
     (for {
-      _ <- traceT(
-        s"About to ${if (isCreation) "create" else "delete"} an instance type with name ${entityType.name}"
-      )
       exist <- EitherT(exist(entityType.name))
-      _ <- traceT(
-        s"Checking the existence, does ${entityType.name} already exist? $exist"
-      )
       traitExistence <- EitherT(traitManagementService.exist(entityType.traits))
       _ <- {
         val nonExistentTraits =
@@ -718,6 +750,67 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         summon[Applicative[F]].pure(Left[ManagementServiceError, Unit](error))
     }
   }
+
+  override def updateConstraints(
+      entityTypeRequest: EntityType
+  ): F[Either[ManagementServiceError, Unit]] =
+    val instanceType = iri(ns, entityTypeRequest.name)
+    (for {
+      entityTypeResult <- EitherT(read(entityTypeRequest.name))
+
+      _ <-
+        EitherT(
+          summon[Monad[F]].pure(
+            if (entityTypeResult.schema === entityTypeRequest.schema) {
+              Right[ManagementServiceError, Unit](())
+            } else {
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError.MismatchingSchemas(
+                  "Schemas did not match during update"
+                )
+              )
+            }
+          )
+        )
+
+      previousEntityType <- EitherT(read(entityTypeRequest.name))
+      previousInstanceType <- EitherT(
+        summon[Functor[F]].map(cache.get)(m =>
+          Right[ManagementServiceError, IRI](
+            iri(ns, previousEntityType.name)
+          )
+        )
+      )
+      allPreviousStatements <- EitherT(
+        summon[Monad[F]].pure(
+          Right[ManagementServiceError, List[Statement]](
+            emitStatementsFromSchema(
+              previousInstanceType,
+              previousEntityType.schema
+            )
+          )
+        )
+      )
+      previousStatements = allPreviousStatements.filter(statement =>
+        statement.getPredicate.toString.endsWith("constraints")
+      )
+      allStatements <- EitherT(
+        summon[Monad[F]].pure(
+          Right[ManagementServiceError, List[Statement]](
+            emitStatementsFromSchema(instanceType, entityTypeRequest.schema)
+          )
+        )
+      )
+      statements = allStatements.filter(statement =>
+        statement.getPredicate.toString.endsWith("constraints")
+      )
+      _ <- EitherT(
+        summon[Functor[F]].map(
+          repository.removeAndInsertStatements(statements, previousStatements)
+        )(_ => Right[ManagementServiceError, Unit](()))
+      )
+    } yield ()).value
+  end updateConstraints
 
   override def exist(
       instanceTypeName: String

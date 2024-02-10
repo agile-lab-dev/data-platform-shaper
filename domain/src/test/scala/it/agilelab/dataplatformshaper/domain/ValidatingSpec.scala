@@ -31,12 +31,20 @@ import org.scalatest.matchers.should.Matchers
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import cats.effect.{IO, Ref}
+import it.agilelab.dataplatformshaper.domain.model.schema.DataType.JsonType
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.ValidationError
 
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.language.{dynamics, implicitConversions}
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.asInstanceOf",
+    "scalafix:DisableSyntax.isInstanceOf",
+    "scalafix:DisableSyntax.=="
+  )
+)
 class ValidatingSpec
     extends AsyncFreeSpec
     with AsyncIOSpec
@@ -44,6 +52,25 @@ class ValidatingSpec
     with BeforeAndAfterAll:
 
   val graphdbType = "graphdb"
+
+  given Equality[DataType] with
+    def areEqual(x: DataType, y: Any): Boolean =
+      x match
+        case struct: StructType if y.isInstanceOf[StructType] =>
+          struct === y.asInstanceOf[StructType]
+        case _ =>
+          x == y
+    end areEqual
+  end given
+
+  given Equality[StructType] with
+    def areEqual(x: StructType, y: Any): Boolean =
+      val c1: Map[String, DataType] = x.records.toMap
+      val c2: Map[String, DataType] = y.asInstanceOf[StructType].records.toMap
+      val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
+      ret
+    end areEqual
+  end given
 
   val graphdbContainer: GenericContainer[Nothing] =
     graphdbType match
@@ -142,6 +169,110 @@ class ValidatingSpec
       "aFloatNullable" -> FloatType(Nullable),
       "aLong" -> LongType(constraints = Some("(> 0 | < 2) & < 2")),
       "aLongRepeated" -> LongType(Repeated, constraints = Some(">=1")),
+      "aLongNullable" -> LongType(Nullable),
+      "aBool" -> BooleanType(),
+      "aBoolRepeated" -> BooleanType(Repeated),
+      "aBoolNullable" -> BooleanType(Nullable),
+      "labels" -> StringType(Repeated),
+      "aIntNullable" -> IntType(Nullable),
+      "nested" -> StructType(
+        List(
+          "nest1" -> StringType(),
+          "nest2" -> StringType(),
+          "furtherNested" -> StructType(
+            List(
+              "nest3" -> StringType(),
+              "nest4" -> StringType()
+            ),
+            Repeated
+          )
+        )
+      )
+      /*"columns" -> StructType(
+        List(
+          "name" -> StringType(),
+          "type" -> StringType()
+        ),
+        Repeated
+      )*/
+    )
+  )
+
+  val schemaAfterUpdate: Schema = StructType(
+    List(
+      "organization" -> StringType(),
+      "sub-organization" -> StringType(),
+      "domain" -> StringType(),
+      "sub-domain" -> StringType(),
+      "foundation" -> DateType(),
+      "foundationRepeated" -> DateType(Repeated),
+      "foundationNullable" -> DateType(Nullable),
+      "aTimestamp" -> TimestampType(),
+      "aTimestampRepeated" -> TimestampType(Repeated),
+      "aTimestampNullable" -> TimestampType(Nullable),
+      "aDouble" -> DoubleType(),
+      "aDoubleRepeated" -> DoubleType(Repeated),
+      "aDoubleNullable" -> DoubleType(Nullable),
+      "aJson" -> JsonType(Required),
+      "aJsonRepeated" -> JsonType(Repeated),
+      "aJsonNullable" -> JsonType(Nullable),
+      "aFloat" -> FloatType(),
+      "aFloatRepeated" -> FloatType(Repeated),
+      "aFloatNullable" -> FloatType(Nullable),
+      "aLong" -> LongType(constraints = Some("(> 0 | < 5) & < 5")),
+      "aLongRepeated" -> LongType(Repeated, constraints = Some(">=5")),
+      "aLongNullable" -> LongType(Nullable),
+      "aBool" -> BooleanType(),
+      "aBoolRepeated" -> BooleanType(Repeated),
+      "aBoolNullable" -> BooleanType(Nullable),
+      "labels" -> StringType(Repeated),
+      "aIntNullable" -> IntType(Nullable),
+      "nested" -> StructType(
+        List(
+          "nest1" -> StringType(),
+          "nest2" -> StringType(),
+          "furtherNested" -> StructType(
+            List(
+              "nest3" -> StringType(),
+              "nest4" -> StringType()
+            ),
+            Repeated
+          )
+        )
+      )
+      /*"columns" -> StructType(
+        List(
+          "name" -> StringType(),
+          "type" -> StringType()
+        ),
+        Repeated
+      )*/
+    )
+  )
+
+  val wrongSchemaAfterUpdate: Schema = StructType(
+    List(
+      "organization" -> StringType(),
+      "sub-organization" -> StringType(),
+      "domain" -> StringType(),
+      "sub-domain" -> StringType(),
+      "foundation" -> DateType(),
+      "foundationRepeated" -> DateType(Repeated),
+      "foundationNullable" -> DateType(Nullable),
+      "aTimestamp" -> TimestampType(),
+      "aTimestampRepeated" -> TimestampType(Repeated),
+      "aTimestampNullable" -> TimestampType(Nullable),
+      "aDouble" -> DoubleType(),
+      "aDoubleRepeated" -> DoubleType(Repeated),
+      "aDoubleNullable" -> DoubleType(Nullable),
+      "aJson" -> JsonType(Required),
+      "aJsonRepeated" -> JsonType(Repeated),
+      "aJsonNullable" -> JsonType(Nullable),
+      "aFloat" -> FloatType(),
+      "aFloatRepeated" -> DoubleType(Repeated),
+      "aFloatNullable" -> FloatType(Nullable),
+      "aLong" -> LongType(constraints = Some("(> 0 | < 5) & < 5")),
+      "aLongRepeated" -> LongType(Repeated, constraints = Some(">=5")),
       "aLongNullable" -> LongType(Nullable),
       "aBool" -> BooleanType(),
       "aBoolRepeated" -> BooleanType(Repeated),
@@ -382,7 +513,7 @@ class ValidatingSpec
     }
   }
 
-  "Creating the same EntityType instance" - {
+  "Creating an EntityType instance" - {
     "works" in {
       val session = Session[IO](
         graphdbType,
@@ -551,6 +682,84 @@ class ValidatingSpec
           }
         case _ =>
           fail("Expected ValidationError but received a different result")
+      }
+    }
+  }
+
+  "Updating an EntityType instance" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val entityType = l0.EntityType(
+        "UpdateDataCollectionType",
+        schema
+      )
+      val updatedEntityType = l0.EntityType(
+        "UpdateDataCollectionType",
+        schemaAfterUpdate
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val result = for {
+          _ <- service.create(entityType)
+          _ <- service.updateConstraints(updatedEntityType)
+          _ <- cache.update(_ => Map.empty)
+          readResult <- service.read(updatedEntityType.name)
+        } yield readResult
+
+        result
+      } asserting { ret =>
+        ret shouldBe Right(updatedEntityType)
+      }
+    }
+  }
+
+  "Updating an EntityType instance with a different schema" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val entityType = l0.EntityType(
+        "UpdateDataCollectionType",
+        schema
+      )
+      val updatedEntityType = l0.EntityType(
+        "UpdateDataCollectionType",
+        wrongSchemaAfterUpdate
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val result = for {
+          _ <- service.create(entityType)
+          updateResult <- service.updateConstraints(updatedEntityType)
+        } yield updateResult
+
+        result
+      } asserting { ret =>
+        ret should matchPattern {
+          case Left(ManagementServiceError.MismatchingSchemas(_)) =>
+        }
       }
     }
   }
