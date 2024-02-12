@@ -809,6 +809,19 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           repository.removeAndInsertStatements(statements, previousStatements)
         )(_ => Right[ManagementServiceError, Unit](()))
       )
+      _ <- EitherT(
+        cache.modify(map => (map - entityTypeRequest.name, Right(())))
+      )
+      _ <- EitherT(
+        cache
+          .modify(map =>
+            (
+              map + (entityTypeRequest.name -> entityTypeRequest),
+              entityTypeRequest
+            )
+          )
+          .map(Right[ManagementServiceError, EntityType])
+      )
     } yield ()).value
   end updateConstraints
 

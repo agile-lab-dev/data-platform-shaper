@@ -72,6 +72,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/entity-type/constraints:
+    put:
+      tags:
+        - OntologyManager
+      summary: Update a user-defined type constraints
+      operationId: updateTypeConstraints
+      requestBody:
+        description: An EntityType spec
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntityType'
+        required: true
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/entity-type/yaml:
     post:
       tags:

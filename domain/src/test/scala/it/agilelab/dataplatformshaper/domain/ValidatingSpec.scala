@@ -714,7 +714,6 @@ class ValidatingSpec
         val result = for {
           _ <- service.create(entityType)
           _ <- service.updateConstraints(updatedEntityType)
-          _ <- cache.update(_ => Map.empty)
           readResult <- service.read(updatedEntityType.name)
         } yield readResult
 

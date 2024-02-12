@@ -12,6 +12,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Session
 }
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
+import it.agilelab.dataplatformshaper.uservice.definitions.Mode.members.Required
 import it.agilelab.dataplatformshaper.uservice.{
   Client,
   CreateEntityByYamlResponse,
@@ -26,7 +27,8 @@ import it.agilelab.dataplatformshaper.uservice.{
   UnlinkEntityResponse,
   UnlinkTraitResponse,
   UpdateEntityByYamlResponse,
-  UpdateEntityResponse
+  UpdateEntityResponse,
+  UpdateTypeConstraintsResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
@@ -222,6 +224,54 @@ class ApiSpec
           resp should be(
             ReadTypeResponse.Ok(
               childrenEntityType
+            )
+          )
+        )
+    }
+  }
+
+  "Updating a user defined type constraints" - {
+    "works" in {
+
+      val entityType = OpenApiEntityType(
+        "entityConstrained",
+        None,
+        Vector(
+          OpenApiAttributeType("id", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+
+      val entityTypeConstrained = OpenApiEntityType(
+        "entityConstrained",
+        Some(Vector()),
+        Vector(
+          OpenApiAttributeType(
+            "id",
+            AttributeTypeName.String,
+            Some(Required),
+            Some(">=5")
+          )
+        ),
+        None
+      )
+
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(entityType))
+        _ <- Resource.liftK(client.updateTypeConstraints(entityTypeConstrained))
+        resp <- Resource.liftK(client.readType("entityConstrained"))
+      } yield resp
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          resp should be(
+            ReadTypeResponse.Ok(
+              entityTypeConstrained
             )
           )
         )
