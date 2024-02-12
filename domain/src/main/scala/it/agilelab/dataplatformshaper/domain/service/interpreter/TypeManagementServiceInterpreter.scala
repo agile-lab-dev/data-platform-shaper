@@ -757,7 +757,6 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     val instanceType = iri(ns, entityTypeRequest.name)
     (for {
       entityTypeResult <- EitherT(read(entityTypeRequest.name))
-
       _ <-
         EitherT(
           summon[Monad[F]].pure(
@@ -772,10 +771,9 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             }
           )
         )
-
       previousEntityType <- EitherT(read(entityTypeRequest.name))
-      previousInstanceType <- EitherT(
-        summon[Functor[F]].map(cache.get)(m =>
+      previousEntityTypeIRI <- EitherT(
+        summon[Functor[F]].pure(
           Right[ManagementServiceError, IRI](
             iri(ns, previousEntityType.name)
           )
@@ -785,7 +783,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         summon[Monad[F]].pure(
           Right[ManagementServiceError, List[Statement]](
             emitStatementsFromSchema(
-              previousInstanceType,
+              previousEntityTypeIRI,
               previousEntityType.schema
             )
           )
@@ -808,9 +806,6 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         summon[Functor[F]].map(
           repository.removeAndInsertStatements(statements, previousStatements)
         )(_ => Right[ManagementServiceError, Unit](()))
-      )
-      _ <- EitherT(
-        cache.modify(map => (map - entityTypeRequest.name, Right(())))
       )
       _ <- EitherT(
         cache
