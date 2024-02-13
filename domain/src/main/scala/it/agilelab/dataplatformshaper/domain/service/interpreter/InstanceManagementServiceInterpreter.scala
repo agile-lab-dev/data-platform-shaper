@@ -27,6 +27,7 @@ import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.eclipse.rdf4j.model.{IRI, Literal, Statement}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import scala.collection.mutable.Stack
 
 import java.time.{LocalDate, ZonedDateTime}
 import java.util.UUID
@@ -54,7 +55,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
     val entity = iri(ns, entityId)
 
-    var previousEntityIri = entity
+    val previousEntityIriStack = collection.mutable.Stack(entity)
     var currentEntityIri = entity
     var statements = List.empty[Statement]
 
@@ -205,10 +206,10 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                 triple(currentEntityIri, iri(ns, currentPath), structIri),
                 L3
               ) :: statements
-              previousEntityIri = currentEntityIri
+              previousEntityIriStack.push(currentEntityIri)
               currentEntityIri = structIri
             case EndFoldingStruct =>
-              currentEntityIri = previousEntityIri
+              currentEntityIri = previousEntityIriStack.pop()
             case _ =>
               ()
           end match

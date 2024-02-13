@@ -187,14 +187,14 @@ class ValidatingSpec
             Repeated
           )
         )
-      )
-      /*"columns" -> StructType(
+      ),
+      "columns" -> StructType(
         List(
           "name" -> StringType(),
           "type" -> StringType()
         ),
         Repeated
-      )*/
+      )
     )
   )
 
@@ -239,14 +239,14 @@ class ValidatingSpec
             Repeated
           )
         )
-      )
-      /*"columns" -> StructType(
+      ),
+      "columns" -> StructType(
         List(
           "name" -> StringType(),
           "type" -> StringType()
         ),
         Repeated
-      )*/
+      )
     )
   )
 
@@ -291,14 +291,14 @@ class ValidatingSpec
             Repeated
           )
         )
-      )
-      /*"columns" -> StructType(
+      ),
+      "columns" -> StructType(
         List(
           "name" -> StringType(),
           "type" -> StringType()
         ),
         Repeated
-      )*/
+      )
     )
   )
 
@@ -362,11 +362,11 @@ class ValidatingSpec
       ("nest3" -> "ciccio3", "nest4" -> "ciccio4"),
       ("nest3" -> "ciccio5", "nest4" -> "ciccio6")
     )),
-    /*"columns" -> List(
+    "columns" -> List(
       ("name" -> "FirstName", "type" -> "String"),
       ("name" -> "FamilyNane", "type" -> "String"),
       ("name" -> "Age", "type" -> "Int")
-    )*/
+    )
   )
 
   val nonConformingTuple: Tuple = (
@@ -429,11 +429,11 @@ class ValidatingSpec
       ("nest3" -> "ciccio3", "nest4" -> "ciccio4"),
       ("nest3" -> "ciccio5", "nest4" -> "ciccio6")
     )),
-    /*"columns" -> List(
+    "columns" -> List(
       ("name" -> "FirstName", "type" -> "String"),
       ("name" -> "FamilyNane", "type" -> "String"),
       ("name" -> "Age", "type" -> "Int")
-    )*/
+    )
   )
 
   val conformingTupleForUpdate: Tuple = (
@@ -496,11 +496,11 @@ class ValidatingSpec
       ("nest3" -> "ciccio3", "nest4" -> "ciccio4"),
       ("nest3" -> "ciccio5", "nest4" -> "ciccio6")
     )),
-    /*"columns" -> List(
+    "columns" -> List(
       ("name" -> "FirstName", "type" -> "String"),
       ("name" -> "FamilyNane", "type" -> "String"),
       ("name" -> "Age", "type" -> "Int")
-    )*/
+    )
   )
 
   "Unfolding a tuple conform to a schema" - {
