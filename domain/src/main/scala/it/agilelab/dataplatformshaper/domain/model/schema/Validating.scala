@@ -118,7 +118,7 @@ def generateCueModel(schema: Schema): String =
               )
             case Mode.Nullable =>
               stringBuilder.append(
-                s"$blanks${sanitizeAttributeName(attributeName)}?: {\n${internalGenerateCueModel(str, n + 2)}}"
+                s"$blanks${sanitizeAttributeName(attributeName)}?: null | ({\n${internalGenerateCueModel(str, n + 2)}})"
               )
           end match
       end match

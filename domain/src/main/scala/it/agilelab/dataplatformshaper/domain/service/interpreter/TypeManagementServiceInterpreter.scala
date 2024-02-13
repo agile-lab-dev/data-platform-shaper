@@ -55,11 +55,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       case _                                    => false
     }
   }
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.=="
-    )
-  )
+
   implicit val structTypeEq: Eq[StructType] = Eq.instance[StructType] {
     (x, y) =>
       val c1: Map[String, DataType] = x.records.toMap

@@ -259,14 +259,14 @@ class OntologyL0Spec
           "nest2" -> StringType()
         ),
         Nullable
-      ) // ,
-//      "emptyOptionalStruct" -> StructType( //TODO it doesn't pass the test with the validation
-//        List(
-//          "nest1" -> StringType(),
-//          "nest2" -> StringType()
-//        ),
-//        Nullable
-//      )
+      ),
+      "emptyOptionalStruct" -> StructType(
+        List(
+          "nest1" -> StringType(),
+          "nest2" -> StringType()
+        ),
+        Nullable
+      )
     )
   )
 
@@ -400,8 +400,8 @@ class OntologyL0Spec
         "nest1" -> "ciccio1",
         "nest2" -> "ciccio2"
       )
-    ) // ,
-//    "emptyOptionalStruct" -> None, //TODO it doesn't pass the test with the validation
+    ),
+    "emptyOptionalStruct" -> None
   )
 
   val fileBasedDataCollectionTupleForUpdate: Tuple = (
@@ -533,8 +533,8 @@ class OntologyL0Spec
         "nest1" -> "ciccio5",
         "nest2" -> "ciccio6"
       )
-    ) // ,
-//    "emptyOptionalStruct" -> None, //TODO it doesn't pass the test with the validation
+    ),
+    "emptyOptionalStruct" -> None
   )
 
   val repeatedTypeSchema: StructType = StructType(

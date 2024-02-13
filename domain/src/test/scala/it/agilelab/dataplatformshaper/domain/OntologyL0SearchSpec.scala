@@ -258,13 +258,13 @@ class OntologyL0SearchSpec
         ),
         Nullable
       ),
-//      "emptyOptionalStruct" -> StructType( //TODO it doesn't pass the test with the validation
-//        List(
-//          "nest1" -> StringType(),
-//          "nest2" -> StringType()
-//        ),
-//        Nullable
-//      ),
+      "emptyOptionalStruct" -> StructType(
+        List(
+          "nest1" -> StringType(),
+          "nest2" -> StringType()
+        ),
+        Nullable
+      ),
       "columns" -> StructType(
         List(
           "name" -> StringType(),
@@ -406,7 +406,7 @@ class OntologyL0SearchSpec
         "nest2" -> "ciccio2"
       )
     ),
-//    "emptyOptionalStruct" -> None, //TODO it doesn't pass the test with the validation
+    "emptyOptionalStruct" -> None,
     "columns" -> List(
       (
         "type" -> "Int",
