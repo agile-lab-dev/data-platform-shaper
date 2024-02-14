@@ -238,6 +238,13 @@ class OntologyL0Spec
       "aLong" -> LongType(Required),
       "longRepeated" -> LongType(Repeated),
       "longNullable" -> LongType(Nullable),
+      "columns" -> StructType(
+        List(
+          "name" -> StringType(),
+          "type" -> StringType()
+        ),
+        Repeated
+      ),
       "aBool" -> BooleanType(),
       "boolRepeated" -> BooleanType(Repeated),
       "boolNullable" -> BooleanType(Nullable),
@@ -382,6 +389,11 @@ class OntologyL0Spec
     "aLong" -> 10L,
     "longRepeated" -> List(10L, 20L),
     "longNullable" -> Some(30L),
+    "columns" -> List(
+      ("name" -> "FirstName", "type" -> "String"),
+      ("name" -> "FamilyNane", "type" -> "String"),
+      ("name" -> "Age", "type" -> "Int")
+    ),
     "aBool" -> true,
     "boolRepeated" -> List(true, false).sorted,
     "boolNullable" -> Some(true),
@@ -515,6 +527,11 @@ class OntologyL0Spec
     "aLong" -> 11L,
     "longRepeated" -> List(21L, 11L),
     "longNullable" -> Some(31L),
+    "columns" -> List(
+      ("name" -> "FirstName", "type" -> "String"),
+      ("name" -> "FamilyNane", "type" -> "String"),
+      ("name" -> "Age", "type" -> "Int")
+    ),
     "aBool" -> false,
     "boolRepeated" -> List(false, true).sorted,
     "boolNullable" -> Some(true),
