@@ -1,7 +1,6 @@
 @prefix ns: <https://w3id.org/agile-dm/ontology/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @base <http://www.w3.org/2002/07/owl#> .
@@ -78,6 +77,11 @@ ns:typeName rdf:type owl:DatatypeProperty ;
             rdfs:domain ns:EntityType ;
             rdfs:range xsd:string .
 
+###  https://w3id.org/agile-dm/ontology/constraints
+ns:constraints rdf:type owl:DatatypeProperty ;
+               rdfs:domain ns:AttributeType ;
+               rdfs:range xsd:string .
+
 #################################################################
 #    Classes
 #################################################################
@@ -93,12 +97,6 @@ ns:Entity rdf:type owl:Class .
 ###  https://w3id.org/agile-dm/ontology/EntityType
 ns:EntityType rdf:type owl:Class .
 
-
-###  https://w3id.org/agile-dm/ontology/IntAttributeType
-ns:IntAttributeType rdf:type owl:Class ;
-                    rdfs:subClassOf ns:AttributeType .
-
-
 ###  https://w3id.org/agile-dm/ontology/Mode
 ns:Mode rdf:type owl:Class ;
         owl:equivalentClass [ rdf:type owl:Class ;
@@ -108,11 +106,46 @@ ns:Mode rdf:type owl:Class ;
                                         )
                             ] .
 
+###  https://w3id.org/agile-dm/ontology/IntAttributeType
+ns:IntAttributeType rdf:type owl:Class ;
+                    rdfs:subClassOf ns:AttributeType .
+
 
 ###  https://w3id.org/agile-dm/ontology/StringAttributeType
 ns:StringAttributeType rdf:type owl:Class ;
                        rdfs:subClassOf ns:AttributeType .
 
+###  https://w3id.org/agile-dm/ontology/LongAttributeType
+ns:LongAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/FloatAttributeType
+ns:FloatAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/DoubleAttributeType
+ns:DoubleAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/SqlDecimalAttributeType
+ns:SqlDecimalAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/BooleanAttributeType
+ns:BooleanAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/DateAttributeType
+ns:DateAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/TimestampAttributeType
+ns:TimestampAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/JsonAttributeType
+ns:JsonAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
 
 ###  https://w3id.org/agile-dm/ontology/Struct
 ns:Struct rdf:type owl:Class .

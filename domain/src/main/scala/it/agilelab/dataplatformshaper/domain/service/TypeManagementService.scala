@@ -20,6 +20,10 @@ trait TypeManagementService[F[_]]:
 
   def delete(instanceTypeName: String): F[Either[ManagementServiceError, Unit]]
 
+  def updateConstraints(
+      entityType: EntityType
+  ): F[Either[ManagementServiceError, Unit]]
+
   def exist(
       instanceTypeName: String
   ): F[Either[ManagementServiceError, Boolean]]

@@ -34,6 +34,40 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     extends TypeManagementService[F]:
 
   val repository: KnowledgeGraph[F] = traitManagementService.repository
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.=="
+    )
+  )
+  implicit val dataTypeEq: Eq[DataType] = Eq.instance[DataType] { (x, y) =>
+    (x, y) match {
+      case (a: IntType, b: IntType)             => a.mode == b.mode
+      case (a: LongType, b: LongType)           => a.mode == b.mode
+      case (a: FloatType, b: FloatType)         => a.mode == b.mode
+      case (a: DoubleType, b: DoubleType)       => a.mode == b.mode
+      case (a: SqlDecimal, b: SqlDecimal)       => a.mode == b.mode
+      case (a: BooleanType, b: BooleanType)     => a.mode == b.mode
+      case (a: StringType, b: StringType)       => a.mode == b.mode
+      case (a: TimestampType, b: TimestampType) => a.mode == b.mode
+      case (a: DateType, b: DateType)           => a.mode == b.mode
+      case (a: JsonType, b: JsonType)           => a.mode == b.mode
+      case (a: StructType, b: StructType)       => structTypeEq.eqv(a, b)
+      case _                                    => false
+    }
+  }
+
+  implicit val structTypeEq: Eq[StructType] = Eq.instance[StructType] {
+    (x, y) =>
+      val c1: Map[String, DataType] = x.records.toMap
+      val c2: Map[String, DataType] = y.records.toMap
+
+      c1.keys.forall { key =>
+        (c1.get(key), c2.get(key)) match {
+          case (Some(a), Some(b)) => dataTypeEq.eqv(a, b)
+          case _                  => false
+        }
+      }
+  }
 
   extension (entityType: EntityType)
     def inheritsFrom(fatherName: String)(using
@@ -57,6 +91,16 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
 
   given logger: Logger[F] = Slf4jLogger.getLogger[F]
 
+  private def constraintsToStatement(
+      entity: IRI,
+      constraints: Option[String]
+  ): Statement =
+    statement(
+      triple(entity, NS.CONSTRAINTS, literal(constraints.getOrElse("null"))),
+      L2
+    )
+  end constraintsToStatement
+
   private def modeToStatement(entity: IRI, mode: Mode): Statement =
     mode match
       case Nullable =>
@@ -76,27 +120,52 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
   private def stringToDataType(
       stringType: String,
       stringMode: String,
+      constraints: String,
       records: Option[List[(String, DataType)]] = None
   ): DataType =
     stringType match
       case "StringAttributeType" =>
-        StringType(modeStringToMode(stringMode))
+        StringType(
+          modeStringToMode(stringMode),
+          constraintsStringToConstraints(constraints)
+        )
       case "IntAttributeType" =>
-        IntType(modeStringToMode(stringMode))
+        IntType(
+          modeStringToMode(stringMode),
+          constraintsStringToConstraints(constraints)
+        )
       case "DateAttributeType" =>
-        DateType(modeStringToMode(stringMode))
+        DateType(
+          modeStringToMode(stringMode),
+          constraintsStringToConstraints(constraints)
+        )
       case "JsonAttributeType" =>
         JsonType(modeStringToMode(stringMode))
       case "TimestampAttributeType" =>
-        TimestampDataType(modeStringToMode(stringMode))
+        TimestampType(
+          modeStringToMode(stringMode),
+          constraintsStringToConstraints(constraints)
+        )
       case "DoubleAttributeType" =>
-        DoubleType(modeStringToMode(stringMode))
+        DoubleType(
+          modeStringToMode(stringMode),
+          constraintsStringToConstraints(constraints)
+        )
       case "FloatAttributeType" =>
-        FloatType(modeStringToMode(stringMode))
+        FloatType(
+          modeStringToMode(stringMode),
+          constraintsStringToConstraints(constraints)
+        )
       case "LongAttributeType" =>
-        LongType(modeStringToMode(stringMode))
+        LongType(
+          modeStringToMode(stringMode),
+          constraintsStringToConstraints(constraints)
+        )
       case "BooleanAttributeType" =>
-        BooleanType(modeStringToMode(stringMode))
+        BooleanType(
+          modeStringToMode(stringMode),
+          constraintsStringToConstraints(constraints)
+        )
       case _ =>
         StructType(records.getOrElse(List.empty), modeStringToMode(stringMode))
   end stringToDataType
@@ -108,6 +177,11 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       case "Nullable" => Nullable
     end match
   end modeStringToMode
+
+  private def constraintsStringToConstraints(
+      constraintsString: String
+  ): Option[String] =
+    if constraintsString === "null" then None else Some(constraintsString)
 
   private def isStructType(fieldType: String): Boolean =
     fieldType match
@@ -129,7 +203,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
           statement(triple(childEntity, RDFS.RANGE, structTypeInstance), L2),
           statement(triple(structTypeInstance, RDF.TYPE, NS.STRUCTTYPE), L2),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, None)
         ) ++ records.flatMap(record =>
           emitStatements(
             structTypeInstance,
@@ -138,7 +213,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             s"$currentPath/${record(0)}"
           )
         )
-      case StringType(mode) =>
+      case StringType(mode, constraints) =>
         List(
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
@@ -146,9 +221,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             triple(childEntity, RDFS.RANGE, NS.STRINGATTRIBUTETYPE),
             L2
           ),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, constraints)
         )
-      case DateType(mode) =>
+      case DateType(mode, constraints) =>
         List(
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
@@ -156,7 +232,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             triple(childEntity, RDFS.RANGE, NS.DATEATTRIBUTETYPE),
             L2
           ),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, constraints)
         )
       case JsonType(mode) =>
         List(
@@ -166,9 +243,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             triple(childEntity, RDFS.RANGE, NS.JSONATTRIBUTETYPE),
             L2
           ),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, None)
         )
-      case TimestampDataType(mode) =>
+      case TimestampType(mode, constraints) =>
         List(
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
@@ -176,9 +254,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             triple(childEntity, RDFS.RANGE, NS.TIMESTAMPATTRIBUTETYPE),
             L2
           ),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, constraints)
         )
-      case DoubleType(mode) =>
+      case DoubleType(mode, constraints) =>
         List(
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
@@ -186,9 +265,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             triple(childEntity, RDFS.RANGE, NS.DOUBLEATTRIBUTETYPE),
             L2
           ),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, constraints)
         )
-      case FloatType(mode) =>
+      case FloatType(mode, constraints) =>
         List(
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
@@ -196,16 +276,18 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             triple(childEntity, RDFS.RANGE, NS.FLOATATTRIBUTETYPE),
             L2
           ),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, constraints)
         )
-      case LongType(mode) =>
+      case LongType(mode, constraints) =>
         List(
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
           statement(triple(childEntity, RDFS.RANGE, NS.LONGATTRIBUTETYPE), L2),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, constraints)
         )
-      case BooleanType(mode) =>
+      case BooleanType(mode, constraints) =>
         List(
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
@@ -213,14 +295,16 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             triple(childEntity, RDFS.RANGE, NS.BOOLEANATTRIBUTETYPE),
             L2
           ),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, constraints)
         )
-      case IntType(mode) =>
+      case IntType(mode, constraints) =>
         List(
           statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
           statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
           statement(triple(childEntity, RDFS.RANGE, NS.INTATTRIBUTETYPE), L2),
-          modeToStatement(childEntity, mode)
+          modeToStatement(childEntity, mode),
+          constraintsToStatement(childEntity, constraints)
         )
       case _ =>
         List.empty[Statement]
@@ -246,11 +330,12 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
        |PREFIX ns:  <${ns.getName}>
        |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
        |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-       |SELECT ?field ?type ?mode WHERE {
+       |SELECT ?field ?type ?mode ?constraints WHERE {
        |    BIND(iri("${entityType.stringValue()}") as ?entityType)
        |    ?field rdfs:domain ?entityType .
        |    ?field rdfs:range  ?type .
        |    ?field ns:mode ?mode .
+       |    ?field ns:constraints ?constraints .
        |  }
        |""".stripMargin
   end queryForType
@@ -269,9 +354,18 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             iri(bs.getBinding("type").getValue.stringValue()).getLocalName
           val fieldMode =
             iri(bs.getBinding("mode").getValue.stringValue()).getLocalName
+          val fieldConstraints =
+            bs.getBinding("constraints").getValue.stringValue()
           if !isStructType(fieldType) then
             summon[Applicative[F]]
-              .pure(fieldName -> stringToDataType(fieldType, fieldMode, None))
+              .pure(
+                fieldName -> stringToDataType(
+                  fieldType,
+                  fieldMode,
+                  fieldConstraints,
+                  None
+                )
+              )
           else
             getStructTypeRecords(
               iri(bs.getBinding("type").getValue.stringValue())
@@ -280,6 +374,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
                 fieldName -> stringToDataType(
                   fieldType,
                   fieldMode,
+                  fieldConstraints,
                   Some(records)
                 )
               )
@@ -367,9 +462,16 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
                 iri(bs.getBinding("type").getValue.stringValue()).getLocalName
               val fieldMode =
                 iri(bs.getBinding("mode").getValue.stringValue()).getLocalName
+              val fieldConstraints =
+                bs.getBinding("constraints").getValue.stringValue()
               if !isStructType(fieldType) then
                 summon[Applicative[F]].pure(
-                  fieldName -> stringToDataType(fieldType, fieldMode, None)
+                  fieldName -> stringToDataType(
+                    fieldType,
+                    fieldMode,
+                    fieldConstraints,
+                    None
+                  )
                 )
               else
                 getStructTypeRecords(
@@ -379,6 +481,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
                     fieldName -> stringToDataType(
                       fieldType,
                       fieldMode,
+                      fieldConstraints,
                       Some(records)
                     )
                   )
@@ -434,13 +537,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     val attributeStatements =
       emitStatementsFromSchema(instanceType, entityType.baseSchema)
     (for {
-      _ <- traceT(
-        s"About to ${if (isCreation) "create" else "delete"} an instance type with name ${entityType.name}"
-      )
       exist <- EitherT(exist(entityType.name))
-      _ <- traceT(
-        s"Checking the existence, does ${entityType.name} already exist? $exist"
-      )
       traitExistence <- EitherT(traitManagementService.exist(entityType.traits))
       _ <- {
         val nonExistentTraits =
@@ -649,6 +746,75 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         summon[Applicative[F]].pure(Left[ManagementServiceError, Unit](error))
     }
   }
+
+  override def updateConstraints(
+      entityTypeRequest: EntityType
+  ): F[Either[ManagementServiceError, Unit]] =
+    val instanceType = iri(ns, entityTypeRequest.name)
+    (for {
+      entityTypeResult <- EitherT(read(entityTypeRequest.name))
+      _ <-
+        EitherT(
+          summon[Monad[F]].pure(
+            if (entityTypeResult.schema === entityTypeRequest.schema) {
+              Right[ManagementServiceError, Unit](())
+            } else {
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError.MismatchingSchemas(
+                  "Schemas did not match during update"
+                )
+              )
+            }
+          )
+        )
+      previousEntityType <- EitherT(read(entityTypeRequest.name))
+      previousEntityTypeIRI <- EitherT(
+        summon[Functor[F]].pure(
+          Right[ManagementServiceError, IRI](
+            iri(ns, previousEntityType.name)
+          )
+        )
+      )
+      allPreviousStatements <- EitherT(
+        summon[Monad[F]].pure(
+          Right[ManagementServiceError, List[Statement]](
+            emitStatementsFromSchema(
+              previousEntityTypeIRI,
+              previousEntityType.schema
+            )
+          )
+        )
+      )
+      previousStatements = allPreviousStatements.filter(statement =>
+        statement.getPredicate.toString.endsWith("constraints")
+      )
+      allStatements <- EitherT(
+        summon[Monad[F]].pure(
+          Right[ManagementServiceError, List[Statement]](
+            emitStatementsFromSchema(instanceType, entityTypeRequest.schema)
+          )
+        )
+      )
+      statements = allStatements.filter(statement =>
+        statement.getPredicate.toString.endsWith("constraints")
+      )
+      _ <- EitherT(
+        summon[Functor[F]].map(
+          repository.removeAndInsertStatements(statements, previousStatements)
+        )(_ => Right[ManagementServiceError, Unit](()))
+      )
+      _ <- EitherT(
+        cache
+          .modify(map =>
+            (
+              map + (entityTypeRequest.name -> entityTypeRequest),
+              entityTypeRequest
+            )
+          )
+          .map(Right[ManagementServiceError, EntityType])
+      )
+    } yield ()).value
+  end updateConstraints
 
   override def exist(
       instanceTypeName: String

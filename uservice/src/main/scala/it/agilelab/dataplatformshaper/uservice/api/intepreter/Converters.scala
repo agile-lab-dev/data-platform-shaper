@@ -39,45 +39,64 @@ given OpenApiAttributeTypeToAttributeType
         (
           oaAttributeType.name,
           StringType(
-            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required),
+            oaAttributeType.constraints
           )
         )
       case AttributeTypeName.members.Integer =>
         (
           oaAttributeType.name,
-          IntType(oaAttributeType.mode.getOrElse(OpenApiMode.members.Required))
+          IntType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required),
+            oaAttributeType.constraints
+          )
+        )
+      case AttributeTypeName.members.Long =>
+        (
+          oaAttributeType.name,
+          LongType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required),
+            oaAttributeType.constraints
+          )
         )
       case AttributeTypeName.members.Date =>
         (
           oaAttributeType.name,
-          DateType(oaAttributeType.mode.getOrElse(OpenApiMode.members.Required))
+          DateType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required),
+            oaAttributeType.constraints
+          )
         )
       case AttributeTypeName.members.Timestamp =>
         (
           oaAttributeType.name,
-          TimestampDataType(
-            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+          TimestampType(
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required),
+            oaAttributeType.constraints
           )
         )
       case AttributeTypeName.members.Double =>
         (
           oaAttributeType.name,
           DoubleType(
-            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required),
+            oaAttributeType.constraints
           )
         )
       case AttributeTypeName.members.Float =>
         (
           oaAttributeType.name,
           FloatType(
-            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required),
+            oaAttributeType.constraints
           )
         )
       case AttributeTypeName.members.Bool =>
         (
           oaAttributeType.name,
           BooleanType(
-            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
+            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required),
+            oaAttributeType.constraints
           )
         )
       case AttributeTypeName.members.Json =>
@@ -107,13 +126,76 @@ given AttributeTypeToOpenApiAttributeType
     val name = pair(0)
     val oaAttributeType =
       pair(1) match
-        case StringType(mode) =>
-          OpenApiAttributeType(name, AttributeTypeName.String, Some(mode), None)
-        case IntType(mode) =>
+        case StringType(mode, constraints) =>
+          OpenApiAttributeType(
+            name,
+            AttributeTypeName.String,
+            Some(mode),
+            constraints,
+            None
+          )
+        case IntType(mode, constraints) =>
           OpenApiAttributeType(
             name,
             AttributeTypeName.Integer,
             Some(mode),
+            constraints,
+            None
+          )
+        case LongType(mode, constraints) =>
+          OpenApiAttributeType(
+            name,
+            AttributeTypeName.Long,
+            Some(mode),
+            constraints,
+            None
+          )
+        case FloatType(mode, constraints) =>
+          OpenApiAttributeType(
+            name,
+            AttributeTypeName.Float,
+            Some(mode),
+            constraints,
+            None
+          )
+        case DoubleType(mode, constraints) =>
+          OpenApiAttributeType(
+            name,
+            AttributeTypeName.Double,
+            Some(mode),
+            constraints,
+            None
+          )
+        case BooleanType(mode, constraints) =>
+          OpenApiAttributeType(
+            name,
+            AttributeTypeName.Bool,
+            Some(mode),
+            constraints,
+            None
+          )
+        case DateType(mode, constraints) =>
+          OpenApiAttributeType(
+            name,
+            AttributeTypeName.Date,
+            Some(mode),
+            constraints,
+            None
+          )
+        case TimestampType(mode, constraints) =>
+          OpenApiAttributeType(
+            name,
+            AttributeTypeName.Timestamp,
+            Some(mode),
+            constraints,
+            None
+          )
+        case JsonType(mode) =>
+          OpenApiAttributeType(
+            name,
+            AttributeTypeName.Json,
+            Some(mode),
+            None,
             None
           )
         case StructType(attributes, mode) =>
@@ -121,6 +203,7 @@ given AttributeTypeToOpenApiAttributeType
             name,
             AttributeTypeName.Struct,
             Some(mode),
+            None,
             Some(attributes.map(apply).toVector)
           )
         case _ =>

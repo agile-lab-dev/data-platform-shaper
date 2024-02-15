@@ -27,6 +27,7 @@ import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.eclipse.rdf4j.model.{IRI, Literal, Statement}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import scala.collection.mutable.Stack
 
 import java.time.{LocalDate, ZonedDateTime}
 import java.util.UUID
@@ -54,7 +55,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
     val entity = iri(ns, entityId)
 
-    var previousEntityIri = entity
+    val previousEntityIriStack = collection.mutable.Stack(entity)
     var currentEntityIri = entity
     var statements = List.empty[Statement]
 
@@ -77,7 +78,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         foldingPhase: FoldingPhase
     ): Unit =
       tpe match
-        case StringType(mode) =>
+        case StringType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated => literal(value.asInstanceOf[String])
@@ -90,7 +91,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case IntType(mode) =>
+        case IntType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -102,7 +103,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case DateType(mode) =>
+        case DateType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -130,7 +131,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case TimestampDataType(mode) =>
+        case TimestampType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -145,7 +146,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case DoubleType(mode) =>
+        case DoubleType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -159,7 +160,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case FloatType(mode) =>
+        case FloatType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -171,7 +172,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case LongType(mode) =>
+        case LongType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -183,7 +184,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             triple(currentEntityIri, iri(ns, currentPath), lit),
             L3
           ) :: statements
-        case BooleanType(mode) =>
+        case BooleanType(mode, _) =>
           val lit =
             mode match
               case Required | Repeated =>
@@ -205,10 +206,10 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                 triple(currentEntityIri, iri(ns, currentPath), structIri),
                 L3
               ) :: statements
-              previousEntityIri = currentEntityIri
+              previousEntityIriStack.push(currentEntityIri)
               currentEntityIri = structIri
             case EndFoldingStruct =>
-              currentEntityIri = previousEntityIri
+              currentEntityIri = previousEntityIriStack.pop()
             case _ =>
               ()
           end match
@@ -225,6 +226,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     (for {
       schema <- EitherT[F, ManagementServiceError, Schema](getSchema)
       _ <- traceT(s"Retrieved schema $schema for type name $instanceTypeName")
+      _ <- EitherT[F, ManagementServiceError, Unit](
+        summon[Applicative[F]].pure(
+          cueValidate(schema, tuple).leftMap(errors => ValidationError(errors))
+        )
+      )
       es <- EitherT[F, ManagementServiceError, String](
         summon[Applicative[F]].pure(
           unfoldTuple(
@@ -416,7 +422,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         fieldValue: Option[List[(String, String)]]
     ): F[Tuple] =
       val tuple = dataType match
-        case StringType(mode) =>
+        case StringType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -430,7 +436,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1))
             case None =>
               fieldName -> List[String]()
-        case DateType(mode) =>
+        case DateType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -464,7 +470,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                     )
             case None =>
               fieldName -> List[Json]()
-        case TimestampDataType(mode) =>
+        case TimestampType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -480,7 +486,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(ZonedDateTime.parse(value(0)(1)))
             case None =>
               fieldName -> List[ZonedDateTime]()
-        case DoubleType(mode) =>
+        case DoubleType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -494,7 +500,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toDouble)
             case None =>
               fieldName -> List[Double]()
-        case FloatType(mode) =>
+        case FloatType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -508,7 +514,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toFloat)
             case None =>
               fieldName -> List[Float]()
-        case LongType(mode) =>
+        case LongType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -521,7 +527,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toLong)
             case None =>
               fieldName -> List[Long]()
-        case BooleanType(mode) =>
+        case BooleanType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -535,7 +541,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   else fieldName -> Some(value(0)(1).toBoolean)
             case None =>
               fieldName -> List[Boolean]()
-        case IntType(mode) =>
+        case IntType(mode, _) =>
           fieldValue match
             case Some(value) =>
               mode match
@@ -612,7 +618,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case _: JsonType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: TimestampDataType =>
+            case _: TimestampType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
             case _: DoubleType =>
               handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
@@ -687,38 +693,46 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     val statementsToRemove: F[List[Statement]] = fetchStatementsForInstance(
       instanceId
     )
-    val res = for {
-      _ <- logger.trace(s"About to remove the instance $instanceId")
-      stmts <- statementsToRemove
-      _ <- logger.trace(
-        s"Statements for removing the previous version \n${stmts.mkString("\n")}"
+    val res: F[Either[ManagementServiceError, String]] = (for {
+      _ <- EitherT.liftF(
+        logger.trace(s"About to remove the instance $instanceId")
       )
-      instanceType <- summon[Applicative[F]].pure(
-        iri(
-          stmts
-            .filter(_.getPredicate == NS.ISCLASSIFIEDBY)
-            .head
-            .getObject
-            .stringValue()
-        ).getLocalName
+      stmts <- EitherT.liftF(statementsToRemove)
+      _ <- EitherT.liftF(
+        logger.trace(
+          s"Statements for removing the previous version \n${stmts.mkString("\n")}"
+        )
       )
-      _ <- logger.trace(s"$instanceId is classified by $instanceType")
-      res <- createInstanceNoCheck(instanceId, instanceType, values, stmts)
-    } yield res
-
-    (for {
-      exist <- EitherT(exist(instanceId))
-      r <- EitherT(
-        if exist then res
-        else
-          summon[Applicative[F]].pure(
-            Left[ManagementServiceError, String](
-              ManagementServiceError.NonExistentInstanceError(instanceId)
-            )
+      instanceType = iri(
+        stmts
+          .filter(_.getPredicate == NS.ISCLASSIFIEDBY)
+          .head
+          .getObject
+          .stringValue()
+      ).getLocalName
+      entityType <- EitherT(typeManagementService.read(instanceType))
+      _ <- EitherT[F, ManagementServiceError, Unit](
+        summon[Applicative[F]].pure(
+          cueValidate(entityType.schema, values).leftMap(errors =>
+            ValidationError(errors)
           )
+        )
       )
-    } yield r).value
+      _ <- EitherT.liftF(
+        logger.trace(s"$instanceId is classified by $instanceType")
+      )
+      result <- EitherT(
+        createInstanceNoCheck(instanceId, instanceType, values, stmts)
+      )
+    } yield result).value
 
+    EitherT(exist(instanceId)).flatMapF { exist =>
+      if exist then res
+      else
+        summon[Applicative[F]].pure(
+          Left(ManagementServiceError.NonExistentInstanceError(instanceId))
+        )
+    }.value
   end update
 
   override def delete(

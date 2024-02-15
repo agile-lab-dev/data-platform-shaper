@@ -24,7 +24,8 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
 }
 import it.agilelab.dataplatformshaper.uservice.Resource.{
   CreateTypeResponse,
-  ListEntitiesResponse
+  ListEntitiesResponse,
+  UpdateTypeConstraintsResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   QueryRequest,
@@ -101,6 +102,32 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createType
+
+  override def updateTypeConstraints(
+      respond: Resource.UpdateTypeConstraintsResponse.type
+  )(body: OpenApiEntityType): F[UpdateTypeConstraintsResponse] =
+
+    val schema: Schema = body.schema
+    val entityType: l0.EntityType =
+      l0.EntityType(body.name, Set(), schema, None)
+
+    val res = for {
+      res <- EitherT(
+        tms
+          .updateConstraints(entityType)
+          .map(_.leftMap(_.getMessage))
+      )
+    } yield res
+
+    res.value
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(_)    => respond.Ok("OK")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end updateTypeConstraints
 
   override def createTypeByYaml(
       respond: Resource.CreateTypeByYamlResponse.type
@@ -230,20 +257,28 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.entityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(_.getMessage))
+          .map(_.leftMap(l => Vector(l.getMessage)))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
-          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+          .pure(
+            jsonToTuple(body.values, schema).leftMap(l => Vector(l.getMessage))
+          )
       )
       entityId <- EitherT(
-        ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage))
+        ims
+          .create(body.entityTypeName, tuple)
+          .map(_.leftMap {
+            case err: ManagementServiceError.ValidationError =>
+              err.errors.toVector
+            case err: ManagementServiceError =>
+              Vector(err.getMessage)
+          })
       )
     } yield entityId).value
-
     res
       .map {
-        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Left(errors)    => respond.BadRequest(ValidationError(errors))
         case Right(entityId) => respond.Ok(entityId)
       }
       .onError(t =>
@@ -275,20 +310,29 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.entityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(_.getMessage))
+          .map(_.leftMap(l => Vector(l.getMessage)))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
-          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+          .pure(
+            jsonToTuple(body.values, schema).leftMap(l => Vector(l.getMessage))
+          )
       )
       entityId <- EitherT(
-        ims.update(updateId, tuple).map(_.leftMap(_.getMessage))
+        ims
+          .update(updateId, tuple)
+          .map(_.leftMap {
+            case err: ManagementServiceError.ValidationError =>
+              err.errors.toVector
+            case err: ManagementServiceError =>
+              Vector(err.getMessage)
+          })
       )
     } yield entityId).value
 
     res
       .map {
-        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Left(errors)    => respond.BadRequest(ValidationError(errors))
         case Right(entityId) => respond.Ok(entityId)
       }
       .onError(t =>

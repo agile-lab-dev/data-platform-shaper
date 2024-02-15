@@ -38,4 +38,9 @@ enum ManagementServiceError(errorMessage: String):
       )
   case InvalidSearchPredicate(error: String)
       extends ManagementServiceError(error)
+  case MismatchingSchemas(error: String) extends ManagementServiceError(error)
+  case ValidationError(errors: List[String])
+      extends ManagementServiceError(
+        s"Validation errors: ${errors.map(_.replace(":", "")).mkString(",")}"
+      )
 end ManagementServiceError
