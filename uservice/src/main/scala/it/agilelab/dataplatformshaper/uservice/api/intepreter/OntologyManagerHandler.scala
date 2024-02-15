@@ -103,6 +103,23 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createType
 
+  override def deleteType(respond: Resource.DeleteTypeResponse.type)(
+      name: String
+  ): F[Resource.DeleteTypeResponse] =
+    val res: F[Either[String, String]] = for {
+      deleteResult <- tms.delete(name).map(_.bimap(_.getMessage, _ => "OK"))
+    } yield deleteResult
+
+    res
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(successMessage) => respond.Ok(successMessage)
+      }
+      .onError { t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      }
+  end deleteType
+
   override def updateTypeConstraints(
       respond: Resource.UpdateTypeConstraintsResponse.type
   )(body: OpenApiEntityType): F[UpdateTypeConstraintsResponse] =

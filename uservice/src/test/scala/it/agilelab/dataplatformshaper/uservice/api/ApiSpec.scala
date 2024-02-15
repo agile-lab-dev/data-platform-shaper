@@ -230,6 +230,41 @@ class ApiSpec
     }
   }
 
+  "Deleting a user defined type" - {
+    "works" in {
+
+      val deleteEntityType = OpenApiEntityType(
+        "deleteType",
+        None,
+        Vector(
+          OpenApiAttributeType("id", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(deleteEntityType))
+        _ <- Resource.liftK(client.deleteType("deleteType"))
+        resp <- Resource.liftK(client.readType("deleteType"))
+      } yield resp
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          resp should be(
+            ReadTypeResponse.BadRequest(
+              ValidationError(
+                Vector("The instance type with name deleteType does not exist")
+              )
+            )
+          )
+        )
+    }
+  }
+
   "Updating a user defined type constraints" - {
     "works" in {
 

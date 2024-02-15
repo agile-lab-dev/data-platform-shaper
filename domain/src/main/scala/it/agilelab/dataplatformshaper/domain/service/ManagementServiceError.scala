@@ -32,6 +32,10 @@ enum ManagementServiceError(errorMessage: String):
       extends ManagementServiceError(s"The instance $inst has linked instances")
   case TypeHasInstancesError(entityType: String)
       extends ManagementServiceError(s"The type $entityType has instances")
+  case TypeIsFatherError(entityType: String)
+      extends ManagementServiceError(
+        s"The type $entityType is the father of other instances"
+      )
   case TraitsHaveLinkedInstancesError(traitName1: String, traitName2: String)
       extends ManagementServiceError(
         s"The traits $traitName1 and $traitName2 have associated linked instances"

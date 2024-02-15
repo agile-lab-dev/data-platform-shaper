@@ -774,6 +774,88 @@ class OntologyL0Spec
     }
   }
 
+  "Deleting an EntityType instance with instance referencing it as father" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val schema: StructType = StructType(
+        List(
+          "organization" -> StringType(),
+          "sub-organization" -> StringType(),
+          "domain" -> StringType(),
+          "sub-domain" -> StringType(),
+          "version" -> IntType(),
+          "foundation" -> DateType(),
+          "timestamp" -> TimestampType(),
+          "double" -> DoubleType(),
+          "float" -> FloatType(),
+          "aStruct" -> StructType(
+            List(
+              "nest1" -> StringType(),
+              "nest2" -> StructType(
+                List(
+                  "nest3" -> StringType(),
+                  "nest4" -> StringType()
+                )
+              )
+            )
+          )
+        )
+      )
+
+      session.use(session => {
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val fatherEntityType = EntityType(
+          "FatherDeleteEntityType",
+          schema
+        )
+
+        val sonEntityType = EntityType(
+          "SonDeleteEntityType",
+          schema,
+          fatherEntityType
+        )
+
+        for {
+          _ <- service.create(fatherEntityType)
+          _ <- service.read(fatherEntityType.name)
+          _ <- service.create(sonEntityType)
+          _ <- service.read(sonEntityType.name)
+          inCacheAfterRead <- cache.get.map(_.keySet(fatherEntityType.name))
+          deleteResult <- service.delete("FatherDeleteEntityType")
+          readResult <- service.read("FatherDeleteEntityType")
+          inCacheAfterDeleted <- cache.get.map(_.keySet(fatherEntityType.name))
+        } yield (
+          inCacheAfterRead,
+          deleteResult,
+          readResult,
+          inCacheAfterDeleted
+        )
+      }) asserting {
+        case (
+              true,
+              Left(ManagementServiceError.TypeIsFatherError(_)),
+              Right(_),
+              _
+            ) =>
+          succeed
+        case _ => fail("EntityType was not deleted successfully")
+      }
+    }
+  }
+
   "Deleting an EntityType with existing instances" - {
     "fails" in {
       val session = Session[IO](
