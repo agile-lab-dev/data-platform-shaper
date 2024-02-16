@@ -150,7 +150,7 @@ end given
 
 def cueValidateModel(
     schema: Schema
-): Either[(String, List[(String, String)]), Unit] =
+): Either[List[String], Unit] =
 
   Using.Manager { use =>
     val cueFile = use(File.createTempFile("test", ".cue"))
@@ -166,26 +166,14 @@ def cueValidateModel(
     )
     val errors = errorsBuffer
       .result()
-      .sliding(2, 2)
-      .map(l =>
-        val first = l.head.substring(0, l.head.lastIndexOf(':'))
-        val second = l.tail.head.split(':')
-        second.update(0, "model.cue")
-        (first, second.mkString(":"))
-      )
-      .toList
-    if errors.isEmpty then Right(()) else Left((model, errors))
+      .filter(error => !error.contains("test"))
+      .map(err => err.substring(0, err.lastIndexOf(':')))
+    if errors.isEmpty then Right(()) else Left(errors)
   } match
     case Failure(error) =>
       Left(
-        (
-          "",
-          List(
-            (
-              "",
-              s"Impossible to validate, the following error occurred during the validation: ${error.getMessage}}"
-            )
-          )
+        List(
+          s"Impossible to validate, the following error occurred during the model validation: ${error.getMessage}}"
         )
       )
     case Success(either) =>

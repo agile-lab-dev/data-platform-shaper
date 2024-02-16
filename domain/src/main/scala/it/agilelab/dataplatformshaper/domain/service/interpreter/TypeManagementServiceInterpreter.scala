@@ -550,6 +550,13 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           )
       }
       stmts <- EitherT(statementsForInheritance)
+      _ <- EitherT[F, ManagementServiceError, Unit](
+        summon[Applicative[F]].pure(
+          cueValidateModel(entityType.schema).leftMap(errors =>
+            ManagementServiceError.InvalidConstraints(errors)
+          )
+        )
+      )
       _ <- EitherT {
         if isCreation then
           if !exist then
@@ -796,6 +803,13 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     val instanceType = iri(ns, entityTypeRequest.name)
     (for {
       entityTypeResult <- EitherT(read(entityTypeRequest.name))
+      _ <- EitherT[F, ManagementServiceError, Unit](
+        summon[Applicative[F]].pure(
+          cueValidateModel(entityTypeResult.schema).leftMap(errors =>
+            ManagementServiceError.InvalidConstraints(errors)
+          )
+        )
+      )
       _ <-
         EitherT(
           summon[Monad[F]].pure(

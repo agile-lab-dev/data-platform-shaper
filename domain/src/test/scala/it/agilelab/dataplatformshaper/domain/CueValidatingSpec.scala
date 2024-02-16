@@ -216,21 +216,13 @@ class CueValidatingSpec extends AnyFlatSpec with Matchers:
       )
     )
 
-    val model = generateCueModel(schemaWithWrongConstraints)
-
     val res = cueValidateModel(schemaWithWrongConstraints)
 
     res match {
       case Right(_) => fail("it shouldn't be right")
-      case Left(
-            (
-              m,
-              List(("""anInt: reference "CIAO" not found""", "model.cue:2:18"))
-            )
-          ) => {
-        m should be(model)
-      }
-      case Left((_, _)) =>
+      case Left(List("""anInt: reference "CIAO" not found""")) =>
+        succeed
+      case Left(_: List[String]) =>
         fail("")
     }
   }

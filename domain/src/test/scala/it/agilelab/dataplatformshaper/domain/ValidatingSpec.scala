@@ -14,7 +14,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.JsonType
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.ValidationError
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.InstanceValidationError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
@@ -486,7 +486,7 @@ class ValidatingSpec extends CommonSpec:
           nonConformingTuple
         )
       } asserting (_ should matchPattern {
-        case Left(ValidationError(errors)) if errors.size.equals(4) =>
+        case Left(InstanceValidationError(errors)) if errors.size.equals(4) =>
       })
     }
   }
@@ -574,7 +574,7 @@ class ValidatingSpec extends CommonSpec:
           )
         } yield update).value
       } asserting {
-        case Left(ValidationError(errors)) =>
+        case Left(InstanceValidationError(errors)) =>
           withClue(
             "Update should fail with ValidationError containing specific errors: "
           ) {
