@@ -205,6 +205,49 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createTypeByYaml
 
+  override def updateTypeConstraintsByYaml(
+      respond: Resource.UpdateTypeConstraintsByYamlResponse.type
+  )(body: Stream[F, Byte]): F[Resource.UpdateTypeConstraintsByYamlResponse] =
+    val getEntityType = body
+      .through(text.utf8.decode)
+      .fold("")(_ + _)
+      .compile
+      .toList
+      .map(_.head)
+      .map(parser.parse(_).leftMap(_.getMessage))
+      .map(
+        _.flatMap(json =>
+          OpenApiEntityType.decodeEntityType(json.hcursor).leftMap(_.getMessage)
+        )
+      )
+
+    val res = for {
+      entityType <- EitherT(getEntityType)
+      ts = entityType.traits.fold(Set.empty[String])(_.map(identity).toSet)
+      res <- EitherT(
+        tms
+          .updateConstraints(
+            l0.EntityType(
+              entityType.name,
+              ts,
+              entityType.schema,
+              None
+            )
+          )
+          .map(_.leftMap(_.getMessage))
+      )
+    } yield res
+
+    res.value
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(_)    => respond.Ok("OK")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end updateTypeConstraintsByYaml
+
   override def readType(respond: Resource.ReadTypeResponse.type)(
       name: String
   ): F[Resource.ReadTypeResponse] =

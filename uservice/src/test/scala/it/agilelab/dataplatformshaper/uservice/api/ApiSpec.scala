@@ -353,6 +353,51 @@ class ApiSpec
     }
   }
 
+  "Updating a user defined type constraints using a YAML file" - {
+    "works" in {
+
+      val constrainedEntityType = OpenApiEntityType(
+        name = "constrainedEntityType",
+        Some(Vector()),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Long,
+            Some(OpenApiMode.Required),
+            Some(">=1")
+          )
+        ),
+        None
+      )
+
+      val stream =
+        fs2.io.readClassLoaderResource[IO]("initial_entity-type.yaml")
+
+      val updateStream =
+        fs2.io.readClassLoaderResource[IO]("updated_entity-type.yaml")
+
+      val resp: Resource[IO, ReadTypeResponse] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createTypeByYaml(stream))
+        _ <- Resource.liftK(client.updateTypeConstraintsByYaml(updateStream))
+        resp <- Resource.liftK(client.readType("constrainedEntityType"))
+      } yield resp
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          resp should be(
+            ReadTypeResponse.Ok(
+              constrainedEntityType
+            )
+          )
+        )
+    }
+  }
+
   "Creating a user defined type instance" - {
     "works" in {
 
