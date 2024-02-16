@@ -130,6 +130,10 @@ def generateCueModel(schema: Schema): String =
   internalGenerateCueModel(schema: StructType, 0)
 end generateCueModel
 
+def cueValidateModel(schema: Schema): Either[List[String], Unit] =
+  Right[List[String], Unit](())
+end cueValidateModel
+
 def cueValidate(schema: Schema, values: Tuple): Either[List[String], Unit] =
 
   given Releasable[File] with
