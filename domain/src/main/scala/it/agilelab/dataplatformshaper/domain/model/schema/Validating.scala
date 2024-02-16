@@ -110,15 +110,27 @@ def generateCueModel(schema: Schema): String =
           mode match
             case Mode.Required =>
               stringBuilder.append(
-                s"$blanks${sanitizeAttributeName(attributeName)}!: {\n${internalGenerateCueModel(str, n + 2)}}"
+                s"""$blanks${sanitizeAttributeName(
+                    attributeName
+                  )}!: {\n${internalGenerateCueModel(str, n + 2)}} //GEN"""
               )
             case Mode.Repeated =>
               stringBuilder.append(
-                s"$blanks${sanitizeAttributeName(attributeName)}: [ ...{\n${internalGenerateCueModel(str, n + 2)}$blanks}]"
+                s"""$blanks${sanitizeAttributeName(
+                    attributeName
+                  )}: [ ...{\n${internalGenerateCueModel(
+                    str,
+                    n + 2
+                  )}$blanks}] //GEN"""
               )
             case Mode.Nullable =>
               stringBuilder.append(
-                s"$blanks${sanitizeAttributeName(attributeName)}?: null | ({\n${internalGenerateCueModel(str, n + 2)}})"
+                s"""$blanks${sanitizeAttributeName(
+                    attributeName
+                  )}?: null | ({\n${internalGenerateCueModel(
+                    str,
+                    n + 2
+                  )}}) //GEN"""
               )
           end match
       end match
@@ -130,18 +142,58 @@ def generateCueModel(schema: Schema): String =
   internalGenerateCueModel(schema: StructType, 0)
 end generateCueModel
 
-def cueValidateModel(schema: Schema): Either[List[String], Unit] =
-  Right[List[String], Unit](())
+given Releasable[File] with
+  def release(file: File): Unit =
+    val _ = file.delete()
+  end release
+end given
+
+def cueValidateModel(
+    schema: Schema
+): Either[(String, List[(String, String)]), Unit] =
+
+  Using.Manager { use =>
+    val cueFile = use(File.createTempFile("test", ".cue"))
+    val pw1 = use(new PrintWriter(cueFile))
+    val model = generateCueModel(schema)
+    pw1.write(model)
+    pw1.flush()
+    pw1.close()
+    val errorsBuffer = List.newBuilder[String]
+    s"cue eval ${cueFile.getAbsolutePath}" ! ProcessLogger(
+      _ => (),
+      errorsBuffer += _
+    )
+    val errors = errorsBuffer
+      .result()
+      .sliding(2, 2)
+      .map(l =>
+        val first = l.head.substring(0, l.head.lastIndexOf(':'))
+        val second = l.tail.head.split(':')
+        second.update(0, "model.cue")
+        (first, second.mkString(":"))
+      )
+      .toList
+    if errors.isEmpty then Right(()) else Left((model, errors))
+  } match
+    case Failure(error) =>
+      Left(
+        (
+          "",
+          List(
+            (
+              "",
+              s"Impossible to validate, the following error occurred during the validation: ${error.getMessage}}"
+            )
+          )
+        )
+      )
+    case Success(either) =>
+      either
+  end match
 end cueValidateModel
 
 def cueValidate(schema: Schema, values: Tuple): Either[List[String], Unit] =
-
-  given Releasable[File] with
-    def release(file: File): Unit =
-      val _ = file.delete()
-    end release
-  end given
-
   Using.Manager { use =>
     val yamlFile = use(File.createTempFile("test", ".yaml"))
     val cueFile = use(File.createTempFile("test", ".cue"))

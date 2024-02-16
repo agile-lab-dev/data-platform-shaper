@@ -200,13 +200,46 @@ class CueValidatingSpec extends AnyFlatSpec with Matchers:
     )
   )
 
-  "Unfolding a tuple conform to a schema" should "work" in {
-    {
-      val res = cueValidate(schema, tuple)
-      res match {
-        case Right(_)     => succeed
-        case Left(errors) => fail(s"Validation failed with errors: $errors")
+  "Validating a generated cue model" should "work" in {
+    val res = cueValidateModel(schema)
+    res match {
+      case Right(_)     => succeed
+      case Left(errors) => fail(s"Validation failed with errors: $errors")
+    }
+  }
+
+  "Validating a generated cue model from wrong constraints" should "fail" in {
+    val schemaWithWrongConstraints: Schema = StructType(
+      List(
+        "aString" -> StringType(constraints = None),
+        "anInt" -> IntType(constraints = Some("< CIAO "))
+      )
+    )
+
+    val model = generateCueModel(schemaWithWrongConstraints)
+
+    val res = cueValidateModel(schemaWithWrongConstraints)
+
+    res match {
+      case Right(_) => fail("it shouldn't be right")
+      case Left(
+            (
+              m,
+              List(("""anInt: reference "CIAO" not found""", "model.cue:2:18"))
+            )
+          ) => {
+        m should be(model)
       }
+      case Left((_, _)) =>
+        fail("")
+    }
+  }
+
+  "Validating a tuple conform to a schema" should "work" in {
+    val res = cueValidate(schema, tuple)
+    res match {
+      case Right(_)     => succeed
+      case Left(errors) => fail(s"Validation failed with errors: $errors")
     }
   }
 
