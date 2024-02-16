@@ -41,6 +41,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+    delete:
+      tags:
+        - OntologyManager
+      summary: Delete a user-defined type
+      operationId: deleteType
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+            description: Name of the user-defined type to be deleted
+      responses:
+        200:
+          description: If successful, returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
     get:
       tags:
         - OntologyManager
@@ -85,6 +116,39 @@ paths:
             schema:
               $ref: '#/components/schemas/EntityType'
         required: true
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+  /ontology/entity-type/constraints/yaml:
+    post:
+      tags:
+        - OntologyManager
+      summary: Update a user-defined type
+      operationId: updateTypeConstraintsByYaml
+      requestBody:
+        description: A YAML file containing an Entity Type spec
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
       responses:
         200:
           description: If successful returns "OK"

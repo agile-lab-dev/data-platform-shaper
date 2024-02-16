@@ -103,6 +103,23 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createType
 
+  override def deleteType(respond: Resource.DeleteTypeResponse.type)(
+      name: String
+  ): F[Resource.DeleteTypeResponse] =
+    val res: F[Either[String, String]] = for {
+      deleteResult <- tms.delete(name).map(_.bimap(_.getMessage, _ => "OK"))
+    } yield deleteResult
+
+    res
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(successMessage) => respond.Ok(successMessage)
+      }
+      .onError { t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      }
+  end deleteType
+
   override def updateTypeConstraints(
       respond: Resource.UpdateTypeConstraintsResponse.type
   )(body: OpenApiEntityType): F[UpdateTypeConstraintsResponse] =
@@ -187,6 +204,49 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createTypeByYaml
+
+  override def updateTypeConstraintsByYaml(
+      respond: Resource.UpdateTypeConstraintsByYamlResponse.type
+  )(body: Stream[F, Byte]): F[Resource.UpdateTypeConstraintsByYamlResponse] =
+    val getEntityType = body
+      .through(text.utf8.decode)
+      .fold("")(_ + _)
+      .compile
+      .toList
+      .map(_.head)
+      .map(parser.parse(_).leftMap(_.getMessage))
+      .map(
+        _.flatMap(json =>
+          OpenApiEntityType.decodeEntityType(json.hcursor).leftMap(_.getMessage)
+        )
+      )
+
+    val res = for {
+      entityType <- EitherT(getEntityType)
+      ts = entityType.traits.fold(Set.empty[String])(_.map(identity).toSet)
+      res <- EitherT(
+        tms
+          .updateConstraints(
+            l0.EntityType(
+              entityType.name,
+              ts,
+              entityType.schema,
+              None
+            )
+          )
+          .map(_.leftMap(_.getMessage))
+      )
+    } yield res
+
+    res.value
+      .map {
+        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
+        case Right(_)    => respond.Ok("OK")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end updateTypeConstraintsByYaml
 
   override def readType(respond: Resource.ReadTypeResponse.type)(
       name: String

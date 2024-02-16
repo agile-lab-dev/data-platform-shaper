@@ -1,0 +1,6 @@
+name: constrainedEntityType
+schema:
+  - name: age
+    typeName: Long
+    mode: Required
+    constraints: ">=1"

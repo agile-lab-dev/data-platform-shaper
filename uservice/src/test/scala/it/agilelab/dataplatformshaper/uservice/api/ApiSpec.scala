@@ -230,6 +230,41 @@ class ApiSpec
     }
   }
 
+  "Deleting a user defined type" - {
+    "works" in {
+
+      val deleteEntityType = OpenApiEntityType(
+        "deleteType",
+        None,
+        Vector(
+          OpenApiAttributeType("id", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(deleteEntityType))
+        _ <- Resource.liftK(client.deleteType("deleteType"))
+        resp <- Resource.liftK(client.readType("deleteType"))
+      } yield resp
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          resp should be(
+            ReadTypeResponse.BadRequest(
+              ValidationError(
+                Vector("The instance type with name deleteType does not exist")
+              )
+            )
+          )
+        )
+    }
+  }
+
   "Updating a user defined type constraints" - {
     "works" in {
 
@@ -312,6 +347,51 @@ class ApiSpec
           resp should be(
             ReadTypeResponse.Ok(
               childrenEntityType
+            )
+          )
+        )
+    }
+  }
+
+  "Updating a user defined type constraints using a YAML file" - {
+    "works" in {
+
+      val constrainedEntityType = OpenApiEntityType(
+        name = "constrainedEntityType",
+        Some(Vector()),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Long,
+            Some(OpenApiMode.Required),
+            Some(">=1")
+          )
+        ),
+        None
+      )
+
+      val stream =
+        fs2.io.readClassLoaderResource[IO]("initial_entity-type.yaml")
+
+      val updateStream =
+        fs2.io.readClassLoaderResource[IO]("updated_entity-type.yaml")
+
+      val resp: Resource[IO, ReadTypeResponse] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createTypeByYaml(stream))
+        _ <- Resource.liftK(client.updateTypeConstraintsByYaml(updateStream))
+        resp <- Resource.liftK(client.readType("constrainedEntityType"))
+      } yield resp
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          resp should be(
+            ReadTypeResponse.Ok(
+              constrainedEntityType
             )
           )
         )

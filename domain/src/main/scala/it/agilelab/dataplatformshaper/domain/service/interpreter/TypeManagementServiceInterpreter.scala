@@ -703,6 +703,34 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     }
   }
 
+  private def isFather(
+      instanceTypeName: String
+  ): F[Either[ManagementServiceError, Boolean]] = {
+    val isFatherQuery: String =
+      s"""
+         |PREFIX ns:  <${ns.getName}>
+         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+         |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+         |SELECT (COUNT(?subtype) as ?subTypeCount) WHERE {
+         |   ?type ns:typeName "$instanceTypeName"^^xsd:string .
+         |   ?subtype rdf:type ns:EntityType .
+         |   ?subtype ns:inheritsFrom* ?type .
+         |}
+         |""".stripMargin
+
+    val isFatherCheckResult = repository.evaluateQuery(isFatherQuery)
+    summon[Functor[F]].map(isFatherCheckResult) { resultSet =>
+      val resultList = resultSet.toList
+      Right(
+        resultList.nonEmpty && resultList.head
+          .getValue("subTypeCount")
+          .stringValue()
+          .toInt > 1
+      )
+    }
+  }
+
   override def delete(
       instanceTypeName: String
   ): F[Either[ManagementServiceError, Unit]] = {
@@ -714,19 +742,34 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           case Right(true) =>
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Unit](
-                ManagementServiceError.TypeHasInstancesError(
-                  instanceTypeName
-                )
+                ManagementServiceError.TypeHasInstancesError(instanceTypeName)
               )
             )
 
           case Right(false) =>
-            val schemaF = getSchemaFromEntityType(instanceTypeName)
-            cache.modify(map => (map - instanceTypeName, ())) *>
-              summon[Monad[F]].flatMap(schemaF) { schema =>
-                val entityType = EntityType(instanceTypeName, schema)
-                createOrDelete(entityType, isCreation = false)
-              }
+            val isFatherCheck = isFather(instanceTypeName)
+            summon[Monad[F]].flatMap(isFatherCheck) {
+              case Right(true) =>
+                summon[Applicative[F]].pure(
+                  Left[ManagementServiceError, Unit](
+                    ManagementServiceError.TypeIsFatherError(instanceTypeName)
+                  )
+                )
+
+              case Right(false) =>
+                val schemaF = getSchemaFromEntityType(instanceTypeName)
+                cache.modify(map => (map - instanceTypeName, ())) *>
+                  summon[Monad[F]].flatMap(schemaF) { schema =>
+                    val entityType = EntityType(instanceTypeName, schema)
+                    createOrDelete(entityType, isCreation = false)
+                  }
+
+              case Left(error) =>
+                summon[Applicative[F]].pure(
+                  Left[ManagementServiceError, Unit](error)
+                )
+            }
+
           case Left(error) =>
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Unit](error)
