@@ -1,39 +1,26 @@
 package it.agilelab.dataplatformshaper.domain
 
+import cats.data.EitherT
+import cats.effect.{IO, Ref}
 import io.circe.*
 import io.circe.parser.*
-import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import org.scalactic.Equality
-import org.scalatest.BeforeAndAfterAll
-import cats.effect.std.Random
-import cats.data.EitherT
-import cats.effect.testing.scalatest.AsyncIOSpec
-import org.http4s.multipart.{Multipart, Multiparts, Part}
-import org.http4s.{EntityEncoder, Method, Request, Uri}
-import fs2.io.file.Path
-import org.http4s.ember.client.EmberClientBuilder
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
+import it.agilelab.dataplatformshaper.domain.model.l0
+import it.agilelab.dataplatformshaper.domain.model.l0.*
+import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.model.schema.DataType.JsonType
+import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.InstanceValidationError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.*
-
-import scala.jdk.CollectionConverters.*
-import org.scalatest.freespec.AsyncFreeSpec
-import org.scalatest.matchers.should.Matchers
-import org.testcontainers.containers.GenericContainer
-import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
-import cats.effect.{IO, Ref}
-import it.agilelab.dataplatformshaper.domain.model.schema.DataType.JsonType
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.ValidationError
+import org.scalactic.Equality
 
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.language.{dynamics, implicitConversions}
@@ -45,13 +32,7 @@ import scala.language.{dynamics, implicitConversions}
     "scalafix:DisableSyntax.=="
   )
 )
-class ValidatingSpec
-    extends AsyncFreeSpec
-    with AsyncIOSpec
-    with Matchers
-    with BeforeAndAfterAll:
-
-  val graphdbType = "graphdb"
+class ValidatingSpec extends CommonSpec:
 
   given Equality[DataType] with
     def areEqual(x: DataType, y: Any): Boolean =
@@ -71,77 +52,6 @@ class ValidatingSpec
       ret
     end areEqual
   end given
-
-  val graphdbContainer: GenericContainer[Nothing] =
-    graphdbType match
-      case "graphdb" =>
-        val container = new GenericContainer("ontotext/graphdb:10.5.0")
-        container.addExposedPort(7200)
-        container.setPortBindings(List("0.0.0.0:" + 7201 + ":" + 7200).asJava)
-        container
-      case "virtuoso" =>
-        val container = new GenericContainer(
-          "openlink/virtuoso-opensource-7:latest"
-        )
-        container.withEnv("DBA_PASSWORD", "mysecret")
-        container.addExposedPort(1111)
-        container.setPortBindings(List("0.0.0.0:" + 7201 + ":" + 1111).asJava)
-        container
-    end match
-
-  override protected def beforeAll(): Unit =
-    graphdbContainer.start()
-    graphdbContainer.waitingFor(new HostPortWaitStrategy())
-    if graphdbType === "graphdb" then
-      val port = graphdbContainer.getMappedPort(7200).intValue()
-      createRepository(port)
-    end if
-  end beforeAll
-
-  override protected def afterAll(): Unit =
-    // Thread.sleep(10000000)
-    graphdbContainer.stop()
-  end afterAll
-
-  private def createRepository(port: Int): Unit =
-    val multiparts = Random
-      .scalaUtilRandom[IO]
-      .map(Multiparts.fromRandom[IO])
-      .syncStep(Int.MaxValue)
-      .unsafeRunSync()
-      .toOption
-      .get
-
-    val run: IO[Multipart[IO]] = EmberClientBuilder
-      .default[IO]
-      .build
-      .use { client =>
-        multiparts
-          .multipart(
-            Vector(
-              Part
-                .fileData[IO](
-                  "config",
-                  Path("domain/src/test/resources/repo-config.ttl")
-                )
-            )
-          )
-          .flatTap { multipart =>
-            val entity = EntityEncoder[IO, Multipart[IO]].toEntity(multipart)
-            val body = entity.body
-            val request = Request(
-              method = Method.POST,
-              uri = Uri
-                .unsafeFromString(s"http://localhost:$port/rest/repositories"),
-              body = body,
-              headers = multipart.headers
-            )
-            client.expect[String](request)
-          }
-      }
-
-    val _ = run.unsafeRunSync()
-  end createRepository
 
   given cache: Ref[IO, Map[String, EntityType]] =
     Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
@@ -503,16 +413,6 @@ class ValidatingSpec
     )
   )
 
-  "Unfolding a tuple conform to a schema" - {
-    "should work" in {
-      val res = cueValidate(schema, tuple)
-      res match {
-        case Right(_)     => succeed
-        case Left(errors) => fail(s"Validation failed with errors: $errors")
-      }
-    }
-  }
-
   "Creating an EntityType instance" - {
     "works" in {
       val session = Session[IO](
@@ -586,7 +486,7 @@ class ValidatingSpec
           nonConformingTuple
         )
       } asserting (_ should matchPattern {
-        case Left(ValidationError(errors)) if errors.size.equals(4) =>
+        case Left(InstanceValidationError(errors)) if errors.size.equals(4) =>
       })
     }
   }
@@ -674,7 +574,7 @@ class ValidatingSpec
           )
         } yield update).value
       } asserting {
-        case Left(ValidationError(errors)) =>
+        case Left(InstanceValidationError(errors)) =>
           withClue(
             "Update should fail with ValidationError containing specific errors: "
           ) {
@@ -758,6 +658,91 @@ class ValidatingSpec
       } asserting { ret =>
         ret should matchPattern {
           case Left(ManagementServiceError.MismatchingSchemas(_)) =>
+        }
+      }
+    }
+  }
+
+  "Creating an EntityType with wrong constraints" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val entityType = l0.EntityType(
+        "TypeWithWrongConstraints",
+        StructType(
+          List(
+            "anInt" -> IntType(constraints = Some("< NOTANUMBER"))
+          )
+        )
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val result = for {
+          res <- service.create(entityType)
+        } yield res
+        result
+      } asserting { ret =>
+        ret should matchPattern {
+          case Left(ManagementServiceError.InvalidConstraints(_)) =>
+        }
+      }
+    }
+  }
+
+  "Updating an EntityType with wrong constraints" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val entityType = l0.EntityType(
+        "YetAnotherType",
+        StructType(
+          List(
+            "anInt" -> IntType(constraints = Some("< 10"))
+          )
+        )
+      )
+
+      val wrongEntityType = l0.EntityType(
+        "YetAnotherType",
+        StructType(
+          List(
+            "anInt" -> IntType(constraints = Some("< NOTANUMBER"))
+          )
+        )
+      )
+
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val result = for {
+          _ <- service.create(entityType)
+          res <- service.updateConstraints(wrongEntityType)
+        } yield res
+        result
+      } asserting { ret =>
+        ret should matchPattern {
+          case Left(ManagementServiceError.InvalidConstraints(_)) =>
         }
       }
     }

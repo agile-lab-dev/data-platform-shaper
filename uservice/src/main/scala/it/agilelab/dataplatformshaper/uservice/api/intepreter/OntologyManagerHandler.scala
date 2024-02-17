@@ -50,7 +50,6 @@ class OntologyManagerHandler[F[_]: Async](
   override def createType(
       respond: Resource.CreateTypeResponse.type
   )(body: OpenApiEntityType): F[CreateTypeResponse] =
-
     val schema: Schema = body.schema
 
     val fatherName = body.fatherName
@@ -61,11 +60,12 @@ class OntologyManagerHandler[F[_]: Async](
           body.traits
             .fold(Set.empty[String])(x => x.map(str => str).toSet)
         ).toEither
-          .leftMap(t => s"Trait ${t.getMessage} is not a Trait")
+          .leftMap(t => Vector("Trait ${t.getMessage} is not a Trait"))
       )
-    val res = for {
+
+    val res = (for {
       ts <- EitherT(traits)
-      res <- EitherT(
+      _ <- EitherT(
         fatherName
           .fold(
             tms
@@ -89,14 +89,21 @@ class OntologyManagerHandler[F[_]: Async](
                 fn
               )
           )
-          .map(_.leftMap(_.getMessage))
+          .map {
+            _.leftMap {
+              case err: ManagementServiceError.InvalidConstraints =>
+                err.errors.toVector
+              case err: ManagementServiceError =>
+                Vector(err.getMessage)
+            }
+          }
       )
-    } yield res
+    } yield ()).value
 
-    res.value
+    res
       .map {
-        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
-        case Right(_)    => respond.Ok("OK")
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(_)     => respond.Ok("OK")
       }
       .onError(t =>
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
@@ -132,14 +139,21 @@ class OntologyManagerHandler[F[_]: Async](
       res <- EitherT(
         tms
           .updateConstraints(entityType)
-          .map(_.leftMap(_.getMessage))
+          .map {
+            _.leftMap {
+              case err: ManagementServiceError.InvalidConstraints =>
+                err.errors.toVector
+              case err: ManagementServiceError =>
+                Vector(err.getMessage)
+            }
+          }
       )
     } yield res
 
     res.value
       .map {
-        case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
-        case Right(_)    => respond.Ok("OK")
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(_)     => respond.Ok("OK")
       }
       .onError(t =>
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
@@ -329,7 +343,7 @@ class OntologyManagerHandler[F[_]: Async](
         ims
           .create(body.entityTypeName, tuple)
           .map(_.leftMap {
-            case err: ManagementServiceError.ValidationError =>
+            case err: ManagementServiceError.InstanceValidationError =>
               err.errors.toVector
             case err: ManagementServiceError =>
               Vector(err.getMessage)
@@ -382,7 +396,7 @@ class OntologyManagerHandler[F[_]: Async](
         ims
           .update(updateId, tuple)
           .map(_.leftMap {
-            case err: ManagementServiceError.ValidationError =>
+            case err: ManagementServiceError.InstanceValidationError =>
               err.errors.toVector
             case err: ManagementServiceError =>
               Vector(err.getMessage)

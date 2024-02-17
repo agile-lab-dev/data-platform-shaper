@@ -269,23 +269,23 @@ class ApiSpec
     "works" in {
 
       val entityType = OpenApiEntityType(
-        "entityConstrained",
-        None,
+        "entityTypeConstrained",
+        Some(Vector()),
         Vector(
-          OpenApiAttributeType("id", AttributeTypeName.String, None, None)
+          OpenApiAttributeType("id", AttributeTypeName.Integer, None, None)
         ),
         None
       )
 
       val entityTypeConstrained = OpenApiEntityType(
-        "entityConstrained",
+        "entityTypeConstrained",
         Some(Vector()),
         Vector(
           OpenApiAttributeType(
             "id",
-            AttributeTypeName.String,
+            AttributeTypeName.Integer,
             Some(Required),
-            Some(">=5")
+            Some(">= 5")
           )
         ),
         None
@@ -298,7 +298,7 @@ class ApiSpec
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
         _ <- Resource.liftK(client.createType(entityType))
         _ <- Resource.liftK(client.updateTypeConstraints(entityTypeConstrained))
-        resp <- Resource.liftK(client.readType("entityConstrained"))
+        resp <- Resource.liftK(client.readType("entityTypeConstrained"))
       } yield resp
 
       resp
