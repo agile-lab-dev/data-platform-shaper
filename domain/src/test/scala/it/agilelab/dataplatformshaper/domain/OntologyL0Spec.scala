@@ -56,24 +56,7 @@ class OntologyL0Spec extends CommonSpec:
 
   given cache: Ref[IO, Map[String, EntityType]] =
     Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
-
-  "Loading the base ontology" - {
-    "works" in {
-      val session = Session[IO](
-        graphdbType,
-        "localhost",
-        7201,
-        "dba",
-        "mysecret",
-        "repo1",
-        false
-      )
-      session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
-        repository.loadBaseOntologies()
-      } asserting (_ => true shouldBe true)
-    }
-  }
+  
 
   val fileBasedDataCollectionTypeSchema: StructType = StructType(
     List(

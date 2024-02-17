@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
@@ -29,7 +30,7 @@ class CommonSpec
   val graphdbContainer: GenericContainer[Nothing] =
     graphdbType match
       case "graphdb" =>
-        val container = new GenericContainer("ontotext/graphdb:10.5.0")
+        val container = new GenericContainer("ontotext/graphdb:10.6.0")
         container.addExposedPort(7200)
         container.setPortBindings(List("0.0.0.0:" + 7201 + ":" + 7200).asJava)
         container
@@ -50,6 +51,7 @@ class CommonSpec
       val port = graphdbContainer.getMappedPort(7200).intValue()
       createRepository(port)
     end if
+    loadBaseOntologies()
   end beforeAll
 
   override protected def afterAll(): Unit =
@@ -96,4 +98,22 @@ class CommonSpec
 
     val _ = run.unsafeRunSync()
   end createRepository
+
+  def loadBaseOntologies(): Unit =
+    val session = Session[IO](
+      graphdbType,
+      "localhost",
+      7201,
+      "dba",
+      "mysecret",
+      "repo1",
+      false
+    )
+    session
+      .use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        repository.loadBaseOntologies()
+      }
+      .unsafeRunSync()
+  end loadBaseOntologies
 end CommonSpec

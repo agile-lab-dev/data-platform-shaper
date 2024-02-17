@@ -13,7 +13,7 @@ object Versions {
    lazy val circeYamlVersion                 = "1.15.0"
    lazy val calciteVersion                   = "1.36.0"
    lazy val scalaLogging                     = "3.9.5"
-   lazy val logbackVersion                   = "1.4.14"
-   lazy val scalatestVersion                 = "3.2.17"
-   lazy val testContainersVersion            = "1.19.4"
+   lazy val logbackVersion                   = "1.5.0"
+   lazy val scalatestVersion                 = "3.2.18"
+   lazy val testContainersVersion            = "1.19.5"
  }
