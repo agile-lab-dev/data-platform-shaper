@@ -663,4 +663,89 @@ class ValidatingSpec extends CommonSpec:
     }
   }
 
+  "Creating an EntityType with wrong constraints" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val entityType = l0.EntityType(
+        "TypeWithWrongConstraints",
+        StructType(
+          List(
+            "anInt" -> IntType(constraints = Some("< NOTANUMBER"))
+          )
+        )
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val result = for {
+          res <- service.create(entityType)
+        } yield res
+        result
+      } asserting { ret =>
+        ret should matchPattern {
+          case Left(ManagementServiceError.InvalidConstraints(_)) =>
+        }
+      }
+    }
+  }
+
+  "Updating an EntityType with wrong constraints" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val entityType = l0.EntityType(
+        "YetAnotherType",
+        StructType(
+          List(
+            "anInt" -> IntType(constraints = Some("< 10"))
+          )
+        )
+      )
+
+      val wrongEntityType = l0.EntityType(
+        "YetAnotherType",
+        StructType(
+          List(
+            "anInt" -> IntType(constraints = Some("< NOTANUMBER"))
+          )
+        )
+      )
+
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val service = new TypeManagementServiceInterpreter[IO](trservice)
+
+        val result = for {
+          _ <- service.create(entityType)
+          res <- service.updateConstraints(wrongEntityType)
+        } yield res
+        result
+      } asserting { ret =>
+        ret should matchPattern {
+          case Left(ManagementServiceError.InvalidConstraints(_)) =>
+        }
+      }
+    }
+  }
+
 end ValidatingSpec

@@ -805,7 +805,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       entityTypeResult <- EitherT(read(entityTypeRequest.name))
       _ <- EitherT[F, ManagementServiceError, Unit](
         summon[Applicative[F]].pure(
-          cueValidateModel(entityTypeResult.schema).leftMap(errors =>
+          cueValidateModel(entityTypeRequest.schema).leftMap(errors =>
             ManagementServiceError.InvalidConstraints(errors)
           )
         )
