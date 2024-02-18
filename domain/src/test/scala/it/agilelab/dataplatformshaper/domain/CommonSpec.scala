@@ -4,7 +4,10 @@ import cats.effect.IO
 import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}

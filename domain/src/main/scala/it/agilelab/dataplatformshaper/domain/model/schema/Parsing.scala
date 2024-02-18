@@ -22,6 +22,7 @@ package parsing {
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
 
 implicit val jsonOrdering: Ordering[Json] = Ordering.by(_.toString())
+
 @SuppressWarnings(
   Array(
     "scalafix:DisableSyntax.asInstanceOf",
@@ -41,7 +42,7 @@ private def unfoldPrimitive(
         case value: String if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
-        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+        case value if value.isInstanceOf[List[?]] && mode === Repeated =>
           try
             value
               .asInstanceOf[List[String]]
@@ -73,7 +74,7 @@ private def unfoldPrimitive(
         case value: Int if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
-        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+        case value if value.isInstanceOf[List[?]] && mode === Repeated =>
           try
             value
               .asInstanceOf[List[Int]]
@@ -105,7 +106,7 @@ private def unfoldPrimitive(
         case value: LocalDate if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
-        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+        case value if value.isInstanceOf[List[?]] && mode === Repeated =>
           try
             value
               .asInstanceOf[List[LocalDate]]
@@ -137,7 +138,7 @@ private def unfoldPrimitive(
         case value: Json if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
-        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+        case value if value.isInstanceOf[List[?]] && mode === Repeated =>
           try
             value
               .asInstanceOf[List[Json]]
@@ -169,7 +170,7 @@ private def unfoldPrimitive(
         case value: ZonedDateTime if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
-        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+        case value if value.isInstanceOf[List[?]] && mode === Repeated =>
           try
             value
               .asInstanceOf[List[ZonedDateTime]]
@@ -200,7 +201,7 @@ private def unfoldPrimitive(
         case value: Double if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
-        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+        case value if value.isInstanceOf[List[?]] && mode === Repeated =>
           try
             value
               .asInstanceOf[List[Double]]
@@ -232,7 +233,7 @@ private def unfoldPrimitive(
         case value: Float if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
-        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+        case value if value.isInstanceOf[List[?]] && mode === Repeated =>
           try
             value
               .asInstanceOf[List[Float]]
@@ -264,7 +265,7 @@ private def unfoldPrimitive(
         case value: Long if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
-        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+        case value if value.isInstanceOf[List[?]] && mode === Repeated =>
           try
             value
               .asInstanceOf[List[Long]]
@@ -296,7 +297,7 @@ private def unfoldPrimitive(
         case value: Boolean if mode === Required =>
           func(currentPath, tpe, value, FoldingPrimitive)
           Right[String, Unit](())
-        case value if value.isInstanceOf[List[_]] && mode === Repeated =>
+        case value if value.isInstanceOf[List[?]] && mode === Repeated =>
           try
             value
               .asInstanceOf[List[Boolean]]
@@ -385,7 +386,7 @@ private def unfoldStruct(
               end if
             case Failure(_) =>
               Left[String, Unit](s"$value is not a conform tuple")
-        case value if mode === Repeated && value.isInstanceOf[List[_]] =>
+        case value if mode === Repeated && value.isInstanceOf[List[?]] =>
           val tuples: Try[List[Tuple]] =
             try Success(value.asInstanceOf[List[Tuple]])
             catch ex => Failure[List[Tuple]](ex)
@@ -406,7 +407,7 @@ private def unfoldStruct(
               )
               currentRes
           end match
-        case value if mode === Nullable && value.isInstanceOf[Option[_]] =>
+        case value if mode === Nullable && value.isInstanceOf[Option[?]] =>
           val tuples: Try[Option[Tuple]] =
             try Success(value.asInstanceOf[Option[Tuple]])
             catch ex => Failure[Option[Tuple]](ex)

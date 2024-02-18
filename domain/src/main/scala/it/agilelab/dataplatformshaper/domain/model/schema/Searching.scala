@@ -314,7 +314,7 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
             generateCode(operand1)
-              .asInstanceOf[SearchPredicateAttribute] like generateCode(
+              .asInstanceOf[SearchPredicateAttribute] `like` generateCode(
               operand2
             )
               .asInstanceOf[SearchPredicateValue[String]]

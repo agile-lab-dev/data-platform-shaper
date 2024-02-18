@@ -56,7 +56,6 @@ class OntologyL0Spec extends CommonSpec:
 
   given cache: Ref[IO, Map[String, EntityType]] =
     Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
-  
 
   val fileBasedDataCollectionTypeSchema: StructType = StructType(
     List(
