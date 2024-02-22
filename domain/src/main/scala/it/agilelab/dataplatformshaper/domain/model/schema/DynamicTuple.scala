@@ -1,7 +1,7 @@
 package it.agilelab.dataplatformshaper.domain.model.schema
 
 import cats.implicits.*
-import it.agilelab.dataplatformshaper.domain.model.schema.{Schema, unfoldTuple}
+import it.agilelab.dataplatformshaper.domain.model.schema.Schema
 
 import scala.Tuple.Union
 import scala.annotation.{tailrec, unused}
@@ -114,6 +114,30 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
       )
   end replace
 
+  def getValue(path: String): Either[String, Any] =
+    @inline
+    def listPathGet(
+        tuple: DynamicTuple,
+        path: Array[String]
+    ): DynamicTuple =
+      path.foldLeft(tuple)((tuple, field) => tuple.selectDynamic(field))
+    end listPathGet
+    Try(listPathGet(this, path.split("/").map(_.trim)).tuple).toEither.leftMap(
+      t =>
+        s"""Error '${t.getLocalizedMessage}' trying to get the value with the path $path"""
+    )
+  end getValue
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.throw"
+    )
+  )
+  def get(path: String): Any =
+    getValue(path) match
+      case Left(error)  => throw new Exception(error)
+      case Right(value) => value
+    end match
 end DynamicTuple
 
 extension (tuple: Tuple)
@@ -143,7 +167,3 @@ given Conversion[Tuple, DynamicTuple] = DynamicTuple(_)
 given Conversion[DynamicTuple, Tuple] =
   case v: Tuple => v
 end given
-
-def parseTuple(tuple: Tuple, schema: Schema): Either[String, Tuple] =
-  unfoldTuple(tuple, schema, (_, _, _, _) => ()).map(_ => tuple)
-end parseTuple

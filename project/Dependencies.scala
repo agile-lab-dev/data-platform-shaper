@@ -15,11 +15,6 @@ object Dependencies {
     lazy val jdbcDriver  = namespace % "virtjdbc4_2" % virtuosoJDBCVersion
   }
 
-  private[this] object dataTools {
-    lazy val namespace = "io.github.data-tools"
-    lazy val dataTypesCore = namespace %% "big-data-types-core" % dataToolsVersion
-  }
-
   private[this] object http4s {
     lazy val namespace   = "org.http4s"
     lazy val emberServer = namespace %% "http4s-ember-server" % http4sVersion
@@ -98,7 +93,8 @@ object Dependencies {
       calcite.babel                % Compile,
       logging.scala                % Compile,
       logback.classic              % Compile,
-      dataTools.dataTypesCore      % Compile,
+      "jakarta.el" % "jakarta.el-api" % "5.0.1" % Compile,
+      "org.glassfish.expressly" % "expressly" % "5.0.0" % Compile,
       http4s.emberClient           % Test,
       testcontainers.core          % Test,
       cats.effectScalatest         % Test,

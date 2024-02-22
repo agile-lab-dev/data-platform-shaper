@@ -982,3 +982,7 @@ def tupleToJson(
       Right(json)
   end match
 end tupleToJson
+
+def parseTuple(tuple: Tuple, schema: Schema): Either[String, Tuple] =
+  unfoldTuple(tuple, schema, (_, _, _, _) => ()).map(_ => tuple)
+end parseTuple
