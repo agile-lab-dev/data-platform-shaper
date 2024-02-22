@@ -135,7 +135,7 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
   )
   def get(path: String): Any =
     getValue(path) match
-      case Left(error)  => throw new Exception(error)
+      case Left(error)  => throw Exception(error)
       case Right(value) => value
     end match
 end DynamicTuple

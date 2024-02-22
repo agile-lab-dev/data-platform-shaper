@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 
 object ApplicationConfiguration:
 
-  val config: AtomicReference[Config] = new AtomicReference(
+  val config: AtomicReference[Config] = AtomicReference(
     ConfigFactory.load()
   )
 

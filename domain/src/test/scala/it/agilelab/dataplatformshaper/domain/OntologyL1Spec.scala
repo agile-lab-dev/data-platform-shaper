@@ -107,7 +107,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
         (for {
@@ -160,7 +160,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
         (for {
@@ -197,7 +197,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
         trservice.unlink("DataProduct", Relationship.hasPart, "OutputPort")
       } asserting (res =>
         res should matchPattern {
@@ -222,7 +222,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
         (for {

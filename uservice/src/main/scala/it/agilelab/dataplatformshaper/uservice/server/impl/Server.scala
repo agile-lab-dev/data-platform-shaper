@@ -52,9 +52,9 @@ object Server:
     given cache: Ref[F, Map[String, EntityType]] = typeCache
 
     val repository = Rdf4jKnowledgeGraph[F](session)
-    val trms = new TraitManagementServiceInterpreter[F](repository)
-    val tms = new TypeManagementServiceInterpreter[F](trms)
-    val ims = new InstanceManagementServiceInterpreter[F](tms)
+    val trms = TraitManagementServiceInterpreter[F](repository)
+    val tms = TypeManagementServiceInterpreter[F](trms)
+    val ims = InstanceManagementServiceInterpreter[F](tms)
 
     val assetsRoutes = resourceServiceBuilder("/").toRoutes
 
@@ -66,7 +66,7 @@ object Server:
     val allRoutes =
       interfaceFileRoute <+>
         assetsRoutes <+>
-        GenResource[F]().routes(new OntologyManagerHandler[F](tms, ims, trms))
+        GenResource[F]().routes(OntologyManagerHandler[F](tms, ims, trms))
 
     for _ <- EmberServerBuilder
         .default[F]

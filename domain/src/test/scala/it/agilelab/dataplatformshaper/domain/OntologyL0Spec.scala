@@ -520,8 +520,8 @@ class OntologyL0Spec extends CommonSpec:
       session.use(session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val entityType = EntityType(
           "TestType",
@@ -574,8 +574,8 @@ class OntologyL0Spec extends CommonSpec:
       session.use(session => {
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val entityType = EntityType(
           "TestDeleteType",
@@ -616,8 +616,8 @@ class OntologyL0Spec extends CommonSpec:
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         val entityType = l0.EntityType(
           "FileBasedDataCollectionType",
           Set("DataCollection"),
@@ -646,8 +646,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         val entityType = l0.EntityType(
           "TraitExample",
           Set("NonExistingTrait"),
@@ -707,8 +707,8 @@ class OntologyL0Spec extends CommonSpec:
       session.use(session => {
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val fatherEntityType = EntityType(
           "FatherDeleteEntityType",
@@ -774,9 +774,9 @@ class OntologyL0Spec extends CommonSpec:
         session.use { session =>
           val repository: Rdf4jKnowledgeGraph[IO] =
             Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val service = new TypeManagementServiceInterpreter[IO](trservice)
-          val ims = new InstanceManagementServiceInterpreter[IO](service)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val service = TypeManagementServiceInterpreter[IO](trservice)
+          val ims = InstanceManagementServiceInterpreter[IO](service)
 
           val entityType = EntityType(
             "DataProductType",
@@ -823,9 +823,9 @@ class OntologyL0Spec extends CommonSpec:
         session.use { session =>
           val repository: Rdf4jKnowledgeGraph[IO] =
             Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val service = new TypeManagementServiceInterpreter[IO](trservice)
-          val ims = new InstanceManagementServiceInterpreter[IO](service)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val service = TypeManagementServiceInterpreter[IO](trservice)
+          val ims = InstanceManagementServiceInterpreter[IO](service)
 
           val fatherEntityType = EntityType(
             "FatherType",
@@ -867,8 +867,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val entityType = EntityType(
           "RepeatedStructTestType",
@@ -894,9 +894,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -956,9 +956,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         iservice.create(
           "MissingDataCollectionType",
           fileBasedDataCollectionTuple
@@ -983,9 +983,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         iservice.create(
           "FileBasedDataCollectionType",
           fileBasedDataCollectionTuple
@@ -1007,16 +1007,16 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         iservice.exist("nonexistent")
       } asserting (_ should matchPattern { case Right(false) => })
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -1045,9 +1045,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -1091,9 +1091,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -1143,8 +1143,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         service.read("FileBasedDataCollectionType")
       } asserting (_.map(et =>
         et.name === "FileBasedDataCollectionType" &&
@@ -1167,9 +1167,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         val nonExistentId = "non-existent-id"
 
         (for {
@@ -1198,8 +1198,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         service.read("FileBasedDataCollectionType")
       }.attempt asserting (_ should matchPattern { case Left(_) => })
     }
@@ -1230,8 +1230,8 @@ class OntologyL0Spec extends CommonSpec:
 
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val commonEntityType = l0.EntityType(
           "CommonEntityType",
@@ -1308,8 +1308,8 @@ class OntologyL0Spec extends CommonSpec:
 
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         (for {
           _ <- EitherT[IO, ManagementServiceError, Unit](
             service.create(entityType0)

@@ -81,8 +81,8 @@ class MappingSpec extends CommonSpec:
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         val dataCollectionType = l0.EntityType(
           "DataCollectionType",
           schema1

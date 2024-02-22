@@ -202,6 +202,19 @@ def tupleToMappedTupleChecked(
                       tupleFieldValue.asInstanceOf[Option[String]]
                     )
                 end match
+              case BooleanType(mode, _) =>
+                mode match
+                  case Required =>
+                    evalField[Boolean](tupleFieldValue.asInstanceOf[String])
+                  case Repeated =>
+                    evalRepeatedField[Boolean](
+                      tupleFieldValue.asInstanceOf[List[String]]
+                    )
+                  case Nullable =>
+                    evalOptionalField[Boolean](
+                      tupleFieldValue.asInstanceOf[Option[String]]
+                    )
+                end match
               case schema @ StructType(_, mode) =>
                 mode match
                   case Required =>

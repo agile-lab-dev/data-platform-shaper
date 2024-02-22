@@ -330,8 +330,8 @@ class OntologyL0SearchSpec extends CommonSpec:
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         val entityType = l0.EntityType(
           "FileBasedDataCollectionType",
           Set("DataCollection"),
@@ -363,9 +363,9 @@ class OntologyL0SearchSpec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         iservice.create(
           "FileBasedDataCollectionType",
           fileBasedDataCollectionTuple
@@ -387,9 +387,9 @@ class OntologyL0SearchSpec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         val entityType = "FileBasedDataCollectionType"
 
         val predicate =

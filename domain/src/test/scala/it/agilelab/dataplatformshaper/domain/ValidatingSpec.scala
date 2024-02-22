@@ -427,8 +427,8 @@ class ValidatingSpec extends CommonSpec:
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         val entityType = l0.EntityType(
           "ValidationDataCollectionType",
           schema
@@ -454,9 +454,9 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         iservice.create(
           "ValidationDataCollectionType",
           tuple
@@ -478,9 +478,9 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         iservice.create(
           "ValidationDataCollectionType",
           nonConformingTuple
@@ -504,9 +504,9 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -556,9 +556,9 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -608,8 +608,8 @@ class ValidatingSpec extends CommonSpec:
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val result = for {
           _ <- service.create(entityType)
@@ -646,8 +646,8 @@ class ValidatingSpec extends CommonSpec:
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val result = for {
           _ <- service.create(entityType)
@@ -685,8 +685,8 @@ class ValidatingSpec extends CommonSpec:
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val result = for {
           res <- service.create(entityType)
@@ -732,8 +732,8 @@ class ValidatingSpec extends CommonSpec:
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val result = for {
           _ <- service.create(entityType)

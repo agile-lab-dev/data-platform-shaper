@@ -70,12 +70,12 @@ class ApiSpec
   val graphdbContainer: GenericContainer[Nothing] =
     graphdbType match
       case "graphdb" =>
-        val container = new GenericContainer("ontotext/graphdb:10.6.0")
+        val container = GenericContainer("ontotext/graphdb:10.6.0")
         container.addExposedPort(7200)
         container.setPortBindings(List("0.0.0.0:" + 7202 + ":" + 7200).asJava)
         container
       case "virtuoso" =>
-        val container = new GenericContainer(
+        val container = GenericContainer(
           "openlink/virtuoso-opensource-7:latest"
         )
         container.withEnv("DBA_PASSWORD", "mysecret")
@@ -88,7 +88,7 @@ class ApiSpec
 
   override protected def beforeAll(): Unit =
     graphdbContainer.start()
-    graphdbContainer.waitingFor(new HostPortWaitStrategy())
+    graphdbContainer.waitingFor(HostPortWaitStrategy())
     if graphdbType === "graphdb" then
       val port = graphdbContainer.getMappedPort(7200).intValue()
       createRepository(port)
@@ -707,7 +707,7 @@ class ApiSpec
               }
             }
           case Left(errorMessage) =>
-            IO.raiseError(new Exception(errorMessage))
+            IO.raiseError(Exception(errorMessage))
         }
         .asserting(assertion => assertion)
     }
@@ -796,7 +796,7 @@ class ApiSpec
               }
             }
           case Left(errorMessage) =>
-            IO.raiseError(new Exception(errorMessage))
+            IO.raiseError(Exception(errorMessage))
         }
         .asserting(assertion => assertion)
     }
