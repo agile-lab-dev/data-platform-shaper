@@ -6,8 +6,10 @@ import it.agilelab.dataplatformshaper.domain.model.schema.Mode.{
   Repeated,
   Required
 }
-import jakarta.el.ELProcessor
+import jakarta.el.{ELProcessor, ExpressionFactory}
+import org.glassfish.expressly.ExpressionFactoryImpl
 
+import scala.reflect.ClassTag
 import scala.util.Try
 
 def tupleToMappedTuple(
@@ -16,19 +18,93 @@ def tupleToMappedTuple(
     mappingTuple: Tuple,
     mappedTupleSchema: Schema
 ): Either[String, Tuple] =
-  val elProcesspr = new ELProcessor()
-
+  val elProcesspr = ELProcessor()
+  val exFactory = ExpressionFactoryImpl()
   for {
+    _ <- validateMappingTuple(mappingTuple, mappedTupleSchema)
     _ <- {
       val pt = parseTuple(sourceTuple, sourceTupleSchema)
       elProcesspr.defineBean("instance", sourceTuple: DynamicTuple)
       pt
     }
     mt <- Try(
-      tupleToMappedTupleChecked(elProcesspr, mappingTuple, mappedTupleSchema)
+      tupleToMappedTupleChecked(
+        elProcesspr,
+        exFactory,
+        mappingTuple,
+        mappedTupleSchema,
+        false
+      )
     ).toEither.leftMap(_.getMessage)
   } yield mt
 end tupleToMappedTuple
+
+@inline def bracket(fieldExpr: String) = s"""$${ $fieldExpr }"""
+
+@inline private def evalField[T](
+    fieldExpr: String
+)(using elp: ELProcessor, ef: ExpressionFactory, onlyValidation: Boolean): Any =
+  if onlyValidation then
+    ef.createValueExpression(
+      elp.getELManager.getELContext,
+      bracket(fieldExpr),
+      classOf[AnyRef]
+    )
+    ()
+  else elp.eval[T](fieldExpr)
+  end if
+end evalField
+
+@inline private def evalRepeatedField[T](fieldExpr: List[String])(using
+    elp: ELProcessor,
+    ef: ExpressionFactory,
+    onlyValidation: Boolean
+): List[Any] =
+  if onlyValidation then
+    fieldExpr.foreach(expr =>
+      ef.createValueExpression(
+        elp.getELManager.getELContext,
+        bracket(expr),
+        classOf[AnyRef]
+      )
+    )
+    List.empty[Unit]
+  else fieldExpr.map(value => elp.eval[T](value))
+end evalRepeatedField
+
+@inline private def evalOptionalField[T](fieldExpr: Option[String])(using
+    elp: ELProcessor,
+    ef: ExpressionFactory,
+    onlyValidation: Boolean
+): Option[Any] =
+  if onlyValidation then
+    fieldExpr.fold(None)(expr =>
+      ef.createValueExpression(
+        elp.getELManager.getELContext,
+        bracket(expr),
+        classOf[AnyRef]
+      )
+    )
+    Option.empty[Unit]
+  else fieldExpr.fold(None)(value => Some(elp.eval[T](value)))
+end evalOptionalField
+
+def validateMappingTuple(
+    mappingTuple: Tuple,
+    mappedTupleSchema: Schema
+): Either[String, Unit] =
+  Try(
+    tupleToMappedTupleChecked(
+      ELProcessor(),
+      ExpressionFactoryImpl(),
+      mappingTuple,
+      mappedTupleSchema,
+      true
+    )
+  ).toEither
+    .leftMap(t => s"The mapping tuple: $mappingTuple is wrong: ${t.getMessage}")
+    .map(_ => ())
+end validateMappingTuple
 
 @SuppressWarnings(
   Array(
@@ -39,9 +115,14 @@ end tupleToMappedTuple
 @throws[IllegalArgumentException]
 def tupleToMappedTupleChecked(
     elProcessor: ELProcessor,
+    exFactory: ExpressionFactory,
     mappingTuple: Tuple,
-    mappedTupleSchema: Schema
+    mappedTupleSchema: Schema,
+    onlyValidation: Boolean
 ): Tuple =
+  given elp: ELProcessor = elProcessor
+  given exf: ExpressionFactory = exFactory
+  given ov: Boolean = onlyValidation
   val tupleFields =
     mappingTuple.toArray.map(_.asInstanceOf[(String, Any)]).toMap
   Tuple.fromArray(
@@ -51,58 +132,97 @@ def tupleToMappedTupleChecked(
           pair(0), {
             val tupleFieldValue: Any = tupleFields.getOrElse(
               pair(0),
-              throw new IllegalArgumentException(s"Wrong value")
+              throw IllegalArgumentException(
+                s"No field with this name: ${pair(0)}"
+              )
             )
             pair(1) match
               case IntType(mode, _) =>
                 mode match
                   case Required =>
-                    elProcessor.eval[Int](tupleFieldValue.asInstanceOf[String])
+                    evalField[Int](tupleFieldValue.asInstanceOf[String])
                   case Repeated =>
-                    tupleFieldValue
-                      .asInstanceOf[List[Int]]
+                    evalRepeatedField[Int](
+                      tupleFieldValue.asInstanceOf[List[String]]
+                    )
                   case Nullable =>
-                    tupleFieldValue
-                      .asInstanceOf[Option[Int]]
+                    evalOptionalField(
+                      tupleFieldValue.asInstanceOf[Option[String]]
+                    )
                 end match
               case LongType(mode, _) =>
                 mode match
                   case Required =>
-                    elProcessor.eval[Long](tupleFieldValue.asInstanceOf[String])
+                    evalField[Long](tupleFieldValue.asInstanceOf[String])
                   case Repeated =>
-                    tupleFieldValue
-                      .asInstanceOf[List[String]]
-                      .map(value => elProcessor.eval[Long](value))
+                    evalRepeatedField[Long](
+                      tupleFieldValue.asInstanceOf[List[String]]
+                    )
                   case Nullable =>
-                    tupleFieldValue
-                      .asInstanceOf[Option[String]]
-                      .fold(None)(value => elProcessor.eval(value))
+                    evalOptionalField[Long](
+                      tupleFieldValue.asInstanceOf[Option[String]]
+                    )
+                end match
+              case FloatType(mode, _) =>
+                mode match
+                  case Required =>
+                    evalField[Float](tupleFieldValue.asInstanceOf[String])
+                  case Repeated =>
+                    evalRepeatedField[Float](
+                      tupleFieldValue.asInstanceOf[List[String]]
+                    )
+                  case Nullable =>
+                    evalOptionalField[Float](
+                      tupleFieldValue.asInstanceOf[Option[String]]
+                    )
+                end match
+              case DoubleType(mode, _) =>
+                mode match
+                  case Required =>
+                    evalField[Double](tupleFieldValue.asInstanceOf[String])
+                  case Repeated =>
+                    evalRepeatedField[Double](
+                      tupleFieldValue.asInstanceOf[List[String]]
+                    )
+                  case Nullable =>
+                    evalOptionalField[Double](
+                      tupleFieldValue.asInstanceOf[Option[String]]
+                    )
                 end match
               case StringType(mode, _) =>
                 mode match
                   case Required =>
-                    elProcessor
-                      .eval[String](tupleFieldValue.asInstanceOf[String])
+                    evalField[String](tupleFieldValue.asInstanceOf[String])
                   case Repeated =>
-                    tupleFieldValue
-                      .asInstanceOf[List[String]]
+                    evalRepeatedField[String](
+                      tupleFieldValue.asInstanceOf[List[String]]
+                    )
                   case Nullable =>
-                    tupleFieldValue
-                      .asInstanceOf[Option[String]]
+                    evalOptionalField[String](
+                      tupleFieldValue.asInstanceOf[Option[String]]
+                    )
                 end match
               case schema @ StructType(_, mode) =>
                 mode match
                   case Required =>
                     tupleToMappedTupleChecked(
                       elProcessor,
+                      exFactory,
                       tupleFieldValue.asInstanceOf[Tuple],
-                      schema
+                      schema,
+                      onlyValidation
                     )
                   case Nullable =>
                     tupleFieldValue
                       .asInstanceOf[Option[Tuple]]
                       .fold(None)(
-                        tupleToMappedTupleChecked(elProcessor, _, schema)
+                        tupleToMappedTupleChecked(
+                          elProcessor,
+                          exFactory,
+                          _,
+                          schema,
+                          onlyValidation
+                        )
                       )
                   case Repeated =>
                     tupleFieldValue
@@ -110,13 +230,15 @@ def tupleToMappedTupleChecked(
                       .map(tuple =>
                         tupleToMappedTupleChecked(
                           elProcessor,
+                          exFactory,
                           tuple,
-                          schema.copy(mode = Required)
+                          schema.copy(mode = Required),
+                          onlyValidation
                         )
                       )
                 end match
               case tpe =>
-                throw new IllegalArgumentException(s"$tpe is not supported")
+                throw IllegalArgumentException(s"$tpe is not supported")
             end match
           }
         )

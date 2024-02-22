@@ -4,7 +4,8 @@ import it.agilelab.dataplatformshaper.domain.model.l0.Entity
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.{
   Schema,
-  tupleToMappedTuple
+  tupleToMappedTuple,
+  validateMappingTuple
 }
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -64,8 +65,11 @@ class MappingDataTypeSpec extends AnyFlatSpec with Matchers:
       "folderPath" -> s"""
                          |instance.get('organization') += '/' += instance.get('sub-organization')
                          |""".stripMargin,
-      "anInt" -> "instance.get('nested/nestedField1') + 9"
+      "anInt" -> "instance.get('nested/nestedField1')"
     )
+
+    val mres = validateMappingTuple(mappingTuple, schema2)
+    println(mres)
 
     val res = tupleToMappedTuple(
       dataCollectionTypeInstance.values,
