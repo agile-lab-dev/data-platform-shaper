@@ -15,5 +15,5 @@ object Versions {
    lazy val scalaLogging                     = "3.9.5"
    lazy val logbackVersion                   = "1.5.0"
    lazy val scalatestVersion                 = "3.2.18"
-   lazy val testContainersVersion            = "1.19.5"
+   lazy val testContainersVersion            = "1.19.6"
  }
