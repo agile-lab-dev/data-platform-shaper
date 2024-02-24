@@ -604,12 +604,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-  /ontology/entity/queryForEntityIds:
-    post:
+  /ontology/entity/id/{entityTypeName}:
+    get:
       tags:
         - OntologyManager
       summary: Given a query request returns a list of instance IDs
       operationId: listEntitiesByIds
+      parameters:
+        - in: path
+          name: entityTypeName
+          schema:
+            type: string
+          required: true
       requestBody:
         description: A query request
         content:
@@ -638,12 +644,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-  /ontology/entity/queryForEntities:
-    post:
+  /ontology/entity/entities/{entityTypeName}:
+    get:
       tags:
         - OntologyManager
       summary: Given a query request returns a list of instances
       operationId: listEntities
+      parameters:
+        - in: path
+          name: entityTypeName
+          schema:
+            type: string
+          required: true
       requestBody:
         description: A query request
         content:
@@ -917,12 +929,9 @@ components:
         - Nullable
     QueryRequest:
       required:
-        - entityTypeName
         - query
       type: object
       properties:
-        entityTypeName:
-          type: string
         query:
           type: string
     ValidationError:
