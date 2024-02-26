@@ -82,26 +82,73 @@ class MappingSpec extends CommonSpec:
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
-        val dataCollectionType = l0.EntityType(
-          "DataCollectionType",
-          schema1
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+
+        val schema1: Schema = StructType(
+          List(
+            "name" -> StringType(),
+            "value" -> StringType(),
+            "organization" -> StringType(),
+            "sub-organization" -> StringType(),
+            "domain" -> StringType(),
+            "sub-domain" -> StringType(),
+            "nested" -> StructType(
+              List(
+                "nestedField1" -> IntType(),
+                "nestedField2" -> IntType()
+              )
+            )
+          )
         )
 
-        val s3StorageFolderType = l0.EntityType(
-          "S3StorageFolderType",
-          schema2
+        val dataCollectionType =
+          EntityType("DataCollectionType", Set("MappingSource"), schema1)
+
+        val schema2: Schema = StructType(
+          List(
+            "bucketName" -> StringType(),
+            "folderPath" -> StringType(),
+            "anInt" -> IntType()
+          )
         )
+
+        val s3FolderType =
+          EntityType("S3FolderType", Set("MappingTarget"), schema2)
+
+        /*
+        val dataCollectionTypeInstance = Entity(
+          "",
+          "DataCollectionType",
+          (
+            "name" -> "Person",
+            "value" -> "Bronze",
+            "organization" -> "HR",
+            "sub-organization" -> "Any",
+            "domain" -> "People",
+            "sub-domain" -> "Registration",
+            "nested" -> (
+              "nestedField1" -> 1,
+              "nestedField2" -> 2
+            )
+          )
+        )*/
+
+        /*
+        val mapperTuple  = (
+          "bucketName" -> "'MyBucket'",
+          "folderPath" ->
+            s"""
+               |instance.get('organization') += '/' += instance.get('sub-organization')
+               |""".stripMargin,
+          "anInt" -> "instance.get('nested/nestedField1')"
+        )*/
 
         (for {
-          res1 <- EitherT(service.create(dataCollectionType))
-          res2 <- EitherT(service.create(s3StorageFolderType))
+          res1 <- EitherT(tservice.create(dataCollectionType))
+          res2 <- EitherT(tservice.create(s3FolderType))
         } yield (res1, res2)).value
 
-      } asserting (ret =>
-        ret should matchPattern { case Right(((), ())) =>
-        }
-      )
+      } asserting (ret => ret should matchPattern { case Right(((), ())) => })
     }
   }
 

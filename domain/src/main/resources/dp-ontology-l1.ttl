@@ -17,3 +17,21 @@
 
 ###  https://w3id.org/agile-dm/ontology/Trait
 ns:Trait rdf:type owl:Class .
+
+ns:MappingSource rdf:type ns:Trait ;
+                 rdf:type owl:NamedIndividual .
+
+ns:MappingTarget rdf:type ns:Trait ;
+                 rdf:type owl:NamedIndividual .
+
+###  https://w3id.org/agile-dm/ontology/mappedTo
+ns:mappedTo rdf:type owl:ObjectProperty ;
+              owl:inverseOf ns:mappedFrom ;
+              rdfs:domain ns:MappingSource  ;
+              rdfs:range ns:MappingTarget .
+
+###  https://w3id.org/agile-dm/ontology/mappedFrom
+ns:mappedFrom rdf:type owl:ObjectProperty ;
+              owl:inverseOf ns:mappedTo ;
+              rdfs:domain ns:MappingTarget  ;
+              rdfs:range ns:MappingSource .

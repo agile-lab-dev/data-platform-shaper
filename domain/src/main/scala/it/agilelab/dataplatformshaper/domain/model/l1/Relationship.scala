@@ -6,19 +6,19 @@ import it.agilelab.dataplatformshaper.domain.common.{
 }
 
 enum Relationship:
-  def getPrefix: String =
-    this match
-      case hasPart => "part"
-    end match
-  end getPrefix
+  case hasPart
+  case mappedTo
+  case mappedFrom
   def getNamespace: String =
     this match
-      case hasPart =>
+      case Relationship.hasPart =>
         "http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl#"
+      case Relationship.mappedTo =>
+        "https://w3id.org/agile-dm/ontology/"
+      case Relationship.mappedFrom =>
+        "https://w3id.org/agile-dm/ontology/"
     end match
   end getNamespace
-
-  case hasPart
 end Relationship
 
 given Conversion[String, Relationship] with
@@ -32,3 +32,5 @@ given Conversion[Relationship, String] with
 end given
 
 export Relationship.hasPart as hasPart
+export Relationship.mappedTo as mappedTo
+export Relationship.mappedFrom as mappedFrom

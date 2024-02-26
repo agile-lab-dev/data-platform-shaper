@@ -34,6 +34,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     extends TypeManagementService[F]:
 
   val repository: KnowledgeGraph[F] = traitManagementService.repository
+
   @SuppressWarnings(
     Array(
       "scalafix:DisableSyntax.=="

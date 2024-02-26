@@ -78,6 +78,6 @@ class MappingDataTypeSpec extends AnyFlatSpec with Matchers:
       schema2
     )
     println(res)
-  }
 
+  }
 end MappingDataTypeSpec
