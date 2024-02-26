@@ -26,18 +26,21 @@ import java.util.UUID
 
 trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
-  self: InstanceManagementServiceInterpreter[F] =>
+  self: InstanceManagementServiceInterpreter[F] |
+    MappingManagementServiceIntepreter[F] =>
 
   @SuppressWarnings(
     Array(
-      "scalafix:DisableSyntax.var"
+      "scalafix:DisableSyntax.var",
+      "scalafix:DisableSyntax.defaultArgs"
     )
   )
-  def emmitStatementsForEntity(
+  def emitStatementsForEntity(
       entityId: String,
       initialStatements: List[Statement],
       tuple: Tuple,
-      schema: Schema
+      schema: Schema,
+      ontologyLevel: IRI = L3
   ): Either[ManagementServiceError, List[Statement]] =
 
     val entity = iri(ns, entityId)
@@ -68,7 +71,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
+            ontologyLevel
           ) :: statements
         case IntType(mode, _) =>
           val lit =
@@ -80,7 +83,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
+            ontologyLevel
           ) :: statements
         case DateType(mode, _) =>
           val lit =
@@ -94,7 +97,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
+            ontologyLevel
           ) :: statements
         case JsonType(mode) =>
           val lit =
@@ -108,7 +111,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
+            ontologyLevel
           ) :: statements
         case TimestampType(mode, _) =>
           val lit =
@@ -123,7 +126,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
+            ontologyLevel
           ) :: statements
         case DoubleType(mode, _) =>
           val lit =
@@ -137,7 +140,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
+            ontologyLevel
           ) :: statements
         case FloatType(mode, _) =>
           val lit =
@@ -149,7 +152,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
+            ontologyLevel
           ) :: statements
         case LongType(mode, _) =>
           val lit =
@@ -161,7 +164,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
+            ontologyLevel
           ) :: statements
         case BooleanType(mode, _) =>
           val lit =
@@ -175,7 +178,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             end match
           statements = statement(
             triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
+            ontologyLevel
           ) :: statements
         case StructType(_, _) =>
           foldingPhase match
@@ -183,7 +186,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
               val structIri = iri(ns, UUID.randomUUID.toString)
               statements = statement(
                 triple(currentEntityIri, iri(ns, currentPath), structIri),
-                L3
+                ontologyLevel
               ) :: statements
               previousEntityIriStack.push(currentEntityIri)
               currentEntityIri = structIri
@@ -210,7 +213,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
         Right[ManagementServiceError, List[Statement]](statements)
     end match
 
-  end emmitStatementsForEntity
+  end emitStatementsForEntity
 
   def fetchEntityFieldsAndTypeName(
       logger: Logger[F],

@@ -37,6 +37,8 @@ object NS:
   val STRUCTTYPE = iri(ns, "StructType")
   val STRUCT = iri(ns, "Struct")
   val TRAIT = iri(ns, "Trait")
+  val MAPPINGNAME = iri(ns, "mappingName")
+  val MAPPEDBY = iri(ns, "mappedBy")
 
   // L1
 

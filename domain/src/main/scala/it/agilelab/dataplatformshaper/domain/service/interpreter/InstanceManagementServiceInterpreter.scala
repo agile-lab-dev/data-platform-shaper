@@ -36,11 +36,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
   val repository: KnowledgeGraph[F] = typeManagementService.repository
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.var"
-    )
-  )
   private def createInstanceNoCheck(
       entityId: String,
       instanceTypeName: String,
@@ -73,7 +68,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
       stmts <- EitherT[F, ManagementServiceError, List[Statement]](
         summon[Applicative[F]].pure(
-          emmitStatementsForEntity(entityId, initialStatements, tuple, schema)
+          emitStatementsForEntity(entityId, initialStatements, tuple, schema)
         )
       )
       _ <- traceT(s"Statements emitted ${stmts.mkString("\n")}")

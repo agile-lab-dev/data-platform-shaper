@@ -51,4 +51,6 @@ enum ManagementServiceError(errorMessage: String):
       extends ManagementServiceError(
         s"Validation errors: ${errors.map(_.replace(":", "")).mkString(",")}"
       )
+  case MapperInstanceValidationError(error: String)
+      extends ManagementServiceError(error)
 end ManagementServiceError

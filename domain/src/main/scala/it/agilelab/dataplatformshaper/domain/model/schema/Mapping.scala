@@ -12,6 +12,24 @@ import org.glassfish.expressly.ExpressionFactoryImpl
 import scala.reflect.ClassTag
 import scala.util.Try
 
+def attributeTypeToMapperAttributeType(dataType: DataType): DataType =
+  dataType match
+    case StructType(records, mode) =>
+      StructType(
+        records.map(p => (p(0), attributeTypeToMapperAttributeType(p(1)))),
+        mode
+      )
+    case dt: DataType =>
+      StringType(dt.mode, None)
+end attributeTypeToMapperAttributeType
+
+def schemaToMapperSchema(schema: Schema): Schema =
+  StructType(
+    schema.records.map(p => (p(0), attributeTypeToMapperAttributeType(p(1)))),
+    Required
+  )
+end schemaToMapperSchema
+
 def tupleToMappedTuple(
     sourceTuple: Tuple,
     sourceTupleSchema: Schema,

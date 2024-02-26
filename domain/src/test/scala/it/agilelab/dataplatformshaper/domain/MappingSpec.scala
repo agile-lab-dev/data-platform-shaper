@@ -11,6 +11,7 @@ import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+  MappingManagementServiceIntepreter,
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
@@ -83,6 +84,7 @@ class MappingSpec extends CommonSpec:
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val mservice = MappingManagementServiceIntepreter[IO](tservice)
 
         val schema1: Schema = StructType(
           List(
@@ -133,22 +135,31 @@ class MappingSpec extends CommonSpec:
           )
         )*/
 
-        /*
-        val mapperTuple  = (
+        val mapperTuple = (
           "bucketName" -> "'MyBucket'",
           "folderPath" ->
             s"""
                |instance.get('organization') += '/' += instance.get('sub-organization')
                |""".stripMargin,
           "anInt" -> "instance.get('nested/nestedField1')"
-        )*/
+        )
 
         (for {
           res1 <- EitherT(tservice.create(dataCollectionType))
           res2 <- EitherT(tservice.create(s3FolderType))
-        } yield (res1, res2)).value
+          res3 <- EitherT(
+            mservice.create(
+              "mapping1",
+              "DataCollectionType",
+              "S3FolderType",
+              mapperTuple
+            )
+          )
+        } yield (res1, res2, res3)).value
 
-      } asserting (ret => ret should matchPattern { case Right(((), ())) => })
+      } asserting (ret =>
+        ret should matchPattern { case Right(((), (), ())) => }
+      )
     }
   }
 
