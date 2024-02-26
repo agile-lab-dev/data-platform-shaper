@@ -1071,7 +1071,7 @@ class OntologyL0Spec extends CommonSpec:
                   fileBasedDataCollectionTuple,
                   fileBasedDataCollectionTypeSchema
                 )
-              )
+              ) //TODO make this passing with virtuoso
           )
         }
       )
@@ -1123,7 +1123,7 @@ class OntologyL0Spec extends CommonSpec:
               fileBasedDataCollectionTupleForUpdate,
               fileBasedDataCollectionTypeSchema
             )
-            x shouldBe y
+            Json.eqJson.eqv(x, y) shouldBe true //TODO make this passing with virtuoso
           case _ => fail("Unexpected pattern encountered")
         }
       })

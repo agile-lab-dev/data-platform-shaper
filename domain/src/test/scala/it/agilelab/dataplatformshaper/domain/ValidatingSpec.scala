@@ -340,9 +340,9 @@ class ValidatingSpec extends CommonSpec:
       ("nest3" -> "ciccio5", "nest4" -> "ciccio6")
     )),
     "columns" -> List(
-      ("name" -> "FirstName", "type" -> "String"),
-      ("name" -> "FamilyNane", "type" -> "String"),
-      ("name" -> "Age", "type" -> "Int")
+      ("type" -> "String", "name" -> "FamilyName"),
+      ("type" -> "Int",    "name" -> "Age"),
+      ("type" -> "String", "name" -> "FirstName")
     )
   )
 
@@ -407,9 +407,9 @@ class ValidatingSpec extends CommonSpec:
       ("nest3" -> "ciccio5", "nest4" -> "ciccio6")
     )),
     "columns" -> List(
-      ("name" -> "FirstName", "type" -> "String"),
-      ("name" -> "FamilyNane", "type" -> "String"),
-      ("name" -> "Age", "type" -> "Int")
+      ("type" -> "String", "name" -> "FamilyName"),
+      ("type" -> "String", "name" -> "FirstName"),
+      ("type" -> "Int",    "name" -> "Age")
     )
   )
 
@@ -536,7 +536,7 @@ class ValidatingSpec extends CommonSpec:
               conformingTupleForUpdate,
               schema
             )
-            x shouldBe y
+            x shouldBe y //TODO make this passing with virtuoso
           case _ => fail("Unexpected pattern encountered")
         }
       })
