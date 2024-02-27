@@ -398,7 +398,8 @@ class OntologyL0SearchSpec extends CommonSpec:
         iservice.list(
           entityType,
           predicate,
-          returnEntities = true
+          returnEntities = true,
+          None
         )
 
       } asserting (resp =>

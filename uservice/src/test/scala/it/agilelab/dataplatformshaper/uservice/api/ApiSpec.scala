@@ -539,7 +539,7 @@ class ApiSpec
         ids <- Resource.liftK(
           client.listEntitiesByIds(
             "DataCollectionType",
-            QueryRequest("")
+            QueryRequest("", Some(1))
           )
         )
       } yield ids
@@ -548,7 +548,7 @@ class ApiSpec
         .use(resp => IO.pure(resp))
         .asserting(resp =>
           inside(resp) { case ListEntitiesByIdsResponse.Ok(value) =>
-            value.size should be(2)
+            value.size should be(1)
           }
         )
     }

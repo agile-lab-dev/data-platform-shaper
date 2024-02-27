@@ -811,7 +811,10 @@ class OntologyManagerHandler[F[_]: Async](
   ): F[Resource.ListEntitiesResponse] =
     (for {
       schema <- EitherT(tms.read(entityTypeName).map(_.map(_.schema)))
-      listEntities <- EitherT(ims.list(entityTypeName, body.query, true))
+      limitAsBigInt = body.limit.map(BigInt(_))
+      listEntities <- EitherT(
+        ims.list(entityTypeName, body.query, true, limitAsBigInt)
+      )
     } yield (schema, listEntities)).value
       .map(
         _.map(p =>
@@ -857,8 +860,9 @@ class OntologyManagerHandler[F[_]: Async](
       entityTypeName: String,
       body: QueryRequest
   ): F[Resource.ListEntitiesByIdsResponse] =
+    val limitAsBigInt = body.limit.map(BigInt(_))
     ims
-      .list(entityTypeName, body.query, false)
+      .list(entityTypeName, body.query, false, limitAsBigInt)
       .map({
         case Left(error) =>
           logger.error(
