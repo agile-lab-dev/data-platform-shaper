@@ -13,6 +13,10 @@ trait MappingManagementService[F[_]]:
       mapper: Tuple
   ): F[Either[ManagementServiceError, Unit]]
 
-  def delete(mappingName: String): F[Either[ManagementServiceError, Unit]]
+  def exist(
+      mappingName: String,
+      sourceEntityTypeName: String,
+      targetEntityTypeName: String
+  ): F[Either[ManagementServiceError, Boolean]]
 
 end MappingManagementService

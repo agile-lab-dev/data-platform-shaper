@@ -53,4 +53,5 @@ enum ManagementServiceError(errorMessage: String):
       )
   case MapperInstanceValidationError(error: String)
       extends ManagementServiceError(error)
+  case InvalidMappingError(error: String) extends ManagementServiceError(error)
 end ManagementServiceError

@@ -65,7 +65,7 @@ class MappingDataTypeSpec extends AnyFlatSpec with Matchers:
       "folderPath" -> s"""
                          |instance.get('organization') += '/' += instance.get('sub-organization')
                          |""".stripMargin,
-      "anInt" -> "instance.get('nested/nestedField1')"
+      "anInt" -> "instance.get('nested/nestedField1') + 10"
     )
 
     val mres = validateMappingTuple(mappingTuple, schema2)

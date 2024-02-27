@@ -87,6 +87,16 @@ class MappingManagementServiceIntepreter[F[_]: Sync](
     )
 
     (for {
+      _ <- EitherT(
+        summon[Functor[F]]
+          .map(exist(mappingName, sourceEntityTypeName, targetEntityTypeName))(
+            _.flatMap(exist =>
+              if exist then
+                Left[ManagementServiceError, Unit](InvalidMappingError(""))
+              else Right[ManagementServiceError, Unit](())
+            )
+          )
+      )
       ttype <- EitherT(typeManagementService.read(targetEntityTypeName))
       _ <- EitherT(
         summon[Applicative[F]].pure(
@@ -114,8 +124,27 @@ class MappingManagementServiceIntepreter[F[_]: Sync](
     } yield res).value
   end create
 
-  override def delete(
-      mappingName: String
-  ): F[Either[ManagementServiceError, Unit]] = ???
+  override def exist(
+      mappingName: String,
+      sourceEntityTypeName: String,
+      targetEntityTypeName: String
+  ): F[Either[ManagementServiceError, Boolean]] =
+    val query = s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |select ?s where {
+         |  <<ns:$sourceEntityTypeName ns:mappedTo ns:$targetEntityTypeName>> ns:mappingName "$mappingName"^^xsd:string .
+         |  }
+         |""".stripMargin
+    val res = repository.evaluateQuery(query)
+    summon[Functor[F]].map(res)(res =>
+      val count = res.toList.length
+      if count > 0 then Right[ManagementServiceError, Boolean](true)
+      else Right[ManagementServiceError, Boolean](false)
+      end if
+    )
+  end exist
 
 end MappingManagementServiceIntepreter
