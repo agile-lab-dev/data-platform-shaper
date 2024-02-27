@@ -9,13 +9,11 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   MappingManagementServiceIntepreter,
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
-import org.scalactic.Equality
 
 import scala.language.{dynamics, implicitConversions}
 
@@ -27,25 +25,6 @@ import scala.language.{dynamics, implicitConversions}
   )
 )
 class MappingSpec extends CommonSpec:
-
-  given Equality[DataType] with
-    def areEqual(x: DataType, y: Any): Boolean =
-      x match
-        case struct: StructType if y.isInstanceOf[StructType] =>
-          struct === y.asInstanceOf[StructType]
-        case _ =>
-          x == y
-    end areEqual
-  end given
-
-  given Equality[StructType] with
-    def areEqual(x: StructType, y: Any): Boolean =
-      val c1: Map[String, DataType] = x.records.toMap
-      val c2: Map[String, DataType] = y.asInstanceOf[StructType].records.toMap
-      val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
-      ret
-    end areEqual
-  end given
 
   given cache: Ref[IO, Map[String, EntityType]] =
     Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()

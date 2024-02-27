@@ -1,7 +1,7 @@
 package it.agilelab.dataplatformshaper.domain
 
-import cats.data.EitherT
-import cats.effect.{IO, Ref}
+import cats.data.*
+import cats.effect.*
 import io.circe.*
 import io.circe.parser.*
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
@@ -20,38 +20,11 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
-import org.scalactic.Equality
 
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.language.{dynamics, implicitConversions}
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.asInstanceOf",
-    "scalafix:DisableSyntax.isInstanceOf",
-    "scalafix:DisableSyntax.=="
-  )
-)
 class ValidatingSpec extends CommonSpec:
-
-  given Equality[DataType] with
-    def areEqual(x: DataType, y: Any): Boolean =
-      x match
-        case struct: StructType if y.isInstanceOf[StructType] =>
-          struct === y.asInstanceOf[StructType]
-        case _ =>
-          x == y
-    end areEqual
-  end given
-
-  given Equality[StructType] with
-    def areEqual(x: StructType, y: Any): Boolean =
-      val c1: Map[String, DataType] = x.records.toMap
-      val c2: Map[String, DataType] = y.asInstanceOf[StructType].records.toMap
-      val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
-      ret
-    end areEqual
-  end given
 
   given cache: Ref[IO, Map[String, EntityType]] =
     Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
@@ -341,7 +314,7 @@ class ValidatingSpec extends CommonSpec:
     )),
     "columns" -> List(
       ("type" -> "String", "name" -> "FamilyName"),
-      ("type" -> "Int",    "name" -> "Age"),
+      ("type" -> "Int", "name" -> "Age"),
       ("type" -> "String", "name" -> "FirstName")
     )
   )
@@ -409,7 +382,7 @@ class ValidatingSpec extends CommonSpec:
     "columns" -> List(
       ("type" -> "String", "name" -> "FamilyName"),
       ("type" -> "String", "name" -> "FirstName"),
-      ("type" -> "Int",    "name" -> "Age")
+      ("type" -> "Int", "name" -> "Age")
     )
   )
 
@@ -530,13 +503,9 @@ class ValidatingSpec extends CommonSpec:
         }
         entity match {
           case Right(Entity(_, _, data)) =>
-            val x =
-              tupleToJsonChecked(data, schema)
-            val y = tupleToJsonChecked(
-              conformingTupleForUpdate,
-              schema
-            )
-            x shouldBe y //TODO make this passing with virtuoso
+            import cats.syntax.all.*
+            import it.agilelab.dataplatformshaper.domain.model.schema.given
+            data === conformingTupleForUpdate shouldBe true
           case _ => fail("Unexpected pattern encountered")
         }
       })

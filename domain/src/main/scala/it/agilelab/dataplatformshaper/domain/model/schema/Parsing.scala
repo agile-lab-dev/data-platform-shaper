@@ -986,3 +986,53 @@ end tupleToJson
 def parseTuple(tuple: Tuple, schema: Schema): Either[String, Tuple] =
   unfoldTuple(tuple, schema, (_, _, _, _) => ()).map(_ => tuple)
 end parseTuple
+
+given Eq[Tuple] with
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf"
+    )
+  )
+  override def eqv(x: Tuple, y: Tuple): Boolean =
+    val xTupleFields = x.toArray.map(_.asInstanceOf[(String, Any)]).toMap
+    val yTupleFields = x.toArray.map(_.asInstanceOf[(String, Any)]).toMap
+    if xTupleFields.keySet === yTupleFields.keySet then
+      xTupleFields.foldLeft[Boolean](true)((a, p) =>
+        a && {
+          yTupleFields(p(0)) match
+            case x: Tuple =>
+              eqv(x, p(1).asInstanceOf[Tuple])
+            case x =>
+              x.equals(p(1))
+          end match
+        }
+      )
+    else false
+  end eqv
+end given
+
+given Eq[DataType] with
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf",
+      "scalafix:DisableSyntax.isInstanceOf",
+      "scalafix:DisableSyntax.=="
+    )
+  )
+  def eqv(x: DataType, y: DataType): Boolean =
+    x match
+      case struct: StructType if y.isInstanceOf[StructType] =>
+        struct === y.asInstanceOf[StructType]
+      case _ =>
+        x == y
+  end eqv
+end given
+
+given Eq[StructType] with
+  def eqv(x: StructType, y: StructType): Boolean =
+    val c1: Map[String, DataType] = x.records.toMap
+    val c2: Map[String, DataType] = y.records.toMap
+    val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
+    ret
+  end eqv
+end given
