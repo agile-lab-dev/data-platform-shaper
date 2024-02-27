@@ -28,7 +28,6 @@ import it.agilelab.dataplatformshaper.uservice.Resource.{
   UpdateTypeConstraintsResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
-  QueryRequest,
   Trait,
   ValidationError,
   Entity as OpenApiEntity,
@@ -807,13 +806,14 @@ class OntologyManagerHandler[F[_]: Async](
   )
   override def listEntities(respond: Resource.ListEntitiesResponse.type)(
       entityTypeName: String,
-      body: QueryRequest
+      query: String,
+      limit: Option[Int]
   ): F[Resource.ListEntitiesResponse] =
     (for {
       schema <- EitherT(tms.read(entityTypeName).map(_.map(_.schema)))
-      limitAsBigInt = body.limit.map(BigInt(_))
+      limitAsBigInt = limit.map(BigInt(_))
       listEntities <- EitherT(
-        ims.list(entityTypeName, body.query, true, limitAsBigInt)
+        ims.list(entityTypeName, query, true, limitAsBigInt)
       )
     } yield (schema, listEntities)).value
       .map(
@@ -824,7 +824,7 @@ class OntologyManagerHandler[F[_]: Async](
                 tupleToJson(et.values, p(0)) match
                   case Left(error) =>
                     logger.error(
-                      s"Error querying instances with type $entityTypeName and query ${body.query}: ${error.getMessage}"
+                      s"Error querying instances with type $entityTypeName and query ${query}: ${error.getMessage}"
                     )
                     throw new Exception("It shouldn't be here")
                   case Right(json) =>
@@ -858,15 +858,16 @@ class OntologyManagerHandler[F[_]: Async](
       respond: Resource.ListEntitiesByIdsResponse.type
   )(
       entityTypeName: String,
-      body: QueryRequest
+      query: String,
+      limit: Option[Int]
   ): F[Resource.ListEntitiesByIdsResponse] =
-    val limitAsBigInt = body.limit.map(BigInt(_))
+    val limitAsBigInt = limit.map(BigInt(_))
     ims
-      .list(entityTypeName, body.query, false, limitAsBigInt)
+      .list(entityTypeName, query, false, limitAsBigInt)
       .map({
         case Left(error) =>
           logger.error(
-            s"Error querying instances with type $entityTypeName and query ${body.query}: ${error.getMessage}"
+            s"Error querying instances with type $entityTypeName and query $query: ${error.getMessage}"
           )
           respond.BadRequest(ValidationError(Vector(error.getMessage)))
         case Right(entities) =>

@@ -265,6 +265,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+    get:
+      tags:
+        - OntologyManager
+      summary: Given query parameters, returns a list of instances
+      operationId: listEntities
+      parameters:
+        - in: query
+          name: entityTypeName
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: query
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+          required: false
+          description: The maximum number of instances to return
+      responses:
+        200:
+          description: If successful, returns a list of instances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entity'
+        400:
+          description: Invalid input; details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/entity/{id}:
     get:
       tags:
@@ -604,25 +649,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-  /ontology/entity/id/{entityTypeName}:
+  /ontology/entity/id:
     get:
       tags:
         - OntologyManager
       summary: Given a query request returns a list of instance IDs
       operationId: listEntitiesByIds
       parameters:
-        - in: path
+        - in: query
           name: entityTypeName
           schema:
             type: string
           required: true
-      requestBody:
-        description: A query request
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/QueryRequest'
-        required: true
+        - in: query
+          name: query
+          schema:
+            type: string
+          required: true
+          description: A search query to filter the instances
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+          required: false
+          description: The maximum number of instance IDs to return
       responses:
         200:
           description: If successful, returns a list of instance IDs
@@ -632,46 +684,6 @@ paths:
                 type: array
                 items:
                   type: string
-        400:
-          description: Invalid input; details of the error are provided
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationError'
-        500:
-          description: System problem, details of the error are provided
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SystemError'
-  /ontology/entity/entities/{entityTypeName}:
-    get:
-      tags:
-        - OntologyManager
-      summary: Given a query request returns a list of instances
-      operationId: listEntities
-      parameters:
-        - in: path
-          name: entityTypeName
-          schema:
-            type: string
-          required: true
-      requestBody:
-        description: A query request
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/QueryRequest'
-        required: true
-      responses:
-        200:
-          description: If successful, returns a list of instance
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Entity'
         400:
           description: Invalid input; details of the error are provided
           content:
@@ -927,17 +939,6 @@ components:
         - Required
         - Repeated
         - Nullable
-    QueryRequest:
-      required:
-        - query
-      type: object
-      properties:
-        query:
-          type: string
-        limit:
-          type: integer
-          format: int32
-          minimum: 1
     ValidationError:
       required:
         - errors

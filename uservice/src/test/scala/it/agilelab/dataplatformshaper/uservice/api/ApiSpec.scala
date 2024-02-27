@@ -33,7 +33,6 @@ import it.agilelab.dataplatformshaper.uservice.{
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
-  QueryRequest,
   ValidationError,
   AttributeType as OpenApiAttributeType,
   Entity as OpenApiEntity,
@@ -539,7 +538,8 @@ class ApiSpec
         ids <- Resource.liftK(
           client.listEntitiesByIds(
             "DataCollectionType",
-            QueryRequest("", Some(1))
+            "",
+            Some(1)
           )
         )
       } yield ids
@@ -564,7 +564,7 @@ class ApiSpec
         ids <- Resource.liftK(
           client.listEntities(
             "DataCollectionType",
-            QueryRequest("")
+            ""
           )
         )
       } yield ids
