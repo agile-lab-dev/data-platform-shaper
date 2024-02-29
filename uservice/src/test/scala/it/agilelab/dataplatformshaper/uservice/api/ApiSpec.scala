@@ -22,6 +22,7 @@ import it.agilelab.dataplatformshaper.uservice.{
   LinkedEntitiesResponse,
   LinkedTraitsResponse,
   ListEntitiesByIdsResponse,
+  ListEntitiesResponse,
   ReadEntityResponse,
   ReadTypeResponse,
   UnlinkEntityResponse,
@@ -32,7 +33,6 @@ import it.agilelab.dataplatformshaper.uservice.{
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
-  QueryRequest,
   ValidationError,
   AttributeType as OpenApiAttributeType,
   Entity as OpenApiEntity,
@@ -528,6 +528,32 @@ class ApiSpec
     }
   }
 
+  "Listing the ids of user defined type instances" - {
+    "works" in {
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        ids <- Resource.liftK(
+          client.listEntitiesByIds(
+            "DataCollectionType",
+            "",
+            Some(1)
+          )
+        )
+      } yield ids
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting(resp =>
+          inside(resp) { case ListEntitiesByIdsResponse.Ok(value) =>
+            value.size should be(1)
+          }
+        )
+    }
+  }
+
   "Listing user defined type instances" - {
     "works" in {
       val resp = for {
@@ -536,14 +562,17 @@ class ApiSpec
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
         ids <- Resource.liftK(
-          client.listEntitiesByIds(QueryRequest("DataCollectionType", ""))
+          client.listEntities(
+            "DataCollectionType",
+            ""
+          )
         )
       } yield ids
 
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          inside(resp) { case ListEntitiesByIdsResponse.Ok(value) =>
+          inside(resp) { case ListEntitiesResponse.Ok(value) =>
             value.size should be(2)
           }
         )

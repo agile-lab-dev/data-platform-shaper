@@ -30,13 +30,15 @@ trait InstanceManagementService[F[_]]:
   def list(
       instanceTypeName: String,
       predicate: Option[SearchPredicate],
-      returnEntities: Boolean
+      returnEntities: Boolean,
+      limit: Option[BigInt]
   ): F[Either[ManagementServiceError, List[String | Entity]]]
 
   def list(
       instanceTypeName: String,
       predicate: String,
-      returnEntities: Boolean
+      returnEntities: Boolean,
+      limit: Option[BigInt]
   ): F[Either[ManagementServiceError, List[String | Entity]]]
 
   def link(
