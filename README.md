@@ -388,27 +388,17 @@ curl -X 'POST' \
 It's also possible to search instances by attribute values:
 
 ```
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/queryForEntityIds' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "entityTypeName": "DataCollectionType",
-  "query": "name = '\''Person'\''"
-}'
+curl -X 'GET' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity?entityTypeName=DataCollectionType&query=name%20%3D%20%27Person%27' \
+  -H 'accept: application/json'
 ```
-Given a search string, this API returns a list of instance IDs.
+Given a search string (name = 'Person'), this API returns a list of instance IDs.
 Another API given a search string returns a list of instances:
 
 ```
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/queryForEntities' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "entityTypeName": "DataCollectionType",
-  "query": "name = '\''Person'\''"
-}'
+curl -X 'GET' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity/id?entityTypeName=DataCollectionType&query=name%20%3D%20%27Person%27' \
+  -H 'accept: application/json'
 ```
 
 That's all!

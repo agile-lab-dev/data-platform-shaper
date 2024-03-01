@@ -391,8 +391,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   override def list(
       instanceTypeName: String,
       predicate: Option[SearchPredicate],
-      returnEntities: Boolean
+      returnEntities: Boolean,
+      limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
+    val limitClause = limit.map(l => s"LIMIT $l").getOrElse("")
+
     val query =
       s"""
          |PREFIX ns:  <${ns.getName}>
@@ -407,8 +410,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |
          |        ?i ns:isClassifiedBy ?entityType .
          |    }
-         | ${predicate.fold("")(_.querySegment)}
+         |    ${predicate.fold("")(_.querySegment)}
          |}
+         |$limitClause
          |""".stripMargin
 
     if !returnEntities then
@@ -446,7 +450,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   override def list(
       instanceTypeName: String,
       query: String,
-      returnEntities: Boolean
+      returnEntities: Boolean,
+      limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val predicate: F[Either[ManagementServiceError, Option[SearchPredicate]]] =
       summon[Applicative[F]].pure(
@@ -457,7 +462,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
     (for {
       pred <- EitherT(predicate)
-      list <- EitherT(list(instanceTypeName, pred, returnEntities))
+      list <- EitherT(list(instanceTypeName, pred, returnEntities, limit))
     } yield list).value
   end list
 
