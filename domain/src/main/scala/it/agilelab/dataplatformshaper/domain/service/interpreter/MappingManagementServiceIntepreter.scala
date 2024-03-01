@@ -8,19 +8,12 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
-import it.agilelab.dataplatformshaper.domain.model.schema.{
-  schemaToMapperSchema,
-  validateMappingTuple
-}
+import it.agilelab.dataplatformshaper.domain.model.schema.{schemaToMapperSchema, validateMappingTuple}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{
-  ManagementServiceError,
-  MappingManagementService,
-  TypeManagementService
-}
+import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, MappingManagementService, TypeManagementService}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
-import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
+import org.eclipse.rdf4j.model.util.Values.{iri, triple}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -47,41 +40,45 @@ class MappingManagementServiceIntepreter[F[_]: Sync](
     val mapperId = UUID.randomUUID().toString
     val mapperIri = iri(ns, mapperId)
 
-    val mappedToTriple = triple(
+    val mappedToTriple1 = triple(
       sourceEntityTypeIri,
-      iri(mappedTo.getNamespace, mappedTo),
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#$mappingName"),
       targetEntityTypeIri
     )
 
-    val mappedFromTriple = triple(
-      targetEntityTypeIri,
-      iri(mappedFrom.getNamespace, mappedFrom),
+    val mappedToTriple2 = triple(
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#$mappingName"),
+      iri(ns, "singletonPropertyOf"),
+      iri(mappedTo.getNamespace, mappedTo)
+    )
+
+    val mappedToTriple3 = triple(
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#$mappingName"),
+      NS.MAPPEDBY,
+      mapperIri
+    )
+
+    val mappedFromTriple1 = triple(
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#$mappingName"),
+      iri(ns, "hasSource"),
       sourceEntityTypeIri
     )
 
     val initialStatements = List(
       statement(
-        mappedToTriple,
-        NS.MAPPINGNAME,
-        literal(mappingName),
+        mappedToTriple1,
         L2
       ),
       statement(
-        mappedToTriple,
-        NS.MAPPEDBY,
-        mapperIri,
+        mappedToTriple2,
         L2
       ),
       statement(
-        mappedFromTriple,
-        NS.MAPPINGNAME,
-        literal(mappingName),
+        mappedToTriple3,
         L2
       ),
       statement(
-        mappedFromTriple,
-        NS.MAPPEDBY,
-        mapperIri,
+        mappedFromTriple1,
         L2
       )
     )
@@ -137,9 +134,11 @@ class MappingManagementServiceIntepreter[F[_]: Sync](
          |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
          |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
-         |select ?s where {
-         |  <<ns:$sourceEntityTypeName ns:mappedTo ns:$targetEntityTypeName>> ns:mappingName "$mappingName"^^xsd:string .
-         |  }
+         |SELECT ?pi WHERE {
+         |   ?pi ns:singletonPropertyOf ns:mappedTo .
+         |   ?pi ns:hasSource ns:$sourceEntityTypeName .
+         |   FILTER(STR(?pi) = "${ns.getName}mappedTo#$mappingName")
+         |}
          |""".stripMargin
     val res = repository.evaluateQuery(query)
     summon[Functor[F]].map(res)(res =>
