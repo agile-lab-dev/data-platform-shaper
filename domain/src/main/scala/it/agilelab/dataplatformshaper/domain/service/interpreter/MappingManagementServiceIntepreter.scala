@@ -59,7 +59,7 @@ class MappingManagementServiceIntepreter[F[_]: Sync](
       sourceEntityTypeIri
     )
 
-    val statements = List(
+    val initialStatements = List(
       statement(
         mappedToTriple,
         NS.MAPPINGNAME,
@@ -109,7 +109,7 @@ class MappingManagementServiceIntepreter[F[_]: Sync](
         summon[Applicative[F]].pure(
           emitStatementsForEntity(
             mapperId,
-            statements,
+            ttype.name,
             mapper,
             schemaToMapperSchema(ttype.schema),
             L2
@@ -118,7 +118,10 @@ class MappingManagementServiceIntepreter[F[_]: Sync](
       )
       res <- EitherT(
         summon[Functor[F]].map(
-          repository.removeAndInsertStatements(stmts, List.empty[Statement])
+          repository.removeAndInsertStatements(
+            initialStatements ::: stmts,
+            List.empty[Statement]
+          )
         )(Right[ManagementServiceError, Unit])
       )
     } yield res).value

@@ -43,14 +43,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       statementsToRemove: List[Statement]
   ): F[Either[ManagementServiceError, String]] =
 
-    val entity = iri(ns, entityId)
-
-    val initialStatements = statement(
-      triple(entity, NS.ISCLASSIFIEDBY, iri(ns, instanceTypeName)),
-      L3
-    ) ::
-      statement(triple(entity, RDF.TYPE, NS.ENTITY), L3) :: Nil
-
     val getSchema: F[Either[ManagementServiceError, Schema]] =
       summon[Functor[F]].map(typeManagementService.read(instanceTypeName))(
         _.map(_.schema)
@@ -68,7 +60,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
       stmts <- EitherT[F, ManagementServiceError, List[Statement]](
         summon[Applicative[F]].pure(
-          emitStatementsForEntity(entityId, initialStatements, tuple, schema)
+          emitStatementsForEntity(entityId, instanceTypeName, tuple, schema)
         )
       )
       _ <- traceT(s"Statements emitted ${stmts.mkString("\n")}")
@@ -81,7 +73,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         )(_ => Right[ManagementServiceError, String](entityId))
       )
       _ <- traceT(
-        s"Statements emitted creating the instance $id:\n${initialStatements.mkString("\n")}\n"
+        s"Statements emitted creating the instance $id:\n${stmts.mkString("\n")}\n"
       )
     } yield id).value
   end createInstanceNoCheck

@@ -4,6 +4,7 @@ import cats.effect.*
 import cats.implicits.*
 import io.circe.Json
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L3, ns}
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
@@ -18,6 +19,7 @@ import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.TupleIsNotConformToSchema
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
+import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.eclipse.rdf4j.model.{IRI, Statement}
 import org.typelevel.log4cats.Logger
 
@@ -37,16 +39,20 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   )
   def emitStatementsForEntity(
       entityId: String,
-      initialStatements: List[Statement],
+      instanceTypeName: String,
       tuple: Tuple,
       schema: Schema,
       ontologyLevel: IRI = L3
   ): Either[ManagementServiceError, List[Statement]] =
 
     val entity = iri(ns, entityId)
+    var statements = statement(
+      triple(entity, NS.ISCLASSIFIEDBY, iri(ns, instanceTypeName)),
+      L3
+    ) ::
+      statement(triple(entity, RDF.TYPE, NS.ENTITY), L3) :: Nil
     val previousEntityIriStack = collection.mutable.Stack(entity)
     var currentEntityIri = entity
-    var statements = List.empty[Statement] ++ initialStatements
 
     @SuppressWarnings(
       Array(
@@ -235,7 +241,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       })
   }
 
-  def fetchFieldsForInstance(
+  private def fetchFieldsForInstance(
       logger: Logger[F],
       repository: KnowledgeGraph[F],
       instanceId: String
@@ -274,7 +280,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     fieldsAndValues
   end fetchFieldsForInstance
 
-  def handlePrimitiveDataTypes(
+  private def handlePrimitiveDataTypes(
       fieldName: String,
       dataType: DataType,
       fieldValue: Option[List[(String, String)]]
@@ -413,7 +419,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     Applicative[F].pure(tuple)
   end handlePrimitiveDataTypes
 
-  def handleStructDataType(
+  private def handleStructDataType(
       logger: Logger[F],
       repository: KnowledgeGraph[F],
       fieldName: String,
