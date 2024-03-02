@@ -17,10 +17,9 @@ import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
   TypeManagementService
 }
+import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, triple}
-import org.eclipse.rdf4j.model.vocabulary.RDF
-import org.eclipse.rdf4j.model.{Literal, Statement}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -77,77 +76,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
     } yield id).value
   end createInstanceNoCheck
-
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.asInstanceOf",
-      "scalafix:DisableSyntax.=="
-    )
-  )
-  private def fetchStatementsForInstance(
-      instanceId: String
-  ): F[List[Statement]] =
-    val query: String =
-      s"""
-         |PREFIX ns:  <${ns.getName}>
-         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-         |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-         |SELECT ?s ?p ?o WHERE {
-         | BIND(iri("${ns.getName}$instanceId") as ?s)
-         |    ?s ?p ?o .
-         |  }
-         |""".stripMargin
-    val statements: F[List[Statement]] =
-      repository
-        .evaluateQuery(query)
-        .flatMap(ibs =>
-          Traverse[List].sequence(
-            ibs
-              .map(bs =>
-                val sb = bs.getBinding("s")
-                val pb = bs.getBinding("p")
-                val ob = bs.getBinding("o")
-                val s = iri(sb.getValue.stringValue)
-                val p = iri(pb.getValue.stringValue)
-                if ob.getValue.isLiteral
-                then
-                  summon[Applicative[F]].pure(
-                    List(
-                      statement(
-                        triple(s, p, ob.getValue.asInstanceOf[Literal]),
-                        L3
-                      )
-                    )
-                  )
-                else
-                  if p == RDF.TYPE || p == NS.ISCLASSIFIEDBY
-                  then
-                    summon[Applicative[F]].pure(
-                      List(
-                        statement(
-                          triple(s, p, iri(ob.getValue.stringValue)),
-                          L3
-                        )
-                      )
-                    )
-                  else
-                    val stmt = statement(
-                      triple(s, p, iri(ob.getValue.stringValue)),
-                      L3
-                    )
-                    fetchStatementsForInstance(
-                      iri(ob.getValue.stringValue).getLocalName
-                    ).map(statements => stmt :: statements)
-                  end if
-                end if
-              )
-              .toList
-          )
-        )
-        .map(_.flatten)
-    statements
-  end fetchStatementsForInstance
 
   override def create(
       instanceTypeName: String,
@@ -241,6 +169,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       values: Tuple
   ): F[Either[ManagementServiceError, String]] =
     val statementsToRemove: F[List[Statement]] = fetchStatementsForInstance(
+      repository,
       instanceId
     )
     val res: F[Either[ManagementServiceError, String]] = (for {
@@ -290,7 +219,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   ): F[Either[ManagementServiceError, Unit]] =
     val res: F[Either[ManagementServiceError, Unit]] = (for {
       _ <- logger.trace(s"About to remove the instance $instanceId")
-      stmts <- fetchStatementsForInstance(instanceId)
+      stmts <- fetchStatementsForInstance(repository, instanceId)
       _ <- logger.trace(
         s"About to remove the statements \n${stmts.mkString("\n")}"
       )

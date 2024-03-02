@@ -20,7 +20,7 @@ import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.Tupl
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
-import org.eclipse.rdf4j.model.{IRI, Statement}
+import org.eclipse.rdf4j.model.{IRI, Literal, Statement}
 import org.typelevel.log4cats.Logger
 
 import java.time.{LocalDate, ZonedDateTime}
@@ -509,4 +509,76 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       )
     Traverse[List].sequence(tuples).map(_.fold(EmptyTuple)(_ :* _))
   end fieldsToTuple
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf",
+      "scalafix:DisableSyntax.=="
+    )
+  )
+  def fetchStatementsForInstance(
+      repository: KnowledgeGraph[F],
+      instanceId: String
+  ): F[List[Statement]] =
+    val query: String =
+      s"""
+         |PREFIX ns:  <${ns.getName}>
+         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+         |SELECT ?s ?p ?o WHERE {
+         | BIND(iri("${ns.getName}$instanceId") as ?s)
+         |    ?s ?p ?o .
+         |  }
+         |""".stripMargin
+    val statements: F[List[Statement]] =
+      repository
+        .evaluateQuery(query)
+        .flatMap(ibs =>
+          Traverse[List].sequence(
+            ibs
+              .map(bs =>
+                val sb = bs.getBinding("s")
+                val pb = bs.getBinding("p")
+                val ob = bs.getBinding("o")
+                val s = iri(sb.getValue.stringValue)
+                val p = iri(pb.getValue.stringValue)
+                if ob.getValue.isLiteral then
+                  summon[Applicative[F]].pure(
+                    List(
+                      statement(
+                        triple(s, p, ob.getValue.asInstanceOf[Literal]),
+                        L3
+                      )
+                    )
+                  )
+                else
+                  if p == RDF.TYPE || p == NS.ISCLASSIFIEDBY then
+                    summon[Applicative[F]].pure(
+                      List(
+                        statement(
+                          triple(s, p, iri(ob.getValue.stringValue)),
+                          L3
+                        )
+                      )
+                    )
+                  else
+                    val stmt = statement(
+                      triple(s, p, iri(ob.getValue.stringValue)),
+                      L3
+                    )
+                    fetchStatementsForInstance(
+                      repository,
+                      iri(ob.getValue.stringValue).getLocalName
+                    ).map(statements => stmt :: statements)
+                  end if
+                end if
+              )
+              .toList
+          )
+        )
+        .map(_.flatten)
+    statements
+  end fetchStatementsForInstance
+
 end InstanceManagementServiceInterpreterCommonFunctions

@@ -8,9 +8,16 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
-import it.agilelab.dataplatformshaper.domain.model.schema.{schemaToMapperSchema, validateMappingTuple}
+import it.agilelab.dataplatformshaper.domain.model.schema.{
+  schemaToMapperSchema,
+  validateMappingTuple
+}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, MappingManagementService, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{
+  ManagementServiceError,
+  MappingManagementService,
+  TypeManagementService
+}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, triple}
