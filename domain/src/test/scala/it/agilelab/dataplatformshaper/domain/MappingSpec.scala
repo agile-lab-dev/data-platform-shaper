@@ -1,19 +1,35 @@
 package it.agilelab.dataplatformshaper.domain
 
 import cats.data.EitherT
-import cats.effect.{IO, Ref}
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import cats.effect.IO
+import io.chrisdavenport.mules.caffeine.CaffeineCache
+import io.chrisdavenport.mules.{Cache, TimeSpec}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{InstanceManagementServiceInterpreter, MappingManagementServiceIntepreter, TraitManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+  InstanceManagementServiceInterpreter,
+  MappingManagementServiceIntepreter,
+  TraitManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 
+import scala.concurrent.duration.*
 import scala.language.{dynamics, implicitConversions}
 
 class MappingSpec extends CommonSpec:
 
-  given cache: Ref[IO, Map[String, EntityType]] =
-    Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
+  given cache: Cache[IO, String, EntityType] = CaffeineCache
+    .build[IO, String, EntityType](
+      Some(TimeSpec.unsafeFromDuration(1.second)),
+      None,
+      None
+    )
+    .unsafeRunSync()
 
   private val schema1: Schema = StructType(
     List(
@@ -52,7 +68,8 @@ class MappingSpec extends CommonSpec:
     )
   )
 
-  private val iamRoleType = EntityType("IAMRoleType", Set("MappingTarget"), schema3)
+  private val iamRoleType =
+    EntityType("IAMRoleType", Set("MappingTarget"), schema3)
 
   private val mapperTuple1 = (
     "bucketName" -> "'MyBucket'",
@@ -133,25 +150,26 @@ class MappingSpec extends CommonSpec:
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
 
         (for {
-          res1 <- EitherT(iservice.create("DataCollectionType",
-            (
-              "name" -> "Person",
-              "value" -> "Bronze",
-              "organization" -> "HR",
-              "sub-organization" -> "Any",
-              "domain" -> "People",
-              "sub-domain" -> "Registration",
-              "nested" -> (
-                "nestedField1" -> 1,
-                "nestedField2" -> 2
+          res1 <- EitherT(
+            iservice.create(
+              "DataCollectionType",
+              (
+                "name" -> "Person",
+                "value" -> "Bronze",
+                "organization" -> "HR",
+                "sub-organization" -> "Any",
+                "domain" -> "People",
+                "sub-domain" -> "Registration",
+                "nested" -> (
+                  "nestedField1" -> 1,
+                  "nestedField2" -> 2
+                )
               )
             )
-          ))
+          )
         } yield res1).value
 
-      } asserting (ret =>
-        ret should matchPattern { case Right(_) => }
-        )
+      } asserting (ret => ret should matchPattern { case Right(_) => })
     }
   }
 

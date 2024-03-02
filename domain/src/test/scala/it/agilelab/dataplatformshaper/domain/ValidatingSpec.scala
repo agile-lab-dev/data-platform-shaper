@@ -2,6 +2,8 @@ package it.agilelab.dataplatformshaper.domain
 
 import cats.data.*
 import cats.effect.*
+import io.chrisdavenport.mules.caffeine.CaffeineCache
+import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.*
 import io.circe.parser.*
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
@@ -22,12 +24,18 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
 }
 
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
+import scala.concurrent.duration.*
 import scala.language.{dynamics, implicitConversions}
 
 class ValidatingSpec extends CommonSpec:
 
-  given cache: Ref[IO, Map[String, EntityType]] =
-    Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
+  given cache: Cache[IO, String, EntityType] = CaffeineCache
+    .build[IO, String, EntityType](
+      Some(TimeSpec.unsafeFromDuration(1.second)),
+      None,
+      None
+    )
+    .unsafeRunSync()
 
   val schema: Schema = StructType(
     List(

@@ -5,6 +5,8 @@ import cats.effect.*
 import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
+import io.chrisdavenport.mules.caffeine.CaffeineCache
+import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.*
 import io.circe.parser.*
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
@@ -51,6 +53,7 @@ import org.scalatest.matchers.should.Matchers
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 
+import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
@@ -172,8 +175,13 @@ class ApiSpec
       "repo1",
       false
     )
-    val typeCache: Ref[IO, Map[String, EntityType]] =
-      Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
+    val typeCache: Cache[IO, String, EntityType] = CaffeineCache
+      .build[IO, String, EntityType](
+        Some(TimeSpec.unsafeFromDuration(1.second)),
+        None,
+        None
+      )
+      .unsafeRunSync()
     Server
       .server[IO](session, typeCache)
       .use(_ => IO.never)

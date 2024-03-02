@@ -2,6 +2,8 @@ package it.agilelab.dataplatformshaper.domain
 
 import cats.data.*
 import cats.effect.*
+import io.chrisdavenport.mules.caffeine.CaffeineCache
+import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.*
 import io.circe.parser.*
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
@@ -22,6 +24,7 @@ import org.scalatest.Inside.inside
 
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.collection.immutable.List
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Right
 
@@ -32,8 +35,13 @@ import scala.util.Right
 )
 class OntologyL0Spec extends CommonSpec:
 
-  given cache: Ref[IO, Map[String, EntityType]] =
-    Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
+  given cache: Cache[IO, String, EntityType] = CaffeineCache
+    .build[IO, String, EntityType](
+      Some(TimeSpec.unsafeFromDuration(1.second)),
+      None,
+      None
+    )
+    .unsafeRunSync()
 
   val fileBasedDataCollectionTypeSchema: StructType = StructType(
     List(
@@ -567,10 +575,10 @@ class OntologyL0Spec extends CommonSpec:
         for {
           _ <- service.create(entityType)
           _ <- service.read(entityType.name)
-          inCacheAfterRead <- cache.get.map(_.keySet(entityType.name))
+          inCacheAfterRead <- cache.lookup(entityType.name).map(_.isDefined)
           deleteResult <- service.delete("TestDeleteType")
           readResult <- service.read("TestDeleteType")
-          inCacheAfterDeleted <- cache.get.map(_.keySet(entityType.name))
+          inCacheAfterDeleted <- cache.lookup(entityType.name).map(_.isDefined)
         } yield (
           inCacheAfterRead,
           deleteResult,
@@ -645,7 +653,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Caching entity type definitions" - {
     "works" in {
-      cache.get.asserting(_.size shouldBe 1)
+      cache.lookup("TestType").map(_.isDefined shouldBe true)
     }
   }
 
@@ -708,10 +716,14 @@ class OntologyL0Spec extends CommonSpec:
           _ <- service.read(fatherEntityType.name)
           _ <- service.create(sonEntityType)
           _ <- service.read(sonEntityType.name)
-          inCacheAfterRead <- cache.get.map(_.keySet(fatherEntityType.name))
+          inCacheAfterRead <- cache
+            .lookup(fatherEntityType.name)
+            .map(_.isDefined)
           deleteResult <- service.delete("FatherDeleteEntityType")
           readResult <- service.read("FatherDeleteEntityType")
-          inCacheAfterDeleted <- cache.get.map(_.keySet(fatherEntityType.name))
+          inCacheAfterDeleted <- cache
+            .lookup(fatherEntityType.name)
+            .map(_.isDefined)
         } yield (
           inCacheAfterRead,
           deleteResult,
@@ -723,10 +735,11 @@ class OntologyL0Spec extends CommonSpec:
               true,
               Left(ManagementServiceError.TypeIsFatherError(_)),
               Right(_),
-              _
+              true
             ) =>
           succeed
-        case _ => fail("EntityType was not deleted successfully")
+        case x =>
+          fail("EntityType was not deleted successfully")
       }
     }
   }

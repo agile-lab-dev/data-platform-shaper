@@ -45,6 +45,16 @@ object Dependencies {
     lazy val yaml      = namespace %% "circe-yaml"    % circeYamlVersion
   }
 
+  private[this] object mules {
+    lazy val namespace = "io.chrisdavenport"
+    lazy val caffeine  = namespace %% "mules-caffeine" % mulesVersion
+  }
+
+  private[this] object el {
+    lazy val api  = "jakarta.el" % "jakarta.el-api" % "5.0.1"
+    lazy val impl = "org.glassfish.expressly" % "expressly" % "5.0.0"
+  }
+
   private[this] object calcite {
     lazy val namespace = "org.apache.calcite"
     lazy val babel     = namespace % "calcite-core" % calciteVersion
@@ -59,7 +69,7 @@ object Dependencies {
     lazy val namespace = "ch.qos.logback"
     lazy val classic   = namespace % "logback-classic" % logbackVersion
   }
-  
+
   private[this] object scalatest {
     lazy val namespace = "org.scalatest"
     lazy val core      = namespace %% "scalatest" % scalatestVersion
@@ -93,8 +103,9 @@ object Dependencies {
       calcite.babel                % Compile,
       logging.scala                % Compile,
       logback.classic              % Compile,
-      "jakarta.el" % "jakarta.el-api" % "5.0.1" % Compile,
-      "org.glassfish.expressly" % "expressly" % "5.0.0" % Compile,
+      mules.caffeine               % Compile,
+      el.api                       % Compile,
+      el.impl                      % Compile,
       http4s.emberClient           % Test,
       testcontainers.core          % Test,
       cats.effectScalatest         % Test,

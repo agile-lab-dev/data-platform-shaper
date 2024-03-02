@@ -1,6 +1,8 @@
 package it.agilelab.dataplatformshaper.domain
 
-import cats.effect.{IO, Ref}
+import cats.effect.IO
+import io.chrisdavenport.mules.caffeine.CaffeineCache
+import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.parser.parse
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
@@ -21,6 +23,7 @@ import org.scalatest.Inside.inside
 
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.collection.immutable.List
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Right
 
@@ -52,8 +55,13 @@ class OntologyL0SearchSpec extends CommonSpec:
     end areEqual
   end given
 
-  given cache: Ref[IO, Map[String, EntityType]] =
-    Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
+  given cache: Cache[IO, String, EntityType] = CaffeineCache
+    .build[IO, String, EntityType](
+      Some(TimeSpec.unsafeFromDuration(1.second)),
+      None,
+      None
+    )
+    .unsafeRunSync()
 
   val fileBasedDataCollectionTypeSchema: StructType = StructType(
     List(
