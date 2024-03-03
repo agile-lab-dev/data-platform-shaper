@@ -51,8 +51,8 @@ object Dependencies {
   }
 
   private[this] object el {
-    lazy val api  = "jakarta.el" % "jakarta.el-api" % "5.0.1"
-    lazy val impl = "org.glassfish.expressly" % "expressly" % "5.0.0"
+    lazy val api  = "jakarta.el" % "jakarta.el-api" % elApiVersion
+    lazy val impl = "org.glassfish.expressly" % "expressly" % elImplVersion
   }
 
   private[this] object calcite {
