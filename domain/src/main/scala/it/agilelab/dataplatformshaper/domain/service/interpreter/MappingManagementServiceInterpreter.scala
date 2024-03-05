@@ -9,9 +9,16 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
-import it.agilelab.dataplatformshaper.domain.model.schema.{schemaToMapperSchema, validateMappingTuple}
+import it.agilelab.dataplatformshaper.domain.model.schema.{
+  schemaToMapperSchema,
+  validateMappingTuple
+}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, MappingManagementService, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{
+  ManagementServiceError,
+  MappingManagementService,
+  TypeManagementService
+}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, triple}
@@ -85,7 +92,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     )
 
     (for {
-      _ <- traceT(s"About to create a mapping named $mappingName with source $sourceEntityTypeName, target $targetEntityTypeName with the mapper tuple:\n $mapper ")
+      _ <- traceT(
+        s"About to create a mapping named $mappingName with source $sourceEntityTypeName, target $targetEntityTypeName with the mapper tuple:\n $mapper "
+      )
       _ <- EitherT(
         summon[Functor[F]]
           .map(exist(mappingName, sourceEntityTypeName, targetEntityTypeName))(
@@ -142,13 +151,13 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
          |   FILTER(STR(?pi) = "${ns.getName}mappedTo#$mappingName")
          |}
          |""".stripMargin
-    val res = logger.trace(s"Checking the mapping existence with name $mappingName with the query:\n$query") *> repository.evaluateQuery(query)
+    val res = logger.trace(
+      s"Checking the mapping existence with name $mappingName with the query:\n$query"
+    ) *> repository.evaluateQuery(query)
     summon[Functor[F]].map(res)(res =>
       val count = res.toList.length
-      if count > 0 then
-        Right[ManagementServiceError, Boolean](true)
-      else
-        Right[ManagementServiceError, Boolean](false)
+      if count > 0 then Right[ManagementServiceError, Boolean](true)
+      else Right[ManagementServiceError, Boolean](false)
       end if
     )
   end exist

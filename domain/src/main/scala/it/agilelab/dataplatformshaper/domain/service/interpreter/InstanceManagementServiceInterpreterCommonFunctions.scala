@@ -10,7 +10,11 @@ import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
-import it.agilelab.dataplatformshaper.domain.model.schema.{DataType, Schema, unfoldTuple}
+import it.agilelab.dataplatformshaper.domain.model.schema.{
+  DataType,
+  Schema,
+  unfoldTuple
+}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.TupleIsNotConformToSchema
 import org.eclipse.rdf4j.model.util.Statements.statement
