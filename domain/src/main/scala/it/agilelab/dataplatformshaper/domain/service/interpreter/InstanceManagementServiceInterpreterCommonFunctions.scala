@@ -10,11 +10,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
-import it.agilelab.dataplatformshaper.domain.model.schema.{
-  DataType,
-  Schema,
-  unfoldTuple
-}
+import it.agilelab.dataplatformshaper.domain.model.schema.{DataType, Schema, unfoldTuple}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.TupleIsNotConformToSchema
 import org.eclipse.rdf4j.model.util.Statements.statement
@@ -29,7 +25,7 @@ import java.util.UUID
 trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
   self: InstanceManagementServiceInterpreter[F] |
-    MappingManagementServiceIntepreter[F] =>
+    MappingManagementServiceInterpreter[F] =>
 
   @SuppressWarnings(
     Array(
@@ -193,7 +189,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
               statements = statement(
                 triple(currentEntityIri, iri(ns, currentPath), structIri),
                 ontologyLevel
-              ) :: statements
+              ) ::
+                statement(triple(structIri, RDF.TYPE, NS.STRUCT), ontologyLevel)
+                :: statements
               previousEntityIriStack.push(currentEntityIri)
               currentEntityIri = structIri
             case EndFoldingStruct =>
@@ -255,7 +253,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
          |SELECT ?field ?value WHERE {
          | BIND(iri("${ns.getName}$instanceId") as ?entity)
          |    ?entity ?field ?value .
-         |    FILTER ( ?value not in ( ns:Entity ))
+         |    FILTER ( ?value not in ( ns:Entity, ns:Struct ))
          |  }
          |""".stripMargin
 

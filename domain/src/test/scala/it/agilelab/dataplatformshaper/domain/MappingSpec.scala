@@ -13,7 +13,7 @@ import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
-  MappingManagementServiceIntepreter,
+  MappingManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
@@ -100,7 +100,7 @@ class MappingSpec extends CommonSpec:
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val mservice = MappingManagementServiceIntepreter[IO](tservice)
+        val mservice = MappingManagementServiceInterpreter[IO](tservice)
 
         (for {
           res1 <- EitherT(tservice.create(dataCollectionType))
@@ -189,7 +189,7 @@ class MappingSpec extends CommonSpec:
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val mservice = MappingManagementServiceIntepreter[IO](tservice)
+        val mservice = MappingManagementServiceInterpreter[IO](tservice)
 
         (for {
           res <- EitherT(
