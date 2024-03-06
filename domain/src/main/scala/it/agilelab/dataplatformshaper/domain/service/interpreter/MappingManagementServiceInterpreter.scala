@@ -7,14 +7,20 @@ import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
-import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
+import it.agilelab.dataplatformshaper.domain.model.NS.{L2, L3, ns}
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.{
   schemaToMapperSchema,
+  tupleToMappedTuple,
   validateMappingTuple
 }
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{
+  InstanceManagementService,
   ManagementServiceError,
   MappingManagementService,
   TypeManagementService
@@ -28,7 +34,8 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.util.UUID
 
 class MappingManagementServiceInterpreter[F[_]: Sync](
-    typeManagementService: TypeManagementService[F]
+    typeManagementService: TypeManagementService[F],
+    instanceManagementService: InstanceManagementService[F]
 ) extends MappingManagementService[F]
     with InstanceManagementServiceInterpreterCommonFunctions[F]:
 
@@ -37,39 +44,31 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   val repository: KnowledgeGraph[F] = typeManagementService.repository
 
   override def create(
-      mappingName: String,
-      sourceEntityTypeName: String,
-      targetEntityTypeName: String,
-      mapper: Tuple
+      mappingDefinition: MappingDefinition
   ): F[Either[ManagementServiceError, Unit]] =
-
-    val sourceEntityTypeIri = iri(ns, sourceEntityTypeName)
-    val targetEntityTypeIri = iri(ns, targetEntityTypeName)
+    val key = mappingDefinition.mappingKey
+    val mapper = mappingDefinition.mapper
+    val sourceEntityTypeIri = iri(ns, key.sourceEntityTypeName)
+    val targetEntityTypeIri = iri(ns, key.targetEntityTypeName)
     val mapperId = UUID.randomUUID().toString
     val mapperIri = iri(ns, mapperId)
 
     val mappedToTriple1 = triple(
       sourceEntityTypeIri,
-      iri(mappedTo.getNamespace, s"${mappedTo: String}#$mappingName"),
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#${key.mappingName}"),
       targetEntityTypeIri
     )
 
     val mappedToTriple2 = triple(
-      iri(mappedTo.getNamespace, s"${mappedTo: String}#$mappingName"),
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#${key.mappingName}"),
       iri(ns, "singletonPropertyOf"),
       iri(mappedTo.getNamespace, mappedTo)
     )
 
     val mappedToTriple3 = triple(
-      iri(mappedTo.getNamespace, s"${mappedTo: String}#$mappingName"),
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#${key.mappingName}"),
       NS.MAPPEDBY,
       mapperIri
-    )
-
-    val mappedFromTriple1 = triple(
-      iri(mappedTo.getNamespace, s"${mappedTo: String}#$mappingName"),
-      iri(ns, "hasSource"),
-      sourceEntityTypeIri
     )
 
     val initialStatements = List(
@@ -84,20 +83,16 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       statement(
         mappedToTriple3,
         L2
-      ),
-      statement(
-        mappedFromTriple1,
-        L2
       )
     )
 
     (for {
       _ <- traceT(
-        s"About to create a mapping named $mappingName with source $sourceEntityTypeName, target $targetEntityTypeName with the mapper tuple:\n $mapper "
+        s"About to create a mapping named ${mappingDefinition.mappingKey.mappingName} with source ${key.sourceEntityTypeName}, target ${key.targetEntityTypeName} with the mapper tuple:\n ${mappingDefinition.mapper} "
       )
       _ <- EitherT(
         summon[Functor[F]]
-          .map(exist(mappingName, sourceEntityTypeName, targetEntityTypeName))(
+          .map(exist(key))(
             _.flatMap(exist =>
               if exist then
                 Left[ManagementServiceError, Unit](InvalidMappingError(""))
@@ -105,7 +100,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             )
           )
       )
-      ttype <- EitherT(typeManagementService.read(targetEntityTypeName))
+      ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
       _ <- EitherT(
         summon[Applicative[F]].pure(
           validateMappingTuple(mapper, ttype.schema).leftMap(error =>
@@ -135,24 +130,131 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end create
 
+  override def createMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, Unit]] =
+    (for {
+      sourceInstance <- EitherT(
+        instanceManagementService.read(sourceInstanceId)
+      )
+      mappings <- EitherT(
+        getMappingsForEntityType(
+          logger,
+          typeManagementService,
+          sourceInstance.entityTypeName
+        )
+      )
+      ids <- EitherT(
+        summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
+          val tuple: Either[ManagementServiceError, Tuple] = tupleToMappedTuple(
+            sourceInstance.values,
+            mapping(1).schema,
+            mapping(3),
+            mapping(2).schema
+          ).leftMap(e => MapperInstanceValidationError(e))
+          val targetInstanceId = UUID.randomUUID().toString
+          val sourceEntityIri = iri(ns, sourceInstanceId)
+          val targetEntityIri = iri(ns, targetInstanceId)
+          val mapperIri = iri(ns, mapping(4))
+          val mappedToTriple1 = triple(
+            sourceEntityIri,
+            iri(mappedTo.getNamespace, s"${mappedTo: String}#${mapping(0)}"),
+            targetEntityIri
+          )
+          val mappedToTriple2 = triple(
+            iri(mappedTo.getNamespace, s"${mappedTo: String}#${mapping(0)}"),
+            iri(ns, "singletonPropertyOf"),
+            iri(mappedTo.getNamespace, mappedTo)
+          )
+          val mappedToTriple3 = triple(
+            iri(mappedTo.getNamespace, s"${mappedTo: String}#${mapping(0)}"),
+            NS.MAPPEDBY,
+            mapperIri
+          )
+          val initialStatements = List(
+            statement(mappedToTriple1, L3),
+            statement(mappedToTriple2, L3),
+            statement(mappedToTriple3, L3)
+          )
+          summon[Functor[F]].map(
+            tuple
+              .map(
+                createInstanceNoCheck(
+                  logger,
+                  typeManagementService,
+                  targetInstanceId,
+                  mapping(2).name,
+                  _,
+                  initialStatements,
+                  List.empty
+                )
+              )
+              .sequence
+          )(_.flatten)
+        )))(_.sequence)
+      )
+      _ <- EitherT(
+        summon[Functor[F]]
+          .map(ids.map(id => createMappedInstances(id)).sequence)(_.sequence)
+      )
+    } yield ()).value
+  end createMappedInstances
+
+  def updateMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, Unit]] =
+    (for {
+      mappings <- EitherT(
+        getMappingsForEntity(
+          logger,
+          typeManagementService,
+          instanceManagementService,
+          sourceInstanceId
+        )
+      )
+      ids <- EitherT(
+        summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
+          val tuple: Either[ManagementServiceError, Tuple] = tupleToMappedTuple(
+            mapping(1).values,
+            mapping(0).schema,
+            mapping(4),
+            mapping(2).schema
+          ).leftMap(e => MapperInstanceValidationError(e))
+          summon[Functor[F]].map(
+            tuple
+              .map(
+                instanceManagementService.update(
+                  mapping(3).entityId,
+                  _
+                )
+              )
+              .sequence
+          )(_.flatten)
+        )))(_.sequence)
+      )
+      _ <- EitherT(
+        summon[Functor[F]]
+          .map(ids.map(id => updateMappedInstances(id)).sequence)(_.sequence)
+      )
+    } yield ()).value
+  end updateMappedInstances
+
   override def exist(
-      mappingName: String,
-      sourceEntityTypeName: String,
-      targetEntityTypeName: String
+      mapperKey: MappingKey
   ): F[Either[ManagementServiceError, Boolean]] =
     val query = s"""
          |PREFIX ns:   <${ns.getName}>
          |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
          |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
-         |SELECT ?pi WHERE {
-         |   ?pi ns:singletonPropertyOf ns:mappedTo .
-         |   ?pi ns:hasSource ns:$sourceEntityTypeName .
-         |   FILTER(STR(?pi) = "${ns.getName}mappedTo#$mappingName")
+         |SELECT ?mr WHERE {
+         |   ?mr ns:singletonPropertyOf ns:mappedTo .
+         |   ns:${mapperKey.sourceEntityTypeName} ?mr ns:${mapperKey.targetEntityTypeName} .
+         |   FILTER(STR(?mr) = "${ns.getName}mappedTo#${mapperKey.mappingName}")
          |}
          |""".stripMargin
     val res = logger.trace(
-      s"Checking the mapping existence with name $mappingName with the query:\n$query"
+      s"Checking the mapping existence with name ${mapperKey.mappingName} with the query:\n$query"
     ) *> repository.evaluateQuery(query)
     summon[Functor[F]].map(res)(res =>
       val count = res.toList.length

@@ -10,6 +10,10 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 }
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
@@ -17,11 +21,15 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.*
 import scala.language.{dynamics, implicitConversions}
 
 class MappingSpec extends CommonSpec:
+
+  given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
   given cache: Cache[IO, String, EntityType] = CaffeineCache
     .build[IO, String, EntityType](
@@ -31,107 +39,67 @@ class MappingSpec extends CommonSpec:
     )
     .unsafeRunSync()
 
-  private val schema1: Schema = StructType(
-    List(
-      "name" -> StringType(),
-      "value" -> StringType(),
-      "organization" -> StringType(),
-      "sub-organization" -> StringType(),
-      "domain" -> StringType(),
-      "sub-domain" -> StringType(),
-      "nested" -> StructType(
-        List(
-          "nestedField1" -> IntType(),
-          "nestedField2" -> IntType()
-        )
+  private val sourceType = EntityType(
+    "SourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
       )
-    )
+    ): Schema
   )
 
-  private val dataCollectionType =
-    EntityType("DataCollectionType", Set("MappingSource"), schema1)
-
-  private val schema2: Schema = StructType(
-    List(
-      "bucketName" -> StringType(),
-      "folderPath" -> StringType(),
-      "anInt" -> IntType()
-    )
-  )
-
-  private val s3FolderType =
-    EntityType("S3FolderType", Set("MappingSource", "MappingTarget"), schema2)
-
-  private val schema3: Schema = StructType(
-    List(
-      "roleName" -> StringType()
-    )
-  )
-
-  private val iamRoleType =
-    EntityType("IAMRoleType", Set("MappingTarget"), schema3)
-
-  private val mapperTuple1 = (
-    "bucketName" -> "'MyBucket'",
-    "folderPath" ->
-      s"""
-         |instance.get('organization') += '/' += instance.get('sub-organization')
-         |""".stripMargin,
-    "anInt" -> "instance.get('nested/nestedField1')"
-  )
-
-  private val mapperTuple2 = Tuple1(
-    "roleName" -> "instance.get('bucketName') += 'IamRole'"
-  )
-
-  "Creating a mapping instance" - {
-    "works" in {
-      val session = Session[IO](
-        graphdbType,
-        "localhost",
-        7201,
-        "dba",
-        "mysecret",
-        "repo1",
-        false
+  private val targetType1 = EntityType(
+    "TargetType1",
+    Set("MappingSource", "MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
       )
-      session.use { session =>
-        val repository: Rdf4jKnowledgeGraph[IO] =
-          Rdf4jKnowledgeGraph[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val mservice = MappingManagementServiceInterpreter[IO](tservice)
+    ): Schema
+  )
 
-        (for {
-          res1 <- EitherT(tservice.create(dataCollectionType))
-          res2 <- EitherT(tservice.create(s3FolderType))
-          res3 <- EitherT(tservice.create(iamRoleType))
-          res4 <- EitherT(
-            mservice.create(
-              "mapping1",
-              "DataCollectionType",
-              "S3FolderType",
-              mapperTuple1
-            )
-          )
-          res5 <- EitherT(
-            mservice.create(
-              "mapping2",
-              "S3FolderType",
-              "IAMRoleType",
-              mapperTuple2
-            )
-          )
-
-        } yield (res1, res2, res3, res4, res5)).value
-
-      } asserting (ret =>
-        ret should matchPattern { case Right(((), (), (), (), ())) => }
+  private val targetType2 = EntityType(
+    "TargetType2",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
       )
-    }
-  }
+    ): Schema
+  )
 
-  "Automatic creation of instances driven by the mapping" - {
+  private val targetType3 = EntityType(
+    "TargetType3",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val targetType4 = EntityType(
+    "TargetType4",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val mapperTuple = (
+    "field1" -> "instance.get('field1')",
+    "field2" -> "instance.get('field2')"
+  )
+
+  "Creating mapping instances" - {
     "works" in {
       val session = Session[IO](
         graphdbType,
@@ -148,28 +116,189 @@ class MappingSpec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
 
         (for {
-          res1 <- EitherT(
-            iservice.create(
-              "DataCollectionType",
-              (
-                "name" -> "Person",
-                "value" -> "Bronze",
-                "organization" -> "HR",
-                "sub-organization" -> "Any",
-                "domain" -> "People",
-                "sub-domain" -> "Registration",
-                "nested" -> (
-                  "nestedField1" -> 1,
-                  "nestedField2" -> 2
-                )
+          res1 <- EitherT(tservice.create(sourceType))
+          res2 <- EitherT(tservice.create(targetType1))
+          res3 <- EitherT(tservice.create(targetType2))
+          res4 <- EitherT(tservice.create(targetType3))
+          res5 <- EitherT(tservice.create(targetType4))
+          res6 <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey("mapping1", "SourceType", "TargetType1"),
+                mapperTuple
               )
             )
           )
-        } yield res1).value
+          res7 <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey("mapping2", "TargetType1", "TargetType2"),
+                mapperTuple
+              )
+            )
+          )
+          res8 <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey("mapping3", "TargetType1", "TargetType3"),
+                mapperTuple
+              )
+            )
+          )
+          res9 <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey("mapping4", "SourceType", "TargetType4"),
+                mapperTuple
+              )
+            )
+          )
+          mappers <- EitherT(
+            mservice.getMappingsForEntityType(logger, tservice, "SourceType")
+          )
+        } yield (
+          res1,
+          res2,
+          res3,
+          res4,
+          res5,
+          res6,
+          res7,
+          res8,
+          res9,
+          mappers
+        )).value
 
-      } asserting (ret => ret should matchPattern { case Right(_) => })
+      } asserting (ret =>
+        ret should matchPattern {
+          case Right(((), (), (), (), (), (), (), (), (), _)) =>
+        }
+      )
+    }
+  }
+
+  "Automatic creation and update of instances driven by the mappings" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        (for {
+          res1 <- EitherT(
+            iservice.create(
+              "SourceType",
+              (
+                "field1" -> "value1",
+                "field2" -> "value2"
+              )
+            )
+          )
+          _ <- EitherT(
+            mservice.createMappedInstances(res1)
+          )
+          lt1 <- EitherT(
+            iservice.list(
+              "TargetType1",
+              "field1 = 'value1' and field2 = 'value2'",
+              false,
+              None
+            )
+          )
+          lt2 <- EitherT(
+            iservice.list(
+              "TargetType2",
+              "field1 = 'value1' and field2 = 'value2'",
+              false,
+              None
+            )
+          )
+          lt3 <- EitherT(
+            iservice.list(
+              "TargetType3",
+              "field1 = 'value1' and field2 = 'value2'",
+              false,
+              None
+            )
+          )
+          lt4 <- EitherT(
+            iservice.list(
+              "TargetType4",
+              "field1 = 'value1' and field2 = 'value2'",
+              false,
+              None
+            )
+          )
+          _ <- EitherT(
+            iservice.update(
+              res1,
+              (
+                "field1" -> "value3",
+                "field2" -> "value4"
+              )
+            )
+          )
+          lt5 <- EitherT(
+            iservice.list(
+              "TargetType1",
+              "field1 = 'value3' and field2 = 'value4'",
+              false,
+              None
+            )
+          )
+          lt6 <- EitherT(
+            iservice.list(
+              "TargetType2",
+              "field1 = 'value3' and field2 = 'value4'",
+              false,
+              None
+            )
+          )
+          lt7 <- EitherT(
+            iservice.list(
+              "TargetType3",
+              "field1 = 'value3' and field2 = 'value4'",
+              false,
+              None
+            )
+          )
+          lt8 <- EitherT(
+            iservice.list(
+              "TargetType4",
+              "field1 = 'value3' and field2 = 'value4'",
+              false,
+              None
+            )
+          )
+        } yield (
+          lt1.length,
+          lt2.length,
+          lt3.length,
+          lt4.length,
+          lt5.length,
+          lt6.length,
+          lt7.length,
+          lt8.length
+        )).value
+      } asserting (ret =>
+        ret should matchPattern { case Right((2, 2, 2, 2, 1, 1, 1, 1)) => }
+      ) // It's 2 because of the mapper instance
     }
   }
 
@@ -189,15 +318,21 @@ class MappingSpec extends CommonSpec:
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val mservice = MappingManagementServiceInterpreter[IO](tservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
 
         (for {
           res <- EitherT(
             mservice.create(
-              "mapping1",
-              "DataCollectionType",
-              "S3FolderType",
-              mapperTuple1
+              MappingDefinition(
+                MappingKey(
+                  "mapping1",
+                  "SourceType",
+                  "TargetType1"
+                ),
+                mapperTuple
+              )
             )
           )
         } yield res).value

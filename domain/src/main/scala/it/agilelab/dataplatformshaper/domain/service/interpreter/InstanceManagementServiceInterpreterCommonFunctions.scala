@@ -1,11 +1,14 @@
 package it.agilelab.dataplatformshaper.domain.service.interpreter
 import cats.*
+import cats.data.EitherT
 import cats.effect.*
 import cats.implicits.*
 import io.circe.Json
+import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L3, ns}
+import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
@@ -13,10 +16,16 @@ import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
 import it.agilelab.dataplatformshaper.domain.model.schema.{
   DataType,
   Schema,
+  cueValidate,
+  schemaToMapperSchema,
   unfoldTuple
 }
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.TupleIsNotConformToSchema
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
+import it.agilelab.dataplatformshaper.domain.service.{
+  InstanceManagementService,
+  ManagementServiceError,
+  TypeManagementService
+}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
@@ -30,6 +39,53 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
   self: InstanceManagementServiceInterpreter[F] |
     MappingManagementServiceInterpreter[F] =>
+
+  def createInstanceNoCheck(
+      logger: Logger[F],
+      typeManagementService: TypeManagementService[F],
+      entityId: String,
+      instanceTypeName: String,
+      tuple: Tuple,
+      statementsToAdd: List[Statement],
+      statementsToRemove: List[Statement]
+  ): F[Either[ManagementServiceError, String]] =
+
+    given Logger[F] = logger
+
+    val getSchema: F[Either[ManagementServiceError, Schema]] =
+      summon[Functor[F]].map(typeManagementService.read(instanceTypeName))(
+        _.map(_.schema)
+      )
+
+    (for {
+      schema <- EitherT[F, ManagementServiceError, Schema](getSchema)
+      _ <- traceT(s"Retrieved schema $schema for type name $instanceTypeName")
+      _ <- EitherT[F, ManagementServiceError, Unit](
+        summon[Applicative[F]].pure(
+          cueValidate(schema, tuple).leftMap(errors =>
+            InstanceValidationError(errors)
+          )
+        )
+      )
+      stmts <- EitherT[F, ManagementServiceError, List[Statement]](
+        summon[Applicative[F]].pure(
+          emitStatementsForEntity(entityId, instanceTypeName, tuple, schema)
+        )
+      )
+      _ <- traceT(s"Statements emitted ${stmts.mkString("\n")}")
+      id <- EitherT[F, ManagementServiceError, String](
+        summon[Functor[F]].map(
+          typeManagementService.repository.removeAndInsertStatements(
+            statementsToAdd ::: stmts,
+            statementsToRemove
+          )
+        )(_ => Right[ManagementServiceError, String](entityId))
+      )
+      _ <- traceT(
+        s"Statements emitted creating the instance $id:\n${stmts.mkString("\n")}\n"
+      )
+    } yield id).value
+  end createInstanceNoCheck
 
   @SuppressWarnings(
     Array(
@@ -582,5 +638,159 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
         .map(_.flatten)
     statements
   end fetchStatementsForInstance
+
+  def getMappingsForEntityType(
+      logger: Logger[F],
+      typeManagementService: TypeManagementService[F],
+      sourceEntityTypeName: String
+  ): F[Either[ManagementServiceError, List[
+    (String, EntityType, EntityType, Tuple, String)
+  ]]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT ?mr ?t ?m WHERE {
+         |   ?mr ns:singletonPropertyOf ns:mappedTo .
+         |   ns:${sourceEntityTypeName} ?mr ?t .
+         |   ?mr ns:mappedBy ?m .
+         |}
+         |""".stripMargin
+    val res1 = summon[Monad[F]].flatMap(
+      logger.trace(
+        s"Retrieving the mappings for source type $sourceEntityTypeName with the query:\n$query"
+      ) *>
+        typeManagementService.repository.evaluateQuery(query)
+    )(bit =>
+      bit.toList
+        .map(b =>
+          val mappingName =
+            iri(b.getBinding("mr").getValue.toString).getLocalName
+          val mapperId = iri(b.getBinding("m").getValue.toString).getLocalName
+          val targetEntityTypeName =
+            iri(b.getBinding("t").getValue.toString).getLocalName
+          (for {
+            sourceEntityType <- EitherT(
+              typeManagementService.read(sourceEntityTypeName)
+            )
+            targetEntityType <- EitherT(
+              typeManagementService.read(targetEntityTypeName)
+            )
+            fields <- EitherT(
+              summon[Functor[F]].map(
+                fetchEntityFieldsAndTypeName(
+                  logger,
+                  typeManagementService.repository,
+                  mapperId
+                )
+              )(t =>
+                Right[ManagementServiceError, List[(String, String)]](t(1))
+              )
+            )
+            tuple <- EitherT(
+              summon[Functor[F]].map(
+                fieldsToTuple(
+                  logger,
+                  typeManagementService.repository,
+                  fields,
+                  schemaToMapperSchema(targetEntityType.schema)
+                )
+              )(Right[ManagementServiceError, Tuple])
+            )
+          } yield (
+            mappingName,
+            sourceEntityType,
+            targetEntityType,
+            tuple,
+            mapperId
+          )).value
+        )
+        .sequence
+    )
+    summon[Functor[F]].map(res1)(_.sequence)
+  end getMappingsForEntityType
+
+  def getMappingsForEntity(
+      logger: Logger[F],
+      typeManagementService: TypeManagementService[F],
+      instanceManagementService: InstanceManagementService[F],
+      sourceEntityId: String
+  ): F[Either[ManagementServiceError, List[
+    (EntityType, Entity, EntityType, Entity, Tuple)
+  ]]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT distinct ?mr ?t ?m WHERE {
+         |   ?mr ns:singletonPropertyOf ns:mappedTo .
+         |   ns:${sourceEntityId} ?mr ?t .
+         |   ?mr ns:mappedBy ?m .
+         |}
+         |""".stripMargin
+    val res1 = summon[Monad[F]].flatMap(
+      logger.trace(
+        s"Retrieving the mappings for source id $sourceEntityId with the query:\n$query"
+      ) *>
+        instanceManagementService.repository.evaluateQuery(query)
+    )(bit =>
+      bit.toList
+        .map(b =>
+          val mapperId = iri(b.getBinding("m").getValue.toString).getLocalName
+          val targetEntityId =
+            iri(b.getBinding("t").getValue.toString).getLocalName
+          (for {
+            sourceEntity <- EitherT(
+              instanceManagementService.read(sourceEntityId)
+            )
+            sourceEntityType <- EitherT(
+              typeManagementService.read(sourceEntity.entityTypeName)
+            )
+            targetEntity <- EitherT(
+              instanceManagementService.read(targetEntityId)
+            )
+            targetEntityType <- EitherT(
+              typeManagementService.read(targetEntity.entityTypeName)
+            )
+            fields <- EitherT(
+              summon[Functor[F]].map(
+                fetchEntityFieldsAndTypeName(
+                  logger,
+                  instanceManagementService.repository,
+                  mapperId
+                )
+              )(t =>
+                Right[ManagementServiceError, List[(String, String)]](t(1))
+              )
+            )
+            targetEntityType <- EitherT(
+              typeManagementService.read(targetEntity.entityTypeName)
+            )
+            tuple <- EitherT(
+              summon[Functor[F]].map(
+                fieldsToTuple(
+                  logger,
+                  instanceManagementService.repository,
+                  fields,
+                  schemaToMapperSchema(targetEntityType.schema)
+                )
+              )(Right[ManagementServiceError, Tuple])
+            )
+          } yield (
+            sourceEntityType,
+            sourceEntity,
+            targetEntityType,
+            targetEntity,
+            tuple,
+          )).value
+        )
+        .sequence
+    )
+    summon[Functor[F]].map(res1)(_.sequence)
+  end getMappingsForEntity
 
 end InstanceManagementServiceInterpreterCommonFunctions

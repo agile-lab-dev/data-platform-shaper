@@ -1,22 +1,23 @@
 package it.agilelab.dataplatformshaper.domain.service
 
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingKey,
+  MappingDefinition
+}
 
 trait MappingManagementService[F[_]]:
 
   val repository: KnowledgeGraph[F]
 
   def create(
-      mappingName: String,
-      sourceEntityTypeName: String,
-      targetEntityTypeName: String,
-      mapper: Tuple
+      mappingDefinition: MappingDefinition
   ): F[Either[ManagementServiceError, Unit]]
 
-  def exist(
-      mappingName: String,
-      sourceEntityTypeName: String,
-      targetEntityTypeName: String
-  ): F[Either[ManagementServiceError, Boolean]]
+  def exist(mapperKey: MappingKey): F[Either[ManagementServiceError, Boolean]]
+
+  def createMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, Unit]]
 
 end MappingManagementService

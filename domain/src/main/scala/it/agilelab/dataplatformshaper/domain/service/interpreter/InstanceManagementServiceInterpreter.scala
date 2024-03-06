@@ -35,48 +35,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
   val repository: KnowledgeGraph[F] = typeManagementService.repository
 
-  private def createInstanceNoCheck(
-      entityId: String,
-      instanceTypeName: String,
-      tuple: Tuple,
-      statementsToRemove: List[Statement]
-  ): F[Either[ManagementServiceError, String]] =
-
-    val getSchema: F[Either[ManagementServiceError, Schema]] =
-      summon[Functor[F]].map(typeManagementService.read(instanceTypeName))(
-        _.map(_.schema)
-      )
-
-    (for {
-      schema <- EitherT[F, ManagementServiceError, Schema](getSchema)
-      _ <- traceT(s"Retrieved schema $schema for type name $instanceTypeName")
-      _ <- EitherT[F, ManagementServiceError, Unit](
-        summon[Applicative[F]].pure(
-          cueValidate(schema, tuple).leftMap(errors =>
-            InstanceValidationError(errors)
-          )
-        )
-      )
-      stmts <- EitherT[F, ManagementServiceError, List[Statement]](
-        summon[Applicative[F]].pure(
-          emitStatementsForEntity(entityId, instanceTypeName, tuple, schema)
-        )
-      )
-      _ <- traceT(s"Statements emitted ${stmts.mkString("\n")}")
-      id <- EitherT[F, ManagementServiceError, String](
-        summon[Functor[F]].map(
-          repository.removeAndInsertStatements(
-            stmts,
-            statementsToRemove
-          )
-        )(_ => Right[ManagementServiceError, String](entityId))
-      )
-      _ <- traceT(
-        s"Statements emitted creating the instance $id:\n${stmts.mkString("\n")}\n"
-      )
-    } yield id).value
-  end createInstanceNoCheck
-
   override def create(
       instanceTypeName: String,
       values: Tuple
@@ -87,7 +45,15 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       result <- EitherT {
         if exist
         then
-          createInstanceNoCheck(entityId, instanceTypeName, values, List.empty)
+          createInstanceNoCheck(
+            logger,
+            typeManagementService,
+            entityId,
+            instanceTypeName,
+            values,
+            List.empty,
+            List.empty
+          )
         else
           summon[Applicative[F]]
             .pure(
@@ -201,7 +167,15 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         logger.trace(s"$instanceId is classified by $instanceType")
       )
       result <- EitherT(
-        createInstanceNoCheck(instanceId, instanceType, values, stmts)
+        createInstanceNoCheck(
+          logger,
+          typeManagementService,
+          instanceId,
+          instanceType,
+          values,
+          List.empty,
+          stmts
+        )
       )
     } yield result).value
 
