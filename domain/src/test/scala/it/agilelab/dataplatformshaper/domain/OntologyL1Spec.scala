@@ -27,7 +27,7 @@ class OntologyL1Spec extends CommonSpec:
 
   given cache: Cache[IO, String, EntityType] = CaffeineCache
     .build[IO, String, EntityType](
-      Some(TimeSpec.unsafeFromDuration(1.second)),
+      Some(TimeSpec.unsafeFromDuration(1800.second)),
       None,
       None
     )

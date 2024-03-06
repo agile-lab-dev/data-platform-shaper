@@ -302,7 +302,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |    {
          |        BIND(iri("${ns.getName}$instanceTypeName") as ?entityType)
          |        ?i rdf:type ns:Entity .
-         |
          |        ?i ns:isClassifiedBy ?entityType .
          |    }
          |    ${predicate.fold("")(_.querySegment)}

@@ -69,7 +69,7 @@ class MappingDataTypeSpec extends AnyFlatSpec with Matchers:
     )
 
     val mres = validateMappingTuple(mappingTuple, schema2)
-    println(mres)
+    mres should matchPattern { case Right(()) => }
 
     val res = tupleToMappedTuple(
       dataCollectionTypeInstance.values,
@@ -77,7 +77,15 @@ class MappingDataTypeSpec extends AnyFlatSpec with Matchers:
       mappingTuple,
       schema2
     )
-    println(res)
+    res should matchPattern {
+      case Right(
+            (
+              ("bucketName", "MyBucket"),
+              ("folderPath", "HR/Any"),
+              ("anInt", 11)
+            )
+          ) =>
+    }
 
   }
 end MappingDataTypeSpec

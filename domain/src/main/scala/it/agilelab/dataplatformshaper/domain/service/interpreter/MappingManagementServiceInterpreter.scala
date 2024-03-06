@@ -95,10 +95,46 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           .map(exist(key))(
             _.flatMap(exist =>
               if exist then
-                Left[ManagementServiceError, Unit](InvalidMappingError(""))
+                Left[ManagementServiceError, Unit](
+                  InvalidMappingError(
+                    s"the mapping with name ${key.mappingName}, source type ${key.sourceEntityTypeName} and target type ${key.targetEntityTypeName} already exists"
+                  )
+                )
               else Right[ManagementServiceError, Unit](())
             )
           )
+      )
+      _ <- EitherT(
+        summon[Functor[F]].map(
+          typeManagementService.read(key.sourceEntityTypeName)
+        )(
+          _.flatMap(t =>
+            if t.traits("MappingSource") then
+              Right[ManagementServiceError, Unit](())
+            else
+              Left[ManagementServiceError, Unit](
+                InvalidMappingError(
+                  s"in the mapping with name ${key.mappingName}, the source type ${t.name} doesn't contain the trait MappingSource"
+                )
+              )
+          )
+        )
+      )
+      _ <- EitherT(
+        summon[Functor[F]].map(
+          typeManagementService.read(key.targetEntityTypeName)
+        )(
+          _.flatMap(t =>
+            if t.traits("MappingTarget") then
+              Right[ManagementServiceError, Unit](())
+            else
+              Left[ManagementServiceError, Unit](
+                InvalidMappingError(
+                  s"in the mapping with name ${key.mappingName}, the target type ${t.name} doesn't contain the trait MappingTarget"
+                )
+              )
+          )
+        )
       )
       ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
       _ <- EitherT(
@@ -200,7 +236,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield ()).value
   end createMappedInstances
 
-  def updateMappedInstances(
+  override def updateMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
     (for {
