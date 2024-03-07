@@ -105,36 +105,46 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           )
       )
       _ <- EitherT(
-        summon[Functor[F]].map(
-          typeManagementService.read(key.sourceEntityTypeName)
-        )(
-          _.flatMap(t =>
-            if t.traits("MappingSource") then
-              Right[ManagementServiceError, Unit](())
-            else
-              Left[ManagementServiceError, Unit](
-                InvalidMappingError(
-                  s"in the mapping with name ${key.mappingName}, the source type ${t.name} doesn't contain the trait MappingSource"
+        summon[Functor[F]]
+          .map(
+            checkTraitForEntityType(
+              logger,
+              repository,
+              key.sourceEntityTypeName,
+              "MappingSource"
+            )
+          )(
+            _.flatMap(exist =>
+              if !exist then
+                Left[ManagementServiceError, Unit](
+                  InvalidMappingError(
+                    s"in the mapping with name ${key.mappingName}, the source type ${key.sourceEntityTypeName} doesn't contain the trait MappingSource"
+                  )
                 )
-              )
+              else Right[ManagementServiceError, Unit](())
+            )
           )
-        )
       )
       _ <- EitherT(
-        summon[Functor[F]].map(
-          typeManagementService.read(key.targetEntityTypeName)
-        )(
-          _.flatMap(t =>
-            if t.traits("MappingTarget") then
-              Right[ManagementServiceError, Unit](())
-            else
-              Left[ManagementServiceError, Unit](
-                InvalidMappingError(
-                  s"in the mapping with name ${key.mappingName}, the target type ${t.name} doesn't contain the trait MappingTarget"
+        summon[Functor[F]]
+          .map(
+            checkTraitForEntityType(
+              logger,
+              repository,
+              key.targetEntityTypeName,
+              "MappingTarget"
+            )
+          )(
+            _.flatMap(exist =>
+              if !exist then
+                Left[ManagementServiceError, Unit](
+                  InvalidMappingError(
+                    s"in the mapping with name ${key.mappingName}, the target type ${key.targetEntityTypeName} doesn't contain the trait MappingTarget"
+                  )
                 )
-              )
+              else Right[ManagementServiceError, Unit](())
+            )
           )
-        )
       )
       ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
       _ <- EitherT(
@@ -283,7 +293,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
          |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
          |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
-         |SELECT ?mr WHERE {
+         |SELECT distinct ?mr WHERE {
          |   ?mr ns:singletonPropertyOf ns:mappedTo .
          |   ns:${mapperKey.sourceEntityTypeName} ?mr ns:${mapperKey.targetEntityTypeName} .
          |   FILTER(STR(?mr) = "${ns.getName}mappedTo#${mapperKey.mappingName}")

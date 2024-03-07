@@ -793,4 +793,29 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     summon[Functor[F]].map(res1)(_.sequence)
   end getMappingsForEntity
 
+  def checkTraitForEntityType(
+      logger: Logger[F],
+      repository: KnowledgeGraph[F],
+      entityTypeName: String,
+      traitName: String
+  ): F[Either[ManagementServiceError, Boolean]] =
+    val query =
+      s"""
+         |PREFIX ns:   <https://w3id.org/agile-dm/ontology/>
+         |SELECT (COUNT(*) as ?count) WHERE {
+         |        ns:$entityTypeName ns:hasTrait ?trait1 .
+         |        ?trait1 rdfs:subClassOf* ns:$traitName .
+         |}
+         |""".stripMargin
+    val res = logger.trace(
+      s"Checking if the type $entityTypeName is related to the trait $traitName with the query:\n$query"
+    ) *> repository.evaluateQuery(query)
+    summon[Functor[F]].map(res)(res =>
+      val count = res.toList.length
+      if count > 0 then Right[ManagementServiceError, Boolean](true)
+      else Right[ManagementServiceError, Boolean](false)
+      end if
+    )
+  end checkTraitForEntityType
+
 end InstanceManagementServiceInterpreterCommonFunctions
