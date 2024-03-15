@@ -34,6 +34,8 @@ import org.typelevel.log4cats.Logger
 
 import java.time.{LocalDate, ZonedDateTime}
 import java.util.UUID
+import scala.annotation.tailrec
+import scala.collection.mutable
 
 trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
@@ -793,6 +795,94 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     summon[Functor[F]].map(res1)(_.sequence)
   end getMappingsForEntity
 
+  def getParents(
+      logger: Logger[F],
+      repository: KnowledgeGraph[F],
+      sourceEntityTypeName: String
+  ): F[List[String]] =
+    val nsName = ns.getName
+    val query =
+      s"""
+         |PREFIX ns:   <${nsName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT distinct ?mr ?t ?m WHERE {
+         |   ?mr ns:singletonPropertyOf ns:mappedTo .
+         |   ?t ?mr ns:${sourceEntityTypeName} .
+         |   ?mr ns:mappedBy ?m .
+         |}
+         |""".stripMargin
+
+    logger.trace(
+      s"Executing getParents for $sourceEntityTypeName with query:\n$query"
+    ) >>
+      repository.evaluateQuery(query).flatMap { iterator =>
+        @tailrec
+        def loop(acc: List[String]): List[String] =
+          if !iterator.hasNext then acc
+          else
+            val bindingSet = iterator.next()
+            val tValueOriginal = bindingSet.getValue("t").stringValue()
+            val tValue =
+              if tValueOriginal.startsWith(nsName) then
+                tValueOriginal.stripPrefix(nsName)
+              else tValueOriginal
+
+            loop(tValue :: acc)
+
+        summon[Functor[F]].pure(loop(Nil).reverse)
+      }
+  end getParents
+
+  def detectCycles(
+      logger: Logger[F],
+      repository: KnowledgeGraph[F],
+      sourceEntityTypeName: String,
+      targetEntityTypeName: String
+  ): F[Either[ManagementServiceError, List[String]]] =
+    def loop(
+        pendingTypes: mutable.Stack[String],
+        visited: Set[String],
+        accumulator: List[String]
+    ): F[Either[ManagementServiceError, List[String]]] =
+      if pendingTypes.isEmpty then summon[Functor[F]].pure(Right(accumulator))
+      else
+        val currentType = pendingTypes.pop()
+        if visited.contains(currentType) then
+          summon[Functor[F]].pure(
+            Left(
+              MappingCycleDetectedError(
+                s"Cycle detected in the hierarchy when processing '$currentType'"
+              )
+            )
+          )
+        else
+          getParents(logger, repository, currentType).flatMap { roots =>
+            val newVisited = visited + currentType
+            val commonRoots = roots.toSet.intersect(newVisited)
+            if commonRoots.nonEmpty then
+              summon[Functor[F]].pure(
+                Left(
+                  MappingCycleDetectedError(
+                    s"Cycle detected in the hierarchy when processing one of the roots of '$currentType'"
+                  )
+                )
+              )
+            else if roots.contains(currentType) then
+              loop(
+                pendingTypes,
+                newVisited,
+                currentType :: accumulator
+              )
+            else
+              roots.filterNot(newVisited.contains).foreach(pendingTypes.push)
+              loop(pendingTypes, newVisited, accumulator)
+          }
+
+    loop(mutable.Stack(sourceEntityTypeName), Set(targetEntityTypeName), Nil)
+  end detectCycles
+
   def checkTraitForEntityType(
       logger: Logger[F],
       repository: KnowledgeGraph[F],
@@ -811,7 +901,10 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       s"Checking if the type $entityTypeName is related to the trait $traitName with the query:\n$query"
     ) *> repository.evaluateQuery(query)
     summon[Functor[F]].map(res)(res =>
-      val count = res.toList.length
+      val count = res.toList.headOption
+        .flatMap(row => Option(row.getValue("count")))
+        .flatMap(_.stringValue().toIntOption)
+        .getOrElse(0)
       if count > 0 then Right[ManagementServiceError, Boolean](true)
       else Right[ManagementServiceError, Boolean](false)
       end if

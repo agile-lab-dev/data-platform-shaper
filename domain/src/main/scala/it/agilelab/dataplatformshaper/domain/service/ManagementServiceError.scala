@@ -54,4 +54,10 @@ enum ManagementServiceError(errorMessage: String):
   case MapperInstanceValidationError(error: String)
       extends ManagementServiceError(error)
   case InvalidMappingError(error: String) extends ManagementServiceError(error)
+  case MappingCycleDetectedError(error: String)
+      extends ManagementServiceError(error)
+  case UpdatedTypeIsMappingTargetError(entityTypeName: String)
+      extends ManagementServiceError(
+        s"The entity $entityTypeName is the target of a mapping"
+      )
 end ManagementServiceError

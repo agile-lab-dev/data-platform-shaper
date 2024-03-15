@@ -779,7 +779,7 @@ class OntologyL0Spec extends CommonSpec:
           )
 
           (for {
-            _ <- EitherT.right(service.create(entityType))
+            _ <- EitherT.liftF(service.create(entityType))
             _ <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp1")))
             deleteResult <- EitherT(service.delete("DataProductType"))
             readResult <- EitherT.liftF(service.read("DataProductType"))
@@ -834,8 +834,8 @@ class OntologyL0Spec extends CommonSpec:
           )
 
           (for {
-            _ <- EitherT.right(service.create(fatherEntityType))
-            _ <- EitherT.right(service.create(sonEntityType))
+            _ <- EitherT.liftF(service.create(fatherEntityType))
+            _ <- EitherT.liftF(service.create(sonEntityType))
             _ <- EitherT(ims.create("SonType", Tuple1("name" -> "dp1")))
             deleteResult <- EitherT(service.delete("FatherType"))
             readResult <- EitherT.liftF(service.read("FatherType"))

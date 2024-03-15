@@ -15,6 +15,11 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.{
+  InvalidMappingError,
+  MappingCycleDetectedError,
+  UpdatedTypeIsMappingTargetError
+}
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   MappingManagementServiceInterpreter,
@@ -85,6 +90,83 @@ class MappingSpec extends CommonSpec:
 
   private val targetType4 = EntityType(
     "TargetType4",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val sourceCycleType = EntityType(
+    "SourceCycleType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val targetCycleType1 = EntityType(
+    "TargetCycleType1",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val targetCycleType2 = EntityType(
+    "TargetCycleType2",
+    Set("MappingTarget", "MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val invalidSourceType = EntityType(
+    "InvalidSourceType",
+    Set(),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val invalidTargetType = EntityType(
+    "InvalidTargetType",
+    Set(),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val updateSourceType = EntityType(
+    "UpdateSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val updateTargetType = EntityType(
+    "UpdateTargetType",
     Set("MappingTarget"),
     StructType(
       List(
@@ -338,6 +420,212 @@ class MappingSpec extends CommonSpec:
         } yield res).value
 
       } asserting (ret => ret should matchPattern { case Left(_) => })
+    }
+  }
+
+  "Creating a mapping cycle" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+        (for {
+          _ <- EitherT(tservice.create(sourceCycleType))
+          _ <- EitherT(tservice.create(targetCycleType1))
+          _ <- EitherT(tservice.create(targetCycleType2))
+          res1 <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey(
+                  "cycle_mapping1",
+                  "SourceCycleType",
+                  "TargetCycleType1"
+                ),
+                mapperTuple
+              )
+            )
+          )
+          res2 <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey(
+                  "cycle_mapping2",
+                  "TargetCycleType2",
+                  "TargetCycleType1"
+                ),
+                mapperTuple
+              )
+            )
+          )
+          _ <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey(
+                  "cycle_mapping3",
+                  "TargetCycleType1",
+                  "SourceCycleType"
+                ),
+                mapperTuple
+              )
+            )
+          )
+          mappers <- EitherT(
+            mservice
+              .getMappingsForEntityType(logger, tservice, "SourceCycleType")
+          )
+        } yield (
+          res1,
+          res2,
+          mappers
+        )).value
+
+      } asserting (ret =>
+        ret should matchPattern { case Left(MappingCycleDetectedError(_)) =>
+        }
+      )
+    }
+  }
+
+  "Creating a mapping between two EntityTypes which do not have the proper traits" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+        (for {
+          _ <- EitherT(tservice.create(invalidSourceType))
+          _ <- EitherT(tservice.create(invalidTargetType))
+          res1 <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey(
+                  "invalid_mapping1",
+                  "InvalidSourceType",
+                  "InvalidTargetType"
+                ),
+                mapperTuple
+              )
+            )
+          )
+          mappers <- EitherT(
+            mservice
+              .getMappingsForEntityType(logger, tservice, "InvalidSourceType")
+          )
+        } yield (
+          res1,
+          mappers
+        )).value
+
+      } asserting (ret =>
+        ret should matchPattern { case Left(InvalidMappingError(_)) =>
+        }
+      )
+    }
+  }
+
+  "Trying to update a mapping target" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        (for {
+          _ <- EitherT(tservice.create(updateSourceType))
+          _ <- EitherT(tservice.create(updateTargetType))
+          _ <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey(
+                  "update_mapping",
+                  "UpdateSourceType",
+                  "UpdateTargetType"
+                ),
+                mapperTuple
+              )
+            )
+          )
+          res1 <- EitherT(
+            iservice.create(
+              "UpdateSourceType",
+              (
+                "field1" -> "value1",
+                "field2" -> "value2"
+              )
+            )
+          )
+          _ <- EitherT(
+            mservice.createMappedInstances(res1)
+          )
+          lt1 <- EitherT(
+            iservice.list(
+              "UpdateTargetType",
+              "field1 = 'value1' and field2 = 'value2'",
+              false,
+              None
+            )
+          )
+          firstElement <- EitherT.fromOption[IO](
+            lt1.headOption.collect { case s: String => s },
+            "No elements in lt1 or the first element is not a String"
+          )
+          res <- EitherT(
+            iservice.update(
+              firstElement,
+              (
+                "field1" -> "value3",
+                "field2" -> "value4"
+              )
+            )
+          )
+        } yield (
+          res
+        )).value
+      } asserting { ret =>
+        ret should matchPattern {
+          case Left(UpdatedTypeIsMappingTargetError(_)) =>
+        }
+      }
     }
   }
 

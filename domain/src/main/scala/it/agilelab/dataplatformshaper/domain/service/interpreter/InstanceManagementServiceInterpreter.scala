@@ -142,6 +142,23 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <- EitherT.liftF(
         logger.trace(s"About to remove the instance $instanceId")
       )
+      entity <- EitherT(read(instanceId))
+      hasTrait <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          entity.entityTypeName,
+          "MappingTarget"
+        )
+      )
+      _ <-
+        if hasTrait then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError.UpdatedTypeIsMappingTargetError(
+              entity.entityTypeName
+            )
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
       stmts <- EitherT.liftF(statementsToRemove)
       _ <- EitherT.liftF(
         logger.trace(

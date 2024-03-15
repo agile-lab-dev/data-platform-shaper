@@ -91,6 +91,14 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         s"About to create a mapping named ${mappingDefinition.mappingKey.mappingName} with source ${key.sourceEntityTypeName}, target ${key.targetEntityTypeName} with the mapper tuple:\n ${mappingDefinition.mapper} "
       )
       _ <- EitherT(
+        detectCycles(
+          logger,
+          repository,
+          mappingDefinition.mappingKey.sourceEntityTypeName,
+          mappingDefinition.mappingKey.targetEntityTypeName
+        )
+      )
+      _ <- EitherT(
         summon[Functor[F]]
           .map(exist(key))(
             _.flatMap(exist =>
