@@ -5,7 +5,7 @@ import org.eclipse.rdf4j.model.util.Values.iri
 
 object NS:
 
-  val ns = new SimpleNamespace("ns", "https://w3id.org/agile-dm/ontology/")
+  val ns = SimpleNamespace("ns", "https://w3id.org/agile-dm/ontology/")
 
   val L0 = iri(ns, "L0") // Base Ontology
   val L1 = iri(ns, "L1") // Traits
@@ -37,6 +37,8 @@ object NS:
   val STRUCTTYPE = iri(ns, "StructType")
   val STRUCT = iri(ns, "Struct")
   val TRAIT = iri(ns, "Trait")
+  val MAPPINGNAME = iri(ns, "mappingName")
+  val MAPPEDBY = iri(ns, "mappedBy")
 
   // L1
 

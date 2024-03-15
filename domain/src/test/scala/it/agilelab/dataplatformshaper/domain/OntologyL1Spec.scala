@@ -1,7 +1,9 @@
 package it.agilelab.dataplatformshaper.domain
 
 import cats.data.EitherT
-import cats.effect.{IO, Ref}
+import cats.effect.IO
+import io.chrisdavenport.mules.caffeine.CaffeineCache
+import io.chrisdavenport.mules.{Cache, TimeSpec}
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
@@ -17,13 +19,19 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
 }
 import org.scalatest.Inside.inside
 
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Right
 
 class OntologyL1Spec extends CommonSpec:
 
-  given cache: Ref[IO, Map[String, EntityType]] =
-    Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
+  given cache: Cache[IO, String, EntityType] = CaffeineCache
+    .build[IO, String, EntityType](
+      Some(TimeSpec.unsafeFromDuration(1800.second)),
+      None,
+      None
+    )
+    .unsafeRunSync()
 
   "Checking the existence of a non existing Trait" - {
     "works" in {
@@ -107,7 +115,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
         (for {
@@ -160,7 +168,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
         (for {
@@ -197,7 +205,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
         trservice.unlink("DataProduct", Relationship.hasPart, "OutputPort")
       } asserting (res =>
         res should matchPattern {
@@ -222,7 +230,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
         (for {

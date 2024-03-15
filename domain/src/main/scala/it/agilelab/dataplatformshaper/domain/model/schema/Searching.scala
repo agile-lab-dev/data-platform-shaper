@@ -20,7 +20,7 @@ given StringToSearchPredicateAttribute
   )
   override def apply(string: String): SearchPredicateAttribute =
     if string.contains('/') then
-      throw new IllegalArgumentException(s"$string should not contain any '/'")
+      throw IllegalArgumentException(s"$string should not contain any '/'")
     SearchPredicateAttribute(List(string))
   end apply
 
@@ -44,7 +44,7 @@ extension (namedAttribute: SearchPredicateAttribute)
   )
   def /(subPath: String): SearchPredicateAttribute =
     if subPath.contains('/') then
-      throw new IllegalArgumentException(s"$subPath should not contain any '/'")
+      throw IllegalArgumentException(s"$subPath should not contain any '/'")
     SearchPredicateAttribute(subPath.trim :: namedAttribute.attributePath)
   end /
 end extension
@@ -328,7 +328,7 @@ def generateSearchPredicate(query: String): SearchPredicate =
                 ./(n2.asInstanceOf[SearchPredicateAttribute])
             )
           case _ =>
-            throw new IllegalStateException()
+            throw IllegalStateException()
         end match
       case id: SqlIdentifier =>
         SearchPredicateAttribute(List(s"""${id.toString}"""))
@@ -342,7 +342,7 @@ def generateSearchPredicate(query: String): SearchPredicate =
           catch case _ => num.toString.toDouble
         SearchPredicateValue[AnyVal](value)
       case _ =>
-        throw new IllegalStateException()
+        throw IllegalStateException()
     end match
   end generateCode
 

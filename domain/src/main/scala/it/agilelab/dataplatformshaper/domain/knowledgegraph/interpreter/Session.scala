@@ -52,14 +52,14 @@ object Session:
       case "graphdb" =>
         val rdf4jServer =
           if tls then s"https://$host:$port" else s"http://$host:$port"
-        val manager = new RemoteRepositoryManager(rdf4jServer)
+        val manager = RemoteRepositoryManager(rdf4jServer)
         manager.init()
         val conn: RepositoryConnection =
           manager.getRepository(repositoryId).getConnection
         Session(conn)
       case "virtuoso" =>
         val virtuosoRepository =
-          new VirtuosoRepository(s"jdbc:virtuoso://$host:$port", user, pwd)
+          VirtuosoRepository(s"jdbc:virtuoso://$host:$port", user, pwd)
         val context: IRI =
           virtuosoRepository.getValueFactory.createIRI(s"db:$repositoryId")
         val conn: RepositoryConnection = virtuosoRepository.getConnection

@@ -295,7 +295,7 @@ class OntologyManagerHandler[F[_]: Async](
           Right(
             readInputStream(
               summon[Applicative[F]].pure(
-                new ByteArrayInputStream(
+                ByteArrayInputStream(
                   OpenApiEntityType
                     .encodeEntityType(
                       et
@@ -550,7 +550,7 @@ class OntologyManagerHandler[F[_]: Async](
           Right(
             readInputStream(
               summon[Applicative[F]].pure(
-                new ByteArrayInputStream(
+                ByteArrayInputStream(
                   OpenApiEntity
                     .encodeEntity(
                       OpenApiEntity(et.entityId, et.entityTypeName, values)
@@ -811,9 +811,8 @@ class OntologyManagerHandler[F[_]: Async](
   ): F[Resource.ListEntitiesResponse] =
     (for {
       schema <- EitherT(tms.read(entityTypeName).map(_.map(_.schema)))
-      limitAsBigInt = limit.map(BigInt(_))
       listEntities <- EitherT(
-        ims.list(entityTypeName, query, true, limitAsBigInt)
+        ims.list(entityTypeName, query, true, limit)
       )
     } yield (schema, listEntities)).value
       .map(
@@ -826,7 +825,7 @@ class OntologyManagerHandler[F[_]: Async](
                     logger.error(
                       s"Error querying instances with type $entityTypeName and query ${query}: ${error.getMessage}"
                     )
-                    throw new Exception("It shouldn't be here")
+                    throw Exception("It shouldn't be here")
                   case Right(json) =>
                     OpenApiEntity(
                       et.entityId,
@@ -834,7 +833,7 @@ class OntologyManagerHandler[F[_]: Async](
                       json
                     )
                 end match
-              case _: String => throw new Exception("It shouldn't be here")
+              case _: String => throw Exception("It shouldn't be here")
             }
           )
         )
@@ -861,9 +860,8 @@ class OntologyManagerHandler[F[_]: Async](
       query: String,
       limit: Option[Int]
   ): F[Resource.ListEntitiesByIdsResponse] =
-    val limitAsBigInt = limit.map(BigInt(_))
     ims
-      .list(entityTypeName, query, false, limitAsBigInt)
+      .list(entityTypeName, query, false, limit)
       .map({
         case Left(error) =>
           logger.error(

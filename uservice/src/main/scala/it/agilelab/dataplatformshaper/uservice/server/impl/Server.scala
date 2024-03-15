@@ -1,10 +1,11 @@
 package it.agilelab.dataplatformshaper.uservice.server.impl
 
 import buildinfo.BuildInfo
-import cats.effect.{Async, Ref, Resource}
+import cats.effect.{Async, Resource}
 import cats.implicits.*
 import com.comcast.ip4s.{Port, ipv4}
 import fs2.io.net.Network
+import io.chrisdavenport.mules.Cache
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
@@ -12,8 +13,8 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
-  TypeManagementServiceInterpreter,
-  TraitManagementServiceInterpreter
+  TraitManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
 }
 import it.agilelab.dataplatformshaper.uservice.Resource as GenResource
 import it.agilelab.dataplatformshaper.uservice.api.intepreter.OntologyManagerHandler
@@ -44,17 +45,17 @@ object Server:
 
   def server[F[_]: Async: Network](
       session: Session,
-      typeCache: Ref[F, Map[String, EntityType]]
+      typeCache: Cache[F, String, EntityType]
   ): Resource[F, Unit] =
     val dsl = Http4sDsl[F]
     import dsl.*
 
-    given cache: Ref[F, Map[String, EntityType]] = typeCache
+    given cache: Cache[F, String, EntityType] = typeCache
 
     val repository = Rdf4jKnowledgeGraph[F](session)
-    val trms = new TraitManagementServiceInterpreter[F](repository)
-    val tms = new TypeManagementServiceInterpreter[F](trms)
-    val ims = new InstanceManagementServiceInterpreter[F](tms)
+    val trms = TraitManagementServiceInterpreter[F](repository)
+    val tms = TypeManagementServiceInterpreter[F](trms)
+    val ims = InstanceManagementServiceInterpreter[F](tms)
 
     val assetsRoutes = resourceServiceBuilder("/").toRoutes
 
@@ -66,7 +67,7 @@ object Server:
     val allRoutes =
       interfaceFileRoute <+>
         assetsRoutes <+>
-        GenResource[F]().routes(new OntologyManagerHandler[F](tms, ims, trms))
+        GenResource[F]().routes(OntologyManagerHandler[F](tms, ims, trms))
 
     for _ <- EmberServerBuilder
         .default[F]

@@ -549,12 +549,12 @@ def jsonToTupleChecked(
                 obj
                   .as[Int]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Repeated =>
                 obj
                   .as[List[Int]]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[Int].toOption
             end match
@@ -564,12 +564,12 @@ def jsonToTupleChecked(
                 obj
                   .as[LocalDate]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Repeated =>
                 obj
                   .as[List[LocalDate]]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[LocalDate].toOption
             end match
@@ -579,12 +579,12 @@ def jsonToTupleChecked(
                 obj
                   .as[Json]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Repeated =>
                 obj
                   .as[List[Json]]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[Json].toOption
             end match
@@ -594,12 +594,12 @@ def jsonToTupleChecked(
                 obj
                   .as[ZonedDateTime]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Repeated =>
                 obj
                   .as[List[ZonedDateTime]]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[ZonedDateTime].toOption
             end match
@@ -609,12 +609,12 @@ def jsonToTupleChecked(
                 obj
                   .as[Double]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Repeated =>
                 obj
                   .as[List[Double]]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[Double].toOption
             end match
@@ -624,12 +624,12 @@ def jsonToTupleChecked(
                 obj
                   .as[Float]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Repeated =>
                 obj
                   .as[List[Float]]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[Float].toOption
             end match
@@ -639,12 +639,12 @@ def jsonToTupleChecked(
                 obj
                   .as[Long]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Repeated =>
                 obj
                   .as[List[Long]]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[Long].toOption
             end match
@@ -654,12 +654,12 @@ def jsonToTupleChecked(
                 obj
                   .as[Boolean]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Repeated =>
                 obj
                   .as[List[Boolean]]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[Boolean].toOption
             end match
@@ -669,12 +669,12 @@ def jsonToTupleChecked(
                 obj
                   .as[String]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Repeated =>
                 obj
                   .as[List[String]]
                   .toOption
-                  .getOrElse(throw new IllegalArgumentException(s"Wrong value"))
+                  .getOrElse(throw IllegalArgumentException(s"Wrong value"))
               case Nullable =>
                 obj.as[String].toOption
             end match
@@ -696,7 +696,7 @@ def jsonToTupleChecked(
                   .toList
             end match
           case tpe =>
-            throw new IllegalArgumentException(s"$tpe is not supported")
+            throw IllegalArgumentException(s"$tpe is not supported")
         end match
       }
     ) *: tuple
@@ -722,7 +722,7 @@ def tupleToJsonChecked(
         pair(0), {
           val tupleFieldValue: Any = tupleFields.getOrElse(
             pair(0),
-            throw new IllegalArgumentException(s"Wrong value")
+            throw IllegalArgumentException(s"Wrong value")
           )
           pair(1) match
             case IntType(mode, _) =>
@@ -810,7 +810,7 @@ def tupleToJsonChecked(
                   Json
                     .fromDouble(tupleFieldValue.asInstanceOf[Double])
                     .getOrElse(
-                      throw new IllegalArgumentException(s"Wrong value")
+                      throw IllegalArgumentException(s"Wrong value")
                     )
                 case Repeated =>
                   Json.fromValues(
@@ -821,7 +821,7 @@ def tupleToJsonChecked(
                         Json
                           .fromDouble(el)
                           .getOrElse(
-                            throw new IllegalArgumentException(s"Wrong value")
+                            throw IllegalArgumentException(s"Wrong value")
                           )
                       )
                   )
@@ -832,7 +832,7 @@ def tupleToJsonChecked(
                       Json
                         .fromDouble(el)
                         .getOrElse(
-                          throw new IllegalArgumentException(s"Wrong value")
+                          throw IllegalArgumentException(s"Wrong value")
                         )
                     )
               end match
@@ -842,7 +842,7 @@ def tupleToJsonChecked(
                   Json
                     .fromFloat(tupleFieldValue.asInstanceOf[Float])
                     .getOrElse(
-                      throw new IllegalArgumentException(s"Wrong value")
+                      throw IllegalArgumentException(s"Wrong value")
                     )
                 case Repeated =>
                   Json.fromValues(
@@ -853,7 +853,7 @@ def tupleToJsonChecked(
                         Json
                           .fromFloat(el)
                           .getOrElse(
-                            throw new IllegalArgumentException(s"Wrong value")
+                            throw IllegalArgumentException(s"Wrong value")
                           )
                       )
                   )
@@ -864,7 +864,7 @@ def tupleToJsonChecked(
                       Json
                         .fromFloat(el)
                         .getOrElse(
-                          throw new IllegalArgumentException(s"Wrong value")
+                          throw IllegalArgumentException(s"Wrong value")
                         )
                     )
               end match
@@ -937,7 +937,7 @@ def tupleToJsonChecked(
                   )
               end match
             case tpe =>
-              throw new IllegalArgumentException(s"$tpe is not supported")
+              throw IllegalArgumentException(s"$tpe is not supported")
           end match
         }
       )
@@ -982,3 +982,57 @@ def tupleToJson(
       Right(json)
   end match
 end tupleToJson
+
+def parseTuple(tuple: Tuple, schema: Schema): Either[String, Tuple] =
+  unfoldTuple(tuple, schema, (_, _, _, _) => ()).map(_ => tuple)
+end parseTuple
+
+given Eq[Tuple] with
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf"
+    )
+  )
+  override def eqv(x: Tuple, y: Tuple): Boolean =
+    val xTupleFields = x.toArray.map(_.asInstanceOf[(String, Any)]).toMap
+    val yTupleFields = x.toArray.map(_.asInstanceOf[(String, Any)]).toMap
+    if xTupleFields.keySet === yTupleFields.keySet then
+      xTupleFields.foldLeft[Boolean](true)((a, p) =>
+        a && {
+          yTupleFields(p(0)) match
+            case x: Tuple =>
+              eqv(x, p(1).asInstanceOf[Tuple])
+            case x =>
+              x.equals(p(1))
+          end match
+        }
+      )
+    else false
+  end eqv
+end given
+
+given Eq[DataType] with
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.asInstanceOf",
+      "scalafix:DisableSyntax.isInstanceOf",
+      "scalafix:DisableSyntax.=="
+    )
+  )
+  def eqv(x: DataType, y: DataType): Boolean =
+    x match
+      case struct: StructType if y.isInstanceOf[StructType] =>
+        struct === y.asInstanceOf[StructType]
+      case _ =>
+        x == y
+  end eqv
+end given
+
+given Eq[StructType] with
+  def eqv(x: StructType, y: StructType): Boolean =
+    val c1: Map[String, DataType] = x.records.toMap
+    val c2: Map[String, DataType] = y.records.toMap
+    val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
+    ret
+  end eqv
+end given

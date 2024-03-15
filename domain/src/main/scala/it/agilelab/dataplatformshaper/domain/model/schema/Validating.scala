@@ -14,7 +14,7 @@ def generateCueModel(schema: Schema): String =
       schema: StructType,
       currentIndentation: Int
   ): String =
-    val stringBuilder = new StringBuilder()
+    val stringBuilder = StringBuilder()
 
     @inline def sanitizeAttributeName(attributeName: String) =
       if attributeName.contains("-") then s"'$attributeName'" else attributeName
@@ -154,7 +154,7 @@ def cueValidateModel(
 
   Using.Manager { use =>
     val cueFile = use(File.createTempFile("test", ".cue"))
-    val pw1 = use(new PrintWriter(cueFile))
+    val pw1 = use(PrintWriter(cueFile))
     val model = generateCueModel(schema)
     pw1.write(model)
     pw1.flush()
@@ -185,8 +185,8 @@ def cueValidate(schema: Schema, values: Tuple): Either[List[String], Unit] =
   Using.Manager { use =>
     val yamlFile = use(File.createTempFile("test", ".yaml"))
     val cueFile = use(File.createTempFile("test", ".cue"))
-    val pw1 = use(new PrintWriter(yamlFile))
-    val pw2 = use(new PrintWriter(cueFile))
+    val pw1 = use(PrintWriter(yamlFile))
+    val pw2 = use(PrintWriter(cueFile))
     val doc = tupleToJson(values, schema)
       .map(_.asYaml.spaces2)
       .toOption

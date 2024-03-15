@@ -15,11 +15,6 @@ object Dependencies {
     lazy val jdbcDriver  = namespace % "virtjdbc4_2" % virtuosoJDBCVersion
   }
 
-  private[this] object dataTools {
-    lazy val namespace = "io.github.data-tools"
-    lazy val dataTypesCore = namespace %% "big-data-types-core" % dataToolsVersion
-  }
-
   private[this] object http4s {
     lazy val namespace   = "org.http4s"
     lazy val emberServer = namespace %% "http4s-ember-server" % http4sVersion
@@ -50,6 +45,16 @@ object Dependencies {
     lazy val yaml      = namespace %% "circe-yaml"    % circeYamlVersion
   }
 
+  private[this] object mules {
+    lazy val namespace = "io.chrisdavenport"
+    lazy val caffeine  = namespace %% "mules-caffeine" % mulesVersion
+  }
+
+  private[this] object el {
+    lazy val api  = "jakarta.el" % "jakarta.el-api" % elApiVersion
+    lazy val impl = "org.glassfish.expressly" % "expressly" % elImplVersion
+  }
+
   private[this] object calcite {
     lazy val namespace = "org.apache.calcite"
     lazy val babel     = namespace % "calcite-core" % calciteVersion
@@ -64,7 +69,7 @@ object Dependencies {
     lazy val namespace = "ch.qos.logback"
     lazy val classic   = namespace % "logback-classic" % logbackVersion
   }
-  
+
   private[this] object scalatest {
     lazy val namespace = "org.scalatest"
     lazy val core      = namespace %% "scalatest" % scalatestVersion
@@ -98,7 +103,9 @@ object Dependencies {
       calcite.babel                % Compile,
       logging.scala                % Compile,
       logback.classic              % Compile,
-      dataTools.dataTypesCore      % Compile,
+      mules.caffeine               % Compile,
+      el.api                       % Compile,
+      el.impl                      % Compile,
       http4s.emberClient           % Test,
       testcontainers.core          % Test,
       cats.effectScalatest         % Test,

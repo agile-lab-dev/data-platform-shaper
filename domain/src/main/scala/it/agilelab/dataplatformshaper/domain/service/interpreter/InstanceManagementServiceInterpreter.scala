@@ -4,7 +4,6 @@ import cats.*
 import cats.data.*
 import cats.effect.*
 import cats.implicits.*
-import io.circe.Json
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
@@ -12,327 +11,29 @@ import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
-import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{
   InstanceManagementService,
   ManagementServiceError,
   TypeManagementService
 }
+import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
-import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
-import org.eclipse.rdf4j.model.vocabulary.RDF
-import org.eclipse.rdf4j.model.{IRI, Literal, Statement}
+import org.eclipse.rdf4j.model.util.Values.{iri, triple}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import scala.collection.mutable.Stack
 
-import java.time.{LocalDate, ZonedDateTime}
 import java.util.UUID
 import scala.language.{implicitConversions, postfixOps}
 
 class InstanceManagementServiceInterpreter[F[_]: Sync](
     typeManagementService: TypeManagementService[F]
-) extends InstanceManagementService[F]:
+) extends InstanceManagementService[F]
+    with InstanceManagementServiceInterpreterCommonFunctions[F]:
 
   given logger: Logger[F] = Slf4jLogger.getLogger[F]
 
   val repository: KnowledgeGraph[F] = typeManagementService.repository
-
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.var"
-    )
-  )
-  private def createInstanceNoCheck(
-      entityId: String,
-      instanceTypeName: String,
-      tuple: Tuple,
-      statementsToRemove: List[Statement]
-  ): F[Either[ManagementServiceError, String]] =
-
-    val entity = iri(ns, entityId)
-
-    val previousEntityIriStack = collection.mutable.Stack(entity)
-    var currentEntityIri = entity
-    var statements = List.empty[Statement]
-
-    statements = statement(
-      triple(entity, NS.ISCLASSIFIEDBY, iri(ns, instanceTypeName)),
-      L3
-    ) :: statements
-    statements =
-      statement(triple(entity, RDF.TYPE, NS.ENTITY), L3) :: statements
-
-    @SuppressWarnings(
-      Array(
-        "scalafix:DisableSyntax.asInstanceOf"
-      )
-    )
-    def emitStatement(
-        currentPath: String,
-        tpe: DataType,
-        value: Any,
-        foldingPhase: FoldingPhase
-    ): Unit =
-      tpe match
-        case StringType(mode, _) =>
-          val lit =
-            mode match
-              case Required | Repeated => literal(value.asInstanceOf[String])
-              case Nullable =>
-                value
-                  .asInstanceOf[Option[String]]
-                  .fold(literal("null"))(literal)
-            end match
-          statements = statement(
-            triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
-          ) :: statements
-        case IntType(mode, _) =>
-          val lit =
-            mode match
-              case Required | Repeated =>
-                literal(value.asInstanceOf[Int])
-              case Nullable =>
-                value.asInstanceOf[Option[Int]].fold(literal("null"))(literal)
-            end match
-          statements = statement(
-            triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
-          ) :: statements
-        case DateType(mode, _) =>
-          val lit =
-            mode match
-              case Required | Repeated =>
-                literal(value.asInstanceOf[LocalDate])
-              case Nullable =>
-                value
-                  .asInstanceOf[Option[LocalDate]]
-                  .fold(literal("null"))(literal)
-            end match
-          statements = statement(
-            triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
-          ) :: statements
-        case JsonType(mode) =>
-          val lit =
-            mode match
-              case Required | Repeated =>
-                literal(value.asInstanceOf[Json])
-              case Nullable =>
-                value
-                  .asInstanceOf[Option[Json]]
-                  .fold(literal("null"))(literal)
-            end match
-          statements = statement(
-            triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
-          ) :: statements
-        case TimestampType(mode, _) =>
-          val lit =
-            mode match
-              case Required | Repeated =>
-                literal(value.asInstanceOf[ZonedDateTime].toString)
-              case Nullable =>
-                value
-                  .asInstanceOf[Option[ZonedDateTime]]
-                  .map(_.toString)
-                  .fold(literal("null"))(literal)
-            end match
-          statements = statement(
-            triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
-          ) :: statements
-        case DoubleType(mode, _) =>
-          val lit =
-            mode match
-              case Required | Repeated =>
-                literal(value.asInstanceOf[Double])
-              case Nullable =>
-                value
-                  .asInstanceOf[Option[Double]]
-                  .fold(literal("null"))(literal)
-            end match
-          statements = statement(
-            triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
-          ) :: statements
-        case FloatType(mode, _) =>
-          val lit =
-            mode match
-              case Required | Repeated =>
-                literal(value.asInstanceOf[Float])
-              case Nullable =>
-                value.asInstanceOf[Option[Float]].fold(literal("null"))(literal)
-            end match
-          statements = statement(
-            triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
-          ) :: statements
-        case LongType(mode, _) =>
-          val lit =
-            mode match
-              case Required | Repeated =>
-                literal(value.asInstanceOf[Long])
-              case Nullable =>
-                value.asInstanceOf[Option[Long]].fold(literal("null"))(literal)
-            end match
-          statements = statement(
-            triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
-          ) :: statements
-        case BooleanType(mode, _) =>
-          val lit =
-            mode match
-              case Required | Repeated =>
-                literal(value.asInstanceOf[Boolean])
-              case Nullable =>
-                value
-                  .asInstanceOf[Option[Boolean]]
-                  .fold(literal("null"))(literal)
-            end match
-          statements = statement(
-            triple(currentEntityIri, iri(ns, currentPath), lit),
-            L3
-          ) :: statements
-        case StructType(_, _) =>
-          foldingPhase match
-            case BeginFoldingStruct =>
-              val structIri = iri(ns, UUID.randomUUID.toString)
-              statements = statement(
-                triple(currentEntityIri, iri(ns, currentPath), structIri),
-                L3
-              ) :: statements
-              previousEntityIriStack.push(currentEntityIri)
-              currentEntityIri = structIri
-            case EndFoldingStruct =>
-              currentEntityIri = previousEntityIriStack.pop()
-            case _ =>
-              ()
-          end match
-        case _ =>
-          ()
-      end match
-    end emitStatement
-
-    val getSchema: F[Either[ManagementServiceError, Schema]] =
-      summon[Functor[F]].map(typeManagementService.read(instanceTypeName))(
-        _.map(_.schema)
-      )
-
-    (for {
-      schema <- EitherT[F, ManagementServiceError, Schema](getSchema)
-      _ <- traceT(s"Retrieved schema $schema for type name $instanceTypeName")
-      _ <- EitherT[F, ManagementServiceError, Unit](
-        summon[Applicative[F]].pure(
-          cueValidate(schema, tuple).leftMap(errors =>
-            InstanceValidationError(errors)
-          )
-        )
-      )
-      es <- EitherT[F, ManagementServiceError, String](
-        summon[Applicative[F]].pure(
-          unfoldTuple(
-            tuple,
-            schema,
-            emitStatement
-          ) match
-            case Left(parsingError) =>
-              Left[ManagementServiceError, String](
-                TupleIsNotConformToSchema(parsingError)
-              )
-            case Right(_) =>
-              Right[ManagementServiceError, String]("")
-        )
-      )
-      _ <- traceT(s"Statements emitted $es")
-      id <- EitherT[F, ManagementServiceError, String](
-        summon[Functor[F]].map(
-          repository.removeAndInsertStatements(
-            statements,
-            statementsToRemove
-          )
-        )(_ => Right[ManagementServiceError, String](entityId))
-      )
-      _ <- traceT(
-        s"Statements emitted creating the instance $id:\n${statements.mkString("\n")}\n"
-      )
-    } yield id).value
-  end createInstanceNoCheck
-
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.asInstanceOf",
-      "scalafix:DisableSyntax.=="
-    )
-  )
-  private def fetchStatementsForInstance(
-      instanceId: String
-  ): F[List[Statement]] =
-    val query: String =
-      s"""
-         |PREFIX ns:  <${ns.getName}>
-         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-         |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-         |SELECT ?s ?p ?o WHERE {
-         | BIND(iri("${ns.getName}$instanceId") as ?s)
-         |    ?s ?p ?o .
-         |  }
-         |""".stripMargin
-    val statements: F[List[Statement]] =
-      repository
-        .evaluateQuery(query)
-        .flatMap(ibs =>
-          Traverse[List].sequence(
-            ibs
-              .map(bs =>
-                val sb = bs.getBinding("s")
-                val pb = bs.getBinding("p")
-                val ob = bs.getBinding("o")
-                val s = iri(sb.getValue.stringValue)
-                val p = iri(pb.getValue.stringValue)
-                if ob.getValue.isLiteral
-                then
-                  summon[Applicative[F]].pure(
-                    List(
-                      statement(
-                        triple(s, p, ob.getValue.asInstanceOf[Literal]),
-                        L3
-                      )
-                    )
-                  )
-                else
-                  if p == RDF.TYPE || p == NS.ISCLASSIFIEDBY
-                  then
-                    summon[Applicative[F]].pure(
-                      List(
-                        statement(
-                          triple(s, p, iri(ob.getValue.stringValue)),
-                          L3
-                        )
-                      )
-                    )
-                  else
-                    val stmt = statement(
-                      triple(s, p, iri(ob.getValue.stringValue)),
-                      L3
-                    )
-                    fetchStatementsForInstance(
-                      iri(ob.getValue.stringValue).getLocalName
-                    ).map(statements => stmt :: statements)
-                  end if
-                end if
-              )
-              .toList
-          )
-        )
-        .map(_.flatten)
-    statements
-  end fetchStatementsForInstance
 
   override def create(
       instanceTypeName: String,
@@ -344,7 +45,15 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       result <- EitherT {
         if exist
         then
-          createInstanceNoCheck(entityId, instanceTypeName, values, List.empty)
+          createInstanceNoCheck(
+            logger,
+            typeManagementService,
+            entityId,
+            instanceTypeName,
+            values,
+            List.empty,
+            List.empty
+          )
         else
           summon[Applicative[F]]
             .pure(
@@ -366,277 +75,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       instanceId: String
   ): F[Either[ManagementServiceError, Entity]] =
 
-    def fetchFieldsForInstance(
-        instanceId: String
-    ): F[List[(String, String)]] = {
-      val query: String =
-        s"""
-           |PREFIX ns:  <${ns.getName}>
-           |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-           |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-           |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-           |SELECT ?field ?value WHERE {
-           | BIND(iri("${ns.getName}$instanceId") as ?entity)
-           |    ?entity ?field ?value .
-           |    FILTER ( ?value not in ( ns:Entity ))
-           |  }
-           |""".stripMargin
-
-      val bindings = for {
-        _ <- logger.trace(
-          s"Evaluated query $query for retrieving instance $instanceId"
-        )
-        ibs <- repository.evaluateQuery(query)
-      } yield ibs.toList
-
-      val fieldsAndValues = bindings.map(bs =>
-        bs.map(b =>
-          val value = b.getBinding("value")
-          val field: (String, String) = (
-            iri(b.getBinding("field").getValue.stringValue()).getLocalName,
-            value.getValue.stringValue()
-          )
-          field
-        )
-      )
-
-      fieldsAndValues
-    }
-
-    def fetchEntityFieldsAndTypeName(instanceId: String) = {
-      fetchFieldsForInstance(instanceId)
-        .map(lp => {
-          val entityTypeNameOption = lp
-            .filter(p => p(0) === "isClassifiedBy")
-            .map(_(1))
-            .headOption
-            .map(value => iri(value).getLocalName)
-
-          val entityTypeName = entityTypeNameOption.getOrElse("")
-          val fields = lp.filter(p => p(0) =!= "isClassifiedBy")
-          (entityTypeName, fields)
-        })
-    }
-
-    def handlePrimitiveDataTypes(
-        fieldName: String,
-        dataType: DataType,
-        fieldValue: Option[List[(String, String)]]
-    ): F[Tuple] =
-      val tuple = dataType match
-        case StringType(mode, _) =>
-          fieldValue match
-            case Some(value) =>
-              mode match
-                case Required =>
-                  fieldName -> value(0)(1)
-                case Repeated =>
-                  fieldName -> value.map(_(1)).reverse
-                case Nullable =>
-                  if value(0)(1) === "null" then
-                    fieldName -> Option.empty[String]
-                  else fieldName -> Some(value(0)(1))
-            case None =>
-              fieldName -> List[String]()
-        case DateType(mode, _) =>
-          fieldValue match
-            case Some(value) =>
-              mode match
-                case Required =>
-                  fieldName -> LocalDate.parse(value(0)(1))
-                case Repeated =>
-                  fieldName -> value
-                    .map(date => LocalDate.parse(date(1)))
-                    .reverse
-                case Nullable =>
-                  if value(0)(1) === "null" then
-                    fieldName -> Option.empty[LocalDate]
-                  else fieldName -> Some(LocalDate.parse(value(0)(1)))
-            case None =>
-              fieldName -> List[LocalDate]()
-        case JsonType(mode) =>
-          fieldValue match
-            case Some(value) =>
-              mode match
-                case Required =>
-                  fieldName -> io.circe.parser.parse(value(0)(1)).getOrElse("")
-                case Repeated =>
-                  fieldName -> value
-                    .map(date => io.circe.parser.parse(date(1)).getOrElse(""))
-                    .reverse
-                case Nullable =>
-                  if value(0)(1) === "null" then fieldName -> Option.empty[Json]
-                  else
-                    fieldName -> Some(
-                      io.circe.parser.parse(value(0)(1)).getOrElse("")
-                    )
-            case None =>
-              fieldName -> List[Json]()
-        case TimestampType(mode, _) =>
-          fieldValue match
-            case Some(value) =>
-              mode match
-                case Required =>
-                  fieldName -> ZonedDateTime.parse(value(0)(1))
-                case Repeated =>
-                  fieldName -> value
-                    .map(instant => ZonedDateTime.parse(instant(1)))
-                    .reverse
-                case Nullable =>
-                  if value(0)(1) === "null" then
-                    fieldName -> Option.empty[ZonedDateTime]
-                  else fieldName -> Some(ZonedDateTime.parse(value(0)(1)))
-            case None =>
-              fieldName -> List[ZonedDateTime]()
-        case DoubleType(mode, _) =>
-          fieldValue match
-            case Some(value) =>
-              mode match
-                case Required =>
-                  fieldName -> value(0)(1).toDouble
-                case Repeated =>
-                  fieldName -> value.map(_(1).toDouble).reverse
-                case Nullable =>
-                  if value(0)(1) === "null" then
-                    fieldName -> Option.empty[Double]
-                  else fieldName -> Some(value(0)(1).toDouble)
-            case None =>
-              fieldName -> List[Double]()
-        case FloatType(mode, _) =>
-          fieldValue match
-            case Some(value) =>
-              mode match
-                case Required =>
-                  fieldName -> value(0)(1).toFloat
-                case Repeated =>
-                  fieldName -> value.map(_(1).toFloat).reverse
-                case Nullable =>
-                  if value(0)(1) === "null" then
-                    fieldName -> Option.empty[Float]
-                  else fieldName -> Some(value(0)(1).toFloat)
-            case None =>
-              fieldName -> List[Float]()
-        case LongType(mode, _) =>
-          fieldValue match
-            case Some(value) =>
-              mode match
-                case Required =>
-                  fieldName -> value(0)(1).toLong
-                case Repeated =>
-                  fieldName -> value.map(_(1).toLong).reverse
-                case Nullable =>
-                  if value(0)(1) === "null" then fieldName -> Option.empty[Long]
-                  else fieldName -> Some(value(0)(1).toLong)
-            case None =>
-              fieldName -> List[Long]()
-        case BooleanType(mode, _) =>
-          fieldValue match
-            case Some(value) =>
-              mode match
-                case Required =>
-                  fieldName -> value(0)(1).toBoolean
-                case Repeated =>
-                  fieldName -> value.map(_(1).toBoolean).reverse
-                case Nullable =>
-                  if value(0)(1) === "null" then
-                    fieldName -> Option.empty[Boolean]
-                  else fieldName -> Some(value(0)(1).toBoolean)
-            case None =>
-              fieldName -> List[Boolean]()
-        case IntType(mode, _) =>
-          fieldValue match
-            case Some(value) =>
-              mode match
-                case Required =>
-                  fieldName -> value(0)(1).toInt
-                case Repeated =>
-                  fieldName -> value.map(_(1).toInt).reverse
-                case Nullable =>
-                  if value(0)(1) === "null" then fieldName -> Option.empty[Int]
-                  else fieldName -> Some(value(0)(1).toInt)
-            case None =>
-              fieldName -> List[Int]()
-        case _ => EmptyTuple
-      Applicative[F].pure(tuple)
-    end handlePrimitiveDataTypes
-
-    def handleStructDataType(
-        fieldName: String,
-        dataType: StructType,
-        maybeFieldValue: Option[List[(String, String)]]
-    ): F[Tuple] =
-      def createTupleForStructDataType(
-          dataType: StructType,
-          fieldValue: (String, String)
-      ): F[Tuple] =
-        val nestedStructIRI: IRI = iri(fieldValue(1))
-        val nestedStructFields: F[List[(String, String)]] =
-          fetchFieldsForInstance(nestedStructIRI.getLocalName)
-        nestedStructFields.flatMap(x => fieldsToTuple(x, dataType))
-      end createTupleForStructDataType
-
-      maybeFieldValue match
-        case Some(fieldValue) =>
-          dataType.mode match
-            case Required =>
-              val tuple =
-                createTupleForStructDataType(dataType, fieldValue.head)
-              tuple.map(t => fieldName -> t)
-            case Repeated =>
-              val listOfFTuples: List[F[Tuple]] =
-                fieldValue.map(createTupleForStructDataType(dataType, _))
-              val tuples: F[List[Tuple]] =
-                Traverse[List].sequence(listOfFTuples)
-              tuples.map(ts =>
-                fieldName -> ts.reverse
-              ) // TODO it could break with Virtuoso
-            case Nullable =>
-              if fieldValue(0)(1) === "null" then
-                Applicative[F].pure(fieldName -> Option.empty[Tuple])
-              else
-                val tuple =
-                  createTupleForStructDataType(dataType, fieldValue.head)
-                tuple.map(t => fieldName -> Some(t))
-        case None =>
-          Applicative[F].pure(fieldName -> None)
-    end handleStructDataType
-
-    def fieldsToTuple(
-        fields: List[(String, String)],
-        struct: StructType
-    ): F[Tuple] =
-      val groupedFields: Map[String, List[(String, String)]] =
-        fields.groupBy(_(0))
-      val tuples: List[F[Tuple]] = struct.records
-        .map(record =>
-          val (fieldName, dataType) = record
-          val fieldValue = groupedFields.get(fieldName)
-          dataType match
-            case _: StringType =>
-              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: IntType =>
-              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: DateType =>
-              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: JsonType =>
-              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: TimestampType =>
-              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: DoubleType =>
-              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: FloatType =>
-              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: LongType =>
-              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case _: BooleanType =>
-              handlePrimitiveDataTypes(fieldName, dataType, fieldValue)
-            case struct: StructType =>
-              handleStructDataType(fieldName, struct, fieldValue)
-            case _ => Applicative[F].pure(EmptyTuple)
-        )
-      Traverse[List].sequence(tuples).map(_.fold(EmptyTuple)(_ :* _))
-    end fieldsToTuple
-
     val res = for {
       _ <- traceT(s"About to read instance with id: $instanceId")
       fe <- EitherT[
@@ -644,7 +82,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         ManagementServiceError,
         (String, List[(String, String)])
       ](
-        summon[Functor[F]].map(fetchEntityFieldsAndTypeName(instanceId))(
+        summon[Functor[F]].map(
+          fetchEntityFieldsAndTypeName(logger, repository, instanceId)
+        )(
           Right[ManagementServiceError, (String, List[(String, String)])]
         )
       )
@@ -652,7 +92,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       entityType: EntityType <- EitherT(typeManagementService.read(fe(0)))
       _ <- traceT(s"Retrieved the entity type $entityType with name ${fe(0)} ")
       tuple <- EitherT[F, ManagementServiceError, Tuple](
-        summon[Functor[F]].map(fieldsToTuple(fe(1), entityType.schema))(
+        summon[Functor[F]].map(
+          fieldsToTuple(logger, repository, fe(1), entityType.schema)
+        )(
           Right[ManagementServiceError, Tuple]
         )
       )
@@ -693,12 +135,30 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       values: Tuple
   ): F[Either[ManagementServiceError, String]] =
     val statementsToRemove: F[List[Statement]] = fetchStatementsForInstance(
+      repository,
       instanceId
     )
     val res: F[Either[ManagementServiceError, String]] = (for {
       _ <- EitherT.liftF(
         logger.trace(s"About to remove the instance $instanceId")
       )
+      entity <- EitherT(read(instanceId))
+      hasTrait <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          entity.entityTypeName,
+          "MappingTarget"
+        )
+      )
+      _ <-
+        if hasTrait then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError.UpdatedTypeIsMappingTargetError(
+              entity.entityTypeName
+            )
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
       stmts <- EitherT.liftF(statementsToRemove)
       _ <- EitherT.liftF(
         logger.trace(
@@ -724,7 +184,15 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         logger.trace(s"$instanceId is classified by $instanceType")
       )
       result <- EitherT(
-        createInstanceNoCheck(instanceId, instanceType, values, stmts)
+        createInstanceNoCheck(
+          logger,
+          typeManagementService,
+          instanceId,
+          instanceType,
+          values,
+          List.empty,
+          stmts
+        )
       )
     } yield result).value
 
@@ -742,7 +210,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   ): F[Either[ManagementServiceError, Unit]] =
     val res: F[Either[ManagementServiceError, Unit]] = (for {
       _ <- logger.trace(s"About to remove the instance $instanceId")
-      stmts <- fetchStatementsForInstance(instanceId)
+      stmts <- fetchStatementsForInstance(repository, instanceId)
       _ <- logger.trace(
         s"About to remove the statements \n${stmts.mkString("\n")}"
       )
@@ -836,7 +304,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       instanceTypeName: String,
       predicate: Option[SearchPredicate],
       returnEntities: Boolean,
-      limit: Option[BigInt]
+      limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val limitClause = limit.map(l => s"LIMIT $l").getOrElse("")
 
@@ -851,7 +319,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |    {
          |        BIND(iri("${ns.getName}$instanceTypeName") as ?entityType)
          |        ?i rdf:type ns:Entity .
-         |
          |        ?i ns:isClassifiedBy ?entityType .
          |    }
          |    ${predicate.fold("")(_.querySegment)}
@@ -895,7 +362,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       instanceTypeName: String,
       query: String,
       returnEntities: Boolean,
-      limit: Option[BigInt]
+      limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val predicate: F[Either[ManagementServiceError, Option[SearchPredicate]]] =
       summon[Applicative[F]].pure(

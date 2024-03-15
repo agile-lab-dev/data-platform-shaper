@@ -5,6 +5,7 @@ import cats.data.*
 import cats.effect.*
 import cats.syntax.*
 import cats.syntax.all.*
+import io.chrisdavenport.mules.Cache
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
@@ -30,10 +31,11 @@ import scala.language.{implicitConversions, postfixOps}
 
 class TypeManagementServiceInterpreter[F[_]: Sync](
     traitManagementService: TraitManagementService[F]
-)(using cache: Ref[F, Map[String, EntityType]])
+)(using cache: Cache[F, String, EntityType])
     extends TypeManagementService[F]:
 
   val repository: KnowledgeGraph[F] = traitManagementService.repository
+
   @SuppressWarnings(
     Array(
       "scalafix:DisableSyntax.=="
@@ -615,10 +617,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         then
           (for {
             retrieved <- EitherT(
-              summon[Functor[F]].map(cache.get)(m =>
-                Right[ManagementServiceError, Option[EntityType]](
-                  m.get(instanceTypeName)
-                )
+              summon[Functor[F]].map(cache.lookup(instanceTypeName))(
+                Right[ManagementServiceError, Option[EntityType]]
               )
             )
             _ <- traceT(
@@ -656,10 +656,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
                     )
                     et <- EitherT(
                       cache
-                        .modify(map =>
-                          (map + (instanceTypeName -> entityType), entityType)
+                        .insert(instanceTypeName, entityType)
+                        .map(_ =>
+                          Right[ManagementServiceError, EntityType](entityType)
                         )
-                        .map(Right[ManagementServiceError, EntityType])
                     )
                   } yield et).value
                 )(et =>
@@ -765,7 +765,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
 
               case Right(false) =>
                 val schemaF = getSchemaFromEntityType(instanceTypeName)
-                cache.modify(map => (map - instanceTypeName, ())) *>
+                cache.delete(instanceTypeName) *>
                   summon[Monad[F]].flatMap(schemaF) { schema =>
                     val entityType = EntityType(instanceTypeName, schema)
                     createOrDelete(entityType, isCreation = false)
@@ -861,14 +861,9 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         )(_ => Right[ManagementServiceError, Unit](()))
       )
       _ <- EitherT(
-        cache
-          .modify(map =>
-            (
-              map + (entityTypeRequest.name -> entityTypeRequest),
-              entityTypeRequest
-            )
-          )
-          .map(Right[ManagementServiceError, EntityType])
+        summon[Functor[F]].map(
+          cache.insert(entityTypeRequest.name, entityTypeRequest)
+        )(_ => Right[ManagementServiceError, Unit](()))
       )
     } yield ()).value
   end updateConstraints

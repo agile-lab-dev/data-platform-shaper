@@ -1,6 +1,8 @@
 package it.agilelab.dataplatformshaper.uservice.server.impl
 import cats.effect.std.Random
-import cats.effect.{ExitCode, IO, IOApp, Ref}
+import cats.effect.{ExitCode, IO, IOApp}
+import io.chrisdavenport.mules.caffeine.CaffeineCache
+import io.chrisdavenport.mules.{Cache, TimeSpec}
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
@@ -15,12 +17,17 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
 
+import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 object Main extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
-    val typeCacheRef: IO[Ref[IO, Map[String, EntityType]]] =
-      Ref[IO].of(Map.empty[String, EntityType])
+    val typeCacheIO: IO[Cache[IO, String, EntityType]] =
+      CaffeineCache.build[IO, String, EntityType](
+        Some(TimeSpec.unsafeFromDuration(1800.second)),
+        None,
+        None
+      ) // TODO magic number
     val server = for {
       _ <- createRepository
       session = Session.getSession(
@@ -33,7 +40,7 @@ object Main extends IOApp:
         graphdbRepositoryTls
       )
       _ <- loadInitialOntologies(session)
-      typeCache <- typeCacheRef
+      typeCache <- typeCacheIO
     } yield {
       Server.server[IO](session, typeCache)
     }

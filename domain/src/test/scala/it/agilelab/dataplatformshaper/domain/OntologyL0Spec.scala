@@ -1,7 +1,9 @@
 package it.agilelab.dataplatformshaper.domain
 
-import cats.data.EitherT
-import cats.effect.{IO, Ref}
+import cats.data.*
+import cats.effect.*
+import io.chrisdavenport.mules.caffeine.CaffeineCache
+import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.*
 import io.circe.parser.*
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
@@ -18,44 +20,28 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
-import org.scalactic.Equality
 import org.scalatest.Inside.inside
 
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.collection.immutable.List
+import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Right
 
 @SuppressWarnings(
   Array(
-    "scalafix:DisableSyntax.asInstanceOf",
-    "scalafix:DisableSyntax.isInstanceOf",
-    "scalafix:DisableSyntax.=="
+    "scalafix:DisableSyntax.asInstanceOf"
   )
 )
 class OntologyL0Spec extends CommonSpec:
 
-  given Equality[DataType] with
-    def areEqual(x: DataType, y: Any): Boolean =
-      x match
-        case struct: StructType if y.isInstanceOf[StructType] =>
-          struct === y.asInstanceOf[StructType]
-        case _ =>
-          x == y
-    end areEqual
-  end given
-
-  given Equality[StructType] with
-    def areEqual(x: StructType, y: Any): Boolean =
-      val c1: Map[String, DataType] = x.records.toMap
-      val c2: Map[String, DataType] = y.asInstanceOf[StructType].records.toMap
-      val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
-      ret
-    end areEqual
-  end given
-
-  given cache: Ref[IO, Map[String, EntityType]] =
-    Ref[IO].of(Map.empty[String, EntityType]).unsafeRunSync()
+  given cache: Cache[IO, String, EntityType] = CaffeineCache
+    .build[IO, String, EntityType](
+      Some(TimeSpec.unsafeFromDuration(1800.second)),
+      None,
+      None
+    )
+    .unsafeRunSync()
 
   val fileBasedDataCollectionTypeSchema: StructType = StructType(
     List(
@@ -520,8 +506,8 @@ class OntologyL0Spec extends CommonSpec:
       session.use(session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val entityType = EntityType(
           "TestType",
@@ -530,7 +516,11 @@ class OntologyL0Spec extends CommonSpec:
 
         service.create(entityType) *>
           service.read("TestType").map(_.map(_.schema))
-      ) asserting (_.map(_ === schema) shouldBe Right(true))
+      ) asserting (_.map(sc =>
+        import cats.syntax.all.*
+        import it.agilelab.dataplatformshaper.domain.model.schema.given
+        sc === schema
+      ) shouldBe Right(true))
     }
   }
 
@@ -574,8 +564,8 @@ class OntologyL0Spec extends CommonSpec:
       session.use(session => {
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val entityType = EntityType(
           "TestDeleteType",
@@ -585,10 +575,10 @@ class OntologyL0Spec extends CommonSpec:
         for {
           _ <- service.create(entityType)
           _ <- service.read(entityType.name)
-          inCacheAfterRead <- cache.get.map(_.keySet(entityType.name))
+          inCacheAfterRead <- cache.lookup(entityType.name).map(_.isDefined)
           deleteResult <- service.delete("TestDeleteType")
           readResult <- service.read("TestDeleteType")
-          inCacheAfterDeleted <- cache.get.map(_.keySet(entityType.name))
+          inCacheAfterDeleted <- cache.lookup(entityType.name).map(_.isDefined)
         } yield (
           inCacheAfterRead,
           deleteResult,
@@ -616,8 +606,8 @@ class OntologyL0Spec extends CommonSpec:
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         val entityType = l0.EntityType(
           "FileBasedDataCollectionType",
           Set("DataCollection"),
@@ -646,8 +636,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         val entityType = l0.EntityType(
           "TraitExample",
           Set("NonExistingTrait"),
@@ -663,7 +653,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Caching entity type definitions" - {
     "works" in {
-      cache.get.asserting(_.size shouldBe 1)
+      cache.lookup("TestType").map(_.isDefined shouldBe true)
     }
   }
 
@@ -707,8 +697,8 @@ class OntologyL0Spec extends CommonSpec:
       session.use(session => {
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val fatherEntityType = EntityType(
           "FatherDeleteEntityType",
@@ -726,10 +716,14 @@ class OntologyL0Spec extends CommonSpec:
           _ <- service.read(fatherEntityType.name)
           _ <- service.create(sonEntityType)
           _ <- service.read(sonEntityType.name)
-          inCacheAfterRead <- cache.get.map(_.keySet(fatherEntityType.name))
+          inCacheAfterRead <- cache
+            .lookup(fatherEntityType.name)
+            .map(_.isDefined)
           deleteResult <- service.delete("FatherDeleteEntityType")
           readResult <- service.read("FatherDeleteEntityType")
-          inCacheAfterDeleted <- cache.get.map(_.keySet(fatherEntityType.name))
+          inCacheAfterDeleted <- cache
+            .lookup(fatherEntityType.name)
+            .map(_.isDefined)
         } yield (
           inCacheAfterRead,
           deleteResult,
@@ -741,10 +735,11 @@ class OntologyL0Spec extends CommonSpec:
               true,
               Left(ManagementServiceError.TypeIsFatherError(_)),
               Right(_),
-              _
+              true
             ) =>
           succeed
-        case _ => fail("EntityType was not deleted successfully")
+        case x =>
+          fail("EntityType was not deleted successfully")
       }
     }
   }
@@ -774,9 +769,9 @@ class OntologyL0Spec extends CommonSpec:
         session.use { session =>
           val repository: Rdf4jKnowledgeGraph[IO] =
             Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val service = new TypeManagementServiceInterpreter[IO](trservice)
-          val ims = new InstanceManagementServiceInterpreter[IO](service)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val service = TypeManagementServiceInterpreter[IO](trservice)
+          val ims = InstanceManagementServiceInterpreter[IO](service)
 
           val entityType = EntityType(
             "DataProductType",
@@ -784,7 +779,7 @@ class OntologyL0Spec extends CommonSpec:
           )
 
           (for {
-            _ <- EitherT.right(service.create(entityType))
+            _ <- EitherT.liftF(service.create(entityType))
             _ <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp1")))
             deleteResult <- EitherT(service.delete("DataProductType"))
             readResult <- EitherT.liftF(service.read("DataProductType"))
@@ -823,9 +818,9 @@ class OntologyL0Spec extends CommonSpec:
         session.use { session =>
           val repository: Rdf4jKnowledgeGraph[IO] =
             Rdf4jKnowledgeGraph[IO](session)
-          val trservice = new TraitManagementServiceInterpreter[IO](repository)
-          val service = new TypeManagementServiceInterpreter[IO](trservice)
-          val ims = new InstanceManagementServiceInterpreter[IO](service)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val service = TypeManagementServiceInterpreter[IO](trservice)
+          val ims = InstanceManagementServiceInterpreter[IO](service)
 
           val fatherEntityType = EntityType(
             "FatherType",
@@ -839,8 +834,8 @@ class OntologyL0Spec extends CommonSpec:
           )
 
           (for {
-            _ <- EitherT.right(service.create(fatherEntityType))
-            _ <- EitherT.right(service.create(sonEntityType))
+            _ <- EitherT.liftF(service.create(fatherEntityType))
+            _ <- EitherT.liftF(service.create(sonEntityType))
             _ <- EitherT(ims.create("SonType", Tuple1("name" -> "dp1")))
             deleteResult <- EitherT(service.delete("FatherType"))
             readResult <- EitherT.liftF(service.read("FatherType"))
@@ -867,8 +862,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val entityType = EntityType(
           "RepeatedStructTestType",
@@ -877,7 +872,11 @@ class OntologyL0Spec extends CommonSpec:
 
         service.create(entityType) *>
           service.read("RepeatedStructTestType").map(_.map(_.schema))
-      ) asserting (_.map(_ === repeatedTypeSchema) shouldBe Right(true))
+      ) asserting (_.map(sc =>
+        import cats.syntax.all.*
+        import it.agilelab.dataplatformshaper.domain.model.schema.given
+        sc === repeatedTypeSchema
+      ) shouldBe Right(true))
     }
   }
 
@@ -894,9 +893,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -935,7 +934,7 @@ class OntologyL0Spec extends CommonSpec:
                       .toSet
                   )
                   .toSet
-                xcols == ycols
+                xcols === ycols
               }
           )
         }
@@ -956,9 +955,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         iservice.create(
           "MissingDataCollectionType",
           fileBasedDataCollectionTuple
@@ -983,9 +982,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         iservice.create(
           "FileBasedDataCollectionType",
           fileBasedDataCollectionTuple
@@ -1007,16 +1006,16 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         iservice.exist("nonexistent")
       } asserting (_ should matchPattern { case Right(false) => })
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -1045,9 +1044,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -1061,18 +1060,9 @@ class OntologyL0Spec extends CommonSpec:
         } yield read).value
       } asserting (entity =>
         inside(entity) { case Right(entity) =>
-          assert(
-            tupleToJsonChecked(
-              entity.values,
-              fileBasedDataCollectionTypeSchema
-            )
-              .equals(
-                tupleToJsonChecked(
-                  fileBasedDataCollectionTuple,
-                  fileBasedDataCollectionTypeSchema
-                )
-              )
-          )
+          import cats.syntax.all.*
+          import it.agilelab.dataplatformshaper.domain.model.schema.given
+          entity.values === fileBasedDataCollectionTuple shouldBe true
         }
       )
     }
@@ -1091,9 +1081,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -1117,13 +1107,9 @@ class OntologyL0Spec extends CommonSpec:
         }
         entity match {
           case Right(Entity(_, _, data)) =>
-            val x =
-              tupleToJsonChecked(data, fileBasedDataCollectionTypeSchema)
-            val y = tupleToJsonChecked(
-              fileBasedDataCollectionTupleForUpdate,
-              fileBasedDataCollectionTypeSchema
-            )
-            x shouldBe y
+            import cats.syntax.all.*
+            import it.agilelab.dataplatformshaper.domain.model.schema.given
+            data === fileBasedDataCollectionTupleForUpdate shouldBe true
           case _ => fail("Unexpected pattern encountered")
         }
       })
@@ -1143,13 +1129,15 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         service.read("FileBasedDataCollectionType")
       } asserting (_.map(et =>
-        et.name === "FileBasedDataCollectionType" &&
-          et.traits === Set("DataCollection") &&
-          et.baseSchema === fileBasedDataCollectionTypeSchema
+        import cats.syntax.all.*
+        import it.agilelab.dataplatformshaper.domain.model.schema.given
+        et.name === "FileBasedDataCollectionType" && et.traits === Set(
+          "DataCollection"
+        ) && et.baseSchema === fileBasedDataCollectionTypeSchema
       ) shouldBe Right(true))
     }
   }
@@ -1167,9 +1155,9 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val tservice = new TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = new InstanceManagementServiceInterpreter[IO](tservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         val nonExistentId = "non-existent-id"
 
         (for {
@@ -1198,8 +1186,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         service.read("FileBasedDataCollectionType")
       }.attempt asserting (_ should matchPattern { case Left(_) => })
     }
@@ -1230,8 +1218,8 @@ class OntologyL0Spec extends CommonSpec:
 
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
 
         val commonEntityType = l0.EntityType(
           "CommonEntityType",
@@ -1308,8 +1296,8 @@ class OntologyL0Spec extends CommonSpec:
 
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
-        val trservice = new TraitManagementServiceInterpreter[IO](repository)
-        val service = new TypeManagementServiceInterpreter[IO](trservice)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val service = TypeManagementServiceInterpreter[IO](trservice)
         (for {
           _ <- EitherT[IO, ManagementServiceError, Unit](
             service.create(entityType0)
