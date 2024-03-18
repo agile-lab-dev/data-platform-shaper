@@ -122,7 +122,6 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             )
           )
     } yield r).value
-
   end read
 
   @SuppressWarnings(
@@ -160,10 +159,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           )
         else EitherT.rightT[F, ManagementServiceError](())
       stmts <- EitherT.liftF(statementsToRemove)
-      _ <- EitherT.liftF(
-        logger.trace(
-          s"Statements for removing the previous version \n${stmts.mkString("\n")}"
-        )
+      _ <- traceT(
+        s"Statements for removing the previous version \n${stmts.mkString("\n")}"
       )
       instanceType = iri(
         stmts
