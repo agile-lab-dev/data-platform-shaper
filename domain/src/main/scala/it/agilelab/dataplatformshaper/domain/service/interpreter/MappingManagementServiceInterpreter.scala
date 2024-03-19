@@ -32,6 +32,7 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.util.UUID
+import scala.collection.mutable
 
 class MappingManagementServiceInterpreter[F[_]: Sync](
     typeManagementService: TypeManagementService[F],
@@ -266,6 +267,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           sourceInstanceId
         )
       )
+      _ <- traceT(s"Retrieved mappings: $mappings")
       ids <- EitherT(
         summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
           val tuple: Either[ManagementServiceError, Tuple] = tupleToMappedTuple(
@@ -277,7 +279,10 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           summon[Functor[F]].map(
             tuple
               .map(
-                instanceManagementService.update(
+                updateInstanceNoCheck(
+                  logger,
+                  typeManagementService,
+                  instanceManagementService,
                   mapping(3).entityId,
                   _
                 )
@@ -286,12 +291,62 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           )(_.flatten)
         )))(_.sequence)
       )
+      _ <- traceT(s"Instances to update: $ids")
       _ <- EitherT(
         summon[Functor[F]]
           .map(ids.map(id => updateMappedInstances(id)).sequence)(_.sequence)
       )
     } yield ()).value
   end updateMappedInstances
+
+  override def deleteMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, Unit]] =
+    val instancesToDelete = mutable.Stack.empty[String]
+
+    def getMappedInstancesToDelete(
+        sourceInstanceId: String
+    ): F[Either[ManagementServiceError, Unit]] =
+      (for {
+        mappings <- EitherT(
+          getMappingsForEntity(
+            logger,
+            typeManagementService,
+            instanceManagementService,
+            sourceInstanceId
+          )
+        )
+        ids <- EitherT.liftF(
+          summon[Applicative[F]].pure(mappings.map(mapping =>
+            instancesToDelete.push(mapping(3).entityId)
+            mapping(3).entityId: String
+          ))
+        )
+        _ <- EitherT(
+          summon[Functor[F]]
+            .map(ids.map(id => getMappedInstancesToDelete(id)).sequence)(
+              _.sequence
+            )
+        )
+      } yield ()).value
+    end getMappedInstancesToDelete
+
+    import cats.syntax.all.*
+    (for {
+      stack <- EitherT.liftF(
+        summon[Functor[F]].map(getMappedInstancesToDelete(sourceInstanceId))(
+          _ => instancesToDelete
+        )
+      )
+      _ <- EitherT(
+        summon[Functor[F]].map(
+          stack.popAll.toList
+            .map(id => instanceManagementService.delete(id))
+            .sequence
+        )(_.sequence)
+      )
+    } yield ()).value
+  end deleteMappedInstances
 
   override def exist(
       mapperKey: MappingKey
@@ -317,5 +372,4 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       end if
     )
   end exist
-
 end MappingManagementServiceInterpreter

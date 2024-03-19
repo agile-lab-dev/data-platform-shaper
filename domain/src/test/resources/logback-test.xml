@@ -23,7 +23,7 @@
     <logger name="it.agilelab.dataplatformshaper.domain.service.interpreter.TypeManagementServiceInterpreter" level="ERROR" />
     <logger name="it.agilelab.dataplatformshaper.domain.service.interpreter.InstanceManagementServiceInterpreter" level="ERROR" />
     <logger name="it.agilelab.dataplatformshaper.domain.service.interpreter.TraitManagementServiceInterpreter" level="ERROR" />
-    <logger name="it.agilelab.dataplatformshaper.domain.service.interpreter.MappingManagementServiceInterpreter" level="TRACE" />
+    <logger name="it.agilelab.dataplatformshaper.domain.service.interpreter.MappingManagementServiceInterpreter" level="ERROR" />
     <logger name="it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Session" level="ERROR" />
 
     <root level="ERROR">

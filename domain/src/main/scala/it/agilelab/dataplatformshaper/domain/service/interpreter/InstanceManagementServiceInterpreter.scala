@@ -124,22 +124,13 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     } yield r).value
   end read
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.=="
-    )
-  )
   override def update(
       instanceId: String,
       values: Tuple
   ): F[Either[ManagementServiceError, String]] =
-    val statementsToRemove: F[List[Statement]] = fetchStatementsForInstance(
-      repository,
-      instanceId
-    )
     val res: F[Either[ManagementServiceError, String]] = (for {
-      _ <- EitherT.liftF(
-        logger.trace(s"About to remove the instance $instanceId")
+      _ <- traceT(
+        s"About to remove the instance $instanceId"
       )
       entity <- EitherT(read(instanceId))
       hasTrait <- EitherT(
@@ -158,37 +149,13 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             )
           )
         else EitherT.rightT[F, ManagementServiceError](())
-      stmts <- EitherT.liftF(statementsToRemove)
-      _ <- traceT(
-        s"Statements for removing the previous version \n${stmts.mkString("\n")}"
-      )
-      instanceType = iri(
-        stmts
-          .filter(_.getPredicate == NS.ISCLASSIFIEDBY)
-          .head
-          .getObject
-          .stringValue()
-      ).getLocalName
-      entityType <- EitherT(typeManagementService.read(instanceType))
-      _ <- EitherT[F, ManagementServiceError, Unit](
-        summon[Applicative[F]].pure(
-          cueValidate(entityType.schema, values).leftMap(errors =>
-            InstanceValidationError(errors)
-          )
-        )
-      )
-      _ <- EitherT.liftF(
-        logger.trace(s"$instanceId is classified by $instanceType")
-      )
       result <- EitherT(
-        createInstanceNoCheck(
+        updateInstanceNoCheck(
           logger,
           typeManagementService,
+          this,
           instanceId,
-          instanceType,
-          values,
-          List.empty,
-          stmts
+          values
         )
       )
     } yield result).value

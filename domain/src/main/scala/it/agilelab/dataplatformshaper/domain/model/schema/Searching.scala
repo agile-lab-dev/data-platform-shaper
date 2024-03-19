@@ -69,6 +69,7 @@ case class SearchPredicateAttribute(attributePath: List[String])
          |  ?$s ?$p ?$v
          |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
             .mkString("/")}") && ?$v = ${value.value.toString} ) .
+         |  FILTER (?$s = ?i) .
          |}
          |""".stripMargin
       }
@@ -86,6 +87,7 @@ case class SearchPredicateAttribute(attributePath: List[String])
            |  ?$s ?$p ?$v
            |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
             .mkString("/")}") && ?$v != ${value.value.toString} ) .
+           |  FILTER (?$s = ?i) .
            |}
            |""".stripMargin
       }
@@ -104,6 +106,7 @@ case class SearchPredicateAttribute(attributePath: List[String])
          |  ?$s ?$p ?$v
          |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
             .mkString("/")}") && ?$v = "${value.value}"^^xsd:string ) .
+         |  FILTER (?$s = ?i) .
          |}
          |""".stripMargin
       }
@@ -122,6 +125,7 @@ case class SearchPredicateAttribute(attributePath: List[String])
            |  ?$s ?$p ?$v
            |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
             .mkString("/")}") && ?$v != "${value.value}"^^xsd:string ) .
+           |  FILTER (?$s = ?i) .
            |}
            |""".stripMargin
       }
@@ -140,6 +144,7 @@ case class SearchPredicateAttribute(attributePath: List[String])
            |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
             .mkString("/")}")) .
            |  FILTER REGEX(?$v, "${value.value}") .
+           |  FILTER (?$s = ?i) .
            |}
            |""".stripMargin
       }
@@ -159,6 +164,7 @@ case class SearchPredicateAttribute(attributePath: List[String])
          |  ?$s ?$p ?$v
          |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
           .mkString("/")}") && ?$v $comparisonOperator ${value.toString} ) .
+         |  FILTER (?$s = ?i) .
          |}
          |""".stripMargin
     }

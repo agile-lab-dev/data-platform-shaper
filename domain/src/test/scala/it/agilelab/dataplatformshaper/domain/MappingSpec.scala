@@ -263,7 +263,7 @@ class MappingSpec extends CommonSpec:
     }
   }
 
-  "Automatic creation and update of instances driven by the mappings" - {
+  "Automatic creation and updates of instances driven by the mappings" - {
     "works" in {
       val session = Session[IO](
         graphdbType,
@@ -287,8 +287,8 @@ class MappingSpec extends CommonSpec:
             iservice.create(
               "SourceType",
               (
-                "field1" -> "value1",
-                "field2" -> "value2"
+                "field1" -> "value5",
+                "field2" -> "value6"
               )
             )
           )
@@ -298,7 +298,7 @@ class MappingSpec extends CommonSpec:
           lt1 <- EitherT(
             iservice.list(
               "TargetType1",
-              "field1 = 'value1' and field2 = 'value2'",
+              "field1 = 'value5' and field2 = 'value6'",
               false,
               None
             )
@@ -306,7 +306,7 @@ class MappingSpec extends CommonSpec:
           lt2 <- EitherT(
             iservice.list(
               "TargetType2",
-              "field1 = 'value1' and field2 = 'value2'",
+              "field1 = 'value5' and field2 = 'value6'",
               false,
               None
             )
@@ -314,7 +314,7 @@ class MappingSpec extends CommonSpec:
           lt3 <- EitherT(
             iservice.list(
               "TargetType3",
-              "field1 = 'value1' and field2 = 'value2'",
+              "field1 = 'value5' and field2 = 'value6'",
               false,
               None
             )
@@ -322,7 +322,7 @@ class MappingSpec extends CommonSpec:
           lt4 <- EitherT(
             iservice.list(
               "TargetType4",
-              "field1 = 'value1' and field2 = 'value2'",
+              "field1 = 'value5' and field2 = 'value6'",
               false,
               None
             )
@@ -331,15 +331,18 @@ class MappingSpec extends CommonSpec:
             iservice.update(
               res1,
               (
-                "field1" -> "value3",
-                "field2" -> "value4"
+                "field1" -> "value7",
+                "field2" -> "value8"
               )
             )
+          )
+          _ <- EitherT(
+            mservice.updateMappedInstances(res1)
           )
           lt5 <- EitherT(
             iservice.list(
               "TargetType1",
-              "field1 = 'value3' and field2 = 'value4'",
+              "field1 = 'value7' and field2 = 'value8'",
               false,
               None
             )
@@ -347,7 +350,7 @@ class MappingSpec extends CommonSpec:
           lt6 <- EitherT(
             iservice.list(
               "TargetType2",
-              "field1 = 'value3' and field2 = 'value4'",
+              "field1 = 'value7' and field2 = 'value8'",
               false,
               None
             )
@@ -355,7 +358,7 @@ class MappingSpec extends CommonSpec:
           lt7 <- EitherT(
             iservice.list(
               "TargetType3",
-              "field1 = 'value3' and field2 = 'value4'",
+              "field1 = 'value7' and field2 = 'value8'",
               false,
               None
             )
@@ -363,7 +366,7 @@ class MappingSpec extends CommonSpec:
           lt8 <- EitherT(
             iservice.list(
               "TargetType4",
-              "field1 = 'value3' and field2 = 'value4'",
+              "field1 = 'value7' and field2 = 'value8'",
               false,
               None
             )
@@ -379,8 +382,83 @@ class MappingSpec extends CommonSpec:
           lt8.length
         )).value
       } asserting (ret =>
-        ret should matchPattern { case Right((2, 2, 2, 2, 1, 1, 1, 1)) => }
-      ) // It's 2 because of the mapper instance
+        ret should matchPattern { case Right((1, 1, 1, 1, 1, 1, 1, 1)) => }
+      )
+    }
+  }
+
+  "Automatic deletion of instances driven by the mappings" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        (for {
+          res1 <- EitherT(
+            iservice.list(
+              "SourceType",
+              "field1 = 'value7' and field2 = 'value8'",
+              false,
+              None
+            )
+          )
+          _ <- EitherT(mservice.deleteMappedInstances(res1.head match {
+            case v: String => v; case _ => ""
+          }))
+          lt1 <- EitherT(
+            iservice.list(
+              "TargetType1",
+              "field1 = 'value7' and field2 = 'value8'",
+              false,
+              None
+            )
+          )
+          lt2 <- EitherT(
+            iservice.list(
+              "TargetType2",
+              "field1 = 'value7' and field2 = 'value8'",
+              false,
+              None
+            )
+          )
+          lt3 <- EitherT(
+            iservice.list(
+              "TargetType3",
+              "field1 = 'value7' and field2 = 'value8'",
+              false,
+              None
+            )
+          )
+          lt4 <- EitherT(
+            iservice.list(
+              "TargetType4",
+              "field1 = 'value7' and field2 = 'value8'",
+              false,
+              None
+            )
+          )
+        } yield (
+          lt1.length,
+          lt2.length,
+          lt3.length,
+          lt4.length
+        )).value
+      } asserting (ret =>
+        ret should matchPattern { case Right((0, 0, 0, 0)) => }
+      )
     }
   }
 
@@ -589,8 +667,8 @@ class MappingSpec extends CommonSpec:
             iservice.create(
               "UpdateSourceType",
               (
-                "field1" -> "value1",
-                "field2" -> "value2"
+                "field1" -> "value10",
+                "field2" -> "value12"
               )
             )
           )
@@ -600,7 +678,7 @@ class MappingSpec extends CommonSpec:
           lt1 <- EitherT(
             iservice.list(
               "UpdateTargetType",
-              "field1 = 'value1' and field2 = 'value2'",
+              "field1 = 'value10' and field2 = 'value12'",
               false,
               None
             )
@@ -613,8 +691,8 @@ class MappingSpec extends CommonSpec:
             iservice.update(
               firstElement,
               (
-                "field1" -> "value3",
-                "field2" -> "value4"
+                "field1" -> "value13",
+                "field2" -> "value14"
               )
             )
           )
@@ -628,5 +706,4 @@ class MappingSpec extends CommonSpec:
       }
     }
   }
-
 end MappingSpec

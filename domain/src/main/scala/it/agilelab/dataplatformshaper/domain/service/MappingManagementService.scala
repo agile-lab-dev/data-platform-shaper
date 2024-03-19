@@ -24,4 +24,8 @@ trait MappingManagementService[F[_]]:
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]]
 
+  def deleteMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, Unit]]
+
 end MappingManagementService

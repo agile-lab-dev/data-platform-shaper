@@ -48,7 +48,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       entityId: String,
       instanceTypeName: String,
       tuple: Tuple,
-      statementsToAdd: List[Statement],
+      additionalStatementsToAdd: List[Statement],
       statementsToRemove: List[Statement]
   ): F[Either[ManagementServiceError, String]] =
 
@@ -78,7 +78,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       id <- EitherT[F, ManagementServiceError, String](
         summon[Functor[F]].map(
           typeManagementService.repository.removeAndInsertStatements(
-            statementsToAdd ::: stmts,
+            additionalStatementsToAdd ::: stmts,
             statementsToRemove
           )
         )(_ => Right[ManagementServiceError, String](entityId))
@@ -109,7 +109,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       L3
     ) ::
       statement(triple(entity, RDF.TYPE, NS.ENTITY), L3) :: Nil
-    val previousEntityIriStack = collection.mutable.Stack(entity)
+    val previousEntityIriStack = mutable.Stack(entity)
     var currentEntityIri = entity
 
     @SuppressWarnings(
@@ -580,6 +580,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       repository: KnowledgeGraph[F],
       instanceId: String
   ): F[List[Statement]] =
+    // TODO add a filter to avoid to remove any relationships with other instances
     val query: String =
       s"""
          |PREFIX ns:  <${ns.getName}>
@@ -589,6 +590,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
          |SELECT ?s ?p ?o WHERE {
          | BIND(iri("${ns.getName}$instanceId") as ?s)
          |    ?s ?p ?o .
+         |    FILTER(!CONTAINS(STR(?p), "${ns.getName}mappedTo#"))
          |  }
          |""".stripMargin
     val statements: F[List[Statement]] =
@@ -640,6 +642,74 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
         .map(_.flatten)
     statements
   end fetchStatementsForInstance
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.=="
+    )
+  )
+  def updateInstanceNoCheck(
+      logger: Logger[F],
+      typeManagementService: TypeManagementService[F],
+      instanceManagementService: InstanceManagementService[F],
+      instanceId: String,
+      values: Tuple
+  ): F[Either[ManagementServiceError, String]] =
+
+    given Logger[F] = logger
+
+    val statementsToRemove: F[List[Statement]] = fetchStatementsForInstance(
+      instanceManagementService.repository,
+      instanceId
+    )
+    val res: F[Either[ManagementServiceError, String]] = (for {
+      _ <- traceT(
+        s"About to remove the instance $instanceId"
+      )
+      entity <- EitherT(instanceManagementService.read(instanceId))
+      stmts <- EitherT.liftF(statementsToRemove)
+      _ <- traceT(
+        s"Statements for removing the previous version \n${stmts.mkString("\n")}"
+      )
+      instanceType = iri(
+        stmts
+          .filter(_.getPredicate == NS.ISCLASSIFIEDBY)
+          .head
+          .getObject
+          .stringValue()
+      ).getLocalName
+      entityType <- EitherT(typeManagementService.read(instanceType))
+      _ <- EitherT[F, ManagementServiceError, Unit](
+        summon[Applicative[F]].pure(
+          cueValidate(entityType.schema, values).leftMap(errors =>
+            InstanceValidationError(errors)
+          )
+        )
+      )
+      _ <- EitherT.liftF(
+        logger.trace(s"$instanceId is classified by $instanceType")
+      )
+      result <- EitherT(
+        createInstanceNoCheck(
+          logger,
+          typeManagementService,
+          instanceId,
+          instanceType,
+          values,
+          List.empty,
+          stmts
+        )
+      )
+    } yield result).value
+
+    EitherT(instanceManagementService.exist(instanceId)).flatMapF { exist =>
+      if exist then res
+      else
+        summon[Applicative[F]].pure(
+          Left(ManagementServiceError.NonExistentInstanceError(instanceId))
+        )
+    }.value
+  end updateInstanceNoCheck
 
   def getMappingsForEntityType(
       logger: Logger[F],
@@ -769,9 +839,6 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                 Right[ManagementServiceError, List[(String, String)]](t(1))
               )
             )
-            targetEntityType <- EitherT(
-              typeManagementService.read(targetEntity.entityTypeName)
-            )
             tuple <- EitherT(
               summon[Functor[F]].map(
                 fieldsToTuple(
@@ -891,7 +958,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   ): F[Either[ManagementServiceError, Boolean]] =
     val query =
       s"""
-         |PREFIX ns:   <https://w3id.org/agile-dm/ontology/>
+         |PREFIX ns: <https://w3id.org/agile-dm/ontology/>
          |SELECT (COUNT(*) as ?count) WHERE {
          |        ns:$entityTypeName ns:hasTrait ?trait1 .
          |        ?trait1 rdfs:subClassOf* ns:$traitName .
