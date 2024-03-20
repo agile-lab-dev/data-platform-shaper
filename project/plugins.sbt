@@ -20,6 +20,6 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
 
 addSbtPlugin("com.lightbend.sbt" % "sbt-javaagent" % "0.1.6")
 
-addSbtPlugin("com.github.sbt" % "sbt-site-paradox" % "1.5.0" exclude("org.scala-lang.modules", "scala-java8-compat_2.12"))
+addSbtPlugin("com.github.sbt" % "sbt-site-paradox" % "1.6.0" exclude("org.scala-lang.modules", "scala-java8-compat_2.12"))
 
 addDependencyTreePlugin
