@@ -185,6 +185,51 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end create
 
+  def read(
+      mappingKey: MappingKey
+          ): F[Either[ManagementServiceError, MappingDefinition]] =
+    ???
+  end read
+
+  def update(
+      mappingKey: MappingKey,
+      mapper: Tuple
+            ): F[Either[ManagementServiceError, Unit]] =
+    ???
+  end update
+
+  def delete(
+      mappingKey: MappingKey
+            ): F[Either[ManagementServiceError, Unit]] =
+    ???
+  end delete
+
+  override def exist(
+                      mapperKey: MappingKey
+                    ): F[Either[ManagementServiceError, Boolean]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT distinct ?mr WHERE {
+         |   ?mr ns:singletonPropertyOf ns:mappedTo .
+         |   ns:${mapperKey.sourceEntityTypeName} ?mr ns:${mapperKey.targetEntityTypeName} .
+         |   FILTER(STR(?mr) = "${ns.getName}mappedTo#${mapperKey.mappingName}")
+         |}
+         |""".stripMargin
+    val res = logger.trace(
+      s"Checking the mapping existence with name ${mapperKey.mappingName} with the query:\n$query"
+    ) *> repository.evaluateQuery(query)
+    summon[Functor[F]].map(res)(res =>
+      val count = res.toList.length
+      if count > 0 then Right[ManagementServiceError, Boolean](true)
+      else Right[ManagementServiceError, Boolean](false)
+      end if
+    )
+  end exist
+  
   override def createMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
@@ -347,29 +392,4 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
     } yield ()).value
   end deleteMappedInstances
-
-  override def exist(
-      mapperKey: MappingKey
-  ): F[Either[ManagementServiceError, Boolean]] =
-    val query = s"""
-         |PREFIX ns:   <${ns.getName}>
-         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
-         |SELECT distinct ?mr WHERE {
-         |   ?mr ns:singletonPropertyOf ns:mappedTo .
-         |   ns:${mapperKey.sourceEntityTypeName} ?mr ns:${mapperKey.targetEntityTypeName} .
-         |   FILTER(STR(?mr) = "${ns.getName}mappedTo#${mapperKey.mappingName}")
-         |}
-         |""".stripMargin
-    val res = logger.trace(
-      s"Checking the mapping existence with name ${mapperKey.mappingName} with the query:\n$query"
-    ) *> repository.evaluateQuery(query)
-    summon[Functor[F]].map(res)(res =>
-      val count = res.toList.length
-      if count > 0 then Right[ManagementServiceError, Boolean](true)
-      else Right[ManagementServiceError, Boolean](false)
-      end if
-    )
-  end exist
 end MappingManagementServiceInterpreter
