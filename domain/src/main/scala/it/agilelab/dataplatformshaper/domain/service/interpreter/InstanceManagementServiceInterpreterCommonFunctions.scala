@@ -666,7 +666,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       _ <- traceT(
         s"About to remove the instance $instanceId"
       )
-      entity <- EitherT(instanceManagementService.read(instanceId))
+//      entity <- EitherT(instanceManagementService.read(instanceId))
       stmts <- EitherT.liftF(statementsToRemove)
       _ <- traceT(
         s"Statements for removing the previous version \n${stmts.mkString("\n")}"
