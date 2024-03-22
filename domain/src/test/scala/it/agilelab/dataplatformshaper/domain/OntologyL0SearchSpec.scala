@@ -11,7 +11,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.model.schema.{*, given}
+import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
@@ -118,7 +118,12 @@ class OntologyL0SearchSpec extends CommonSpec:
         List(
           "aLong" -> LongType(),
           "longRepeated" -> LongType(Repeated),
-          "longNullable" -> LongType(Nullable)
+          "longNullable" -> LongType(Nullable),
+          "furtherNestedLongStruct" -> StructType(
+            List(
+              "furtherNestedLong" -> LongType()
+            )
+          )
         )
       ),
       "boolStruct" -> StructType(
@@ -272,7 +277,10 @@ class OntologyL0SearchSpec extends CommonSpec:
     "longStruct" -> (
       "aLong" -> 10L,
       "longRepeated" -> List(10L, 20L),
-      "longNullable" -> Some(30L)
+      "longNullable" -> Some(30L),
+      "furtherNestedLongStruct" -> Tuple1(
+        "furtherNestedLong" -> 100L
+      )
     ),
     "boolStruct" -> (
       "aBool" -> true,
@@ -400,32 +408,31 @@ class OntologyL0SearchSpec extends CommonSpec:
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         val entityType = "FileBasedDataCollectionType"
 
-        val predicate =
-          " longStruct / longRepeated <= 50 AND organization LIKE 'H' AND organization <> 'HN' "
+        val predicate1 =
+          " longStruct / furtherNestedLongStruct / furtherNestedLong = 100 AND longStruct / aLong < 20 AND organization = 'HR' "
 
-        iservice.list(
-          entityType,
-          predicate,
-          returnEntities = true,
-          None
-        )
+        val predicate2 =
+          " organization <> 'HR' "
+
+        for {
+          resp1 <- iservice.list(
+            entityType,
+            predicate1,
+            returnEntities = false,
+            None
+          )
+          resp2 <- iservice.list(
+            entityType,
+            predicate2,
+            returnEntities = false,
+            None
+          )
+        } yield (resp1, resp2)
 
       } asserting (resp =>
-        inside(resp) { case Right(list) =>
-          list.head match
-            case entity: Entity =>
-              assert(list.size === 1)
-              (entity.values: DynamicTuple).longStruct
-                .longRepeated(0)
-                .value[Long] < 50 shouldBe (true)
-              (entity.values: DynamicTuple).longStruct
-                .longRepeated(1)
-                .value[Long] < 50 shouldBe (true)
-              (entity.values: DynamicTuple).organization
-                .value[String] shouldBe "HR"
-            case _: String =>
-              assert(false)
-          end match
+        inside(resp) { case (Right(list1), Right(list2)) =>
+          assert(list1.size === 1)
+          assert(list2.size === 0)
         }
       )
     }
