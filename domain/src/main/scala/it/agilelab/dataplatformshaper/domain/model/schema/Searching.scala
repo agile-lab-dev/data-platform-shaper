@@ -6,7 +6,7 @@ import org.apache.calcite.sql.parser.SqlParser
 import org.apache.calcite.sql.parser.impl.SqlParserImpl
 
 import java.util.UUID
-import scala.annotation.targetName
+import scala.annotation.{tailrec, targetName}
 import scala.jdk.CollectionConverters.*
 
 trait SearchPredicateTerm
@@ -58,18 +58,48 @@ case class SearchPredicateAttribute(attributePath: List[String])
     SearchPredicateAttribute(subPath.attributePath ::: this.attributePath)
   end /
 
+  def generateAttributeClauses(filter: Option[String => String]): String =
+    val attributeRels = attributePath.reverse.inits.toList
+      .filter(_.nonEmpty)
+      .map(l => s"ns:${l.mkString("\\/")}")
+    val stringBuffer = StringBuffer()
+
+    @tailrec
+    def loopOnAttributeRels(
+        i: String,
+        o: String,
+        filter: Option[String => String],
+        attributeRels: List[String]
+    ): Unit =
+      attributeRels match
+        case head1 :: head2 :: tail =>
+          val s = genId
+          stringBuffer.append(s"?$s $head1 ?$o .")
+          stringBuffer.append('\n')
+          stringBuffer.append(s"${filter.fold("")(f => f(o))}")
+          stringBuffer.append('\n')
+          loopOnAttributeRels(i, s, None, head2 :: tail)
+        case head :: Nil =>
+          stringBuffer.append(s"?$i $head ?$o .")
+          stringBuffer.append('\n')
+          stringBuffer.append(s"${filter.fold("")(f => f(o))}")
+          ()
+        case Nil =>
+          ()
+    end loopOnAttributeRels
+
+    loopOnAttributeRels("i", genId, filter, attributeRels)
+    stringBuffer.toString
+  end generateAttributeClauses
+
   def =:=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
     SearchPredicate(
       {
-        val s = genId
-        val p = genId
-        val v = genId
         s"""
          |{
-         |  ?$s ?$p ?$v
-         |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
-            .mkString("/")}") && ?$v = ${value.value.toString} ) .
-         |  FILTER (?$s = ?i) .
+         |  ${generateAttributeClauses(
+            Some(v => s"FILTER (?$v = ${value.value.toString} ) .")
+          )}
          |}
          |""".stripMargin
       }
@@ -79,15 +109,11 @@ case class SearchPredicateAttribute(attributePath: List[String])
   def =!=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
     SearchPredicate(
       {
-        val s = genId
-        val p = genId
-        val v = genId
         s"""
            |{
-           |  ?$s ?$p ?$v
-           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
-            .mkString("/")}") && ?$v != ${value.value.toString} ) .
-           |  FILTER (?$s = ?i) .
+           |  ${generateAttributeClauses(
+            Some(v => s"FILTER (?$v != ${value.value.toString} ) .")
+          )}
            |}
            |""".stripMargin
       }
@@ -98,17 +124,13 @@ case class SearchPredicateAttribute(attributePath: List[String])
   def =:=(value: SearchPredicateValue[String]): SearchPredicate =
     SearchPredicate(
       {
-        val s = genId
-        val p = genId
-        val v = genId
         s"""
-         |{
-         |  ?$s ?$p ?$v
-         |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
-            .mkString("/")}") && ?$v = "${value.value}"^^xsd:string ) .
-         |  FILTER (?$s = ?i) .
-         |}
-         |""".stripMargin
+           |{
+           |  ${generateAttributeClauses(
+            Some(v => s"""FILTER (?$v = "${value.value}"^^xsd:string ) .""")
+          )}
+           |}
+           |""".stripMargin
       }
     )
   end =:=
@@ -117,15 +139,11 @@ case class SearchPredicateAttribute(attributePath: List[String])
   def =!=(value: SearchPredicateValue[String]): SearchPredicate =
     SearchPredicate(
       {
-        val s = genId
-        val p = genId
-        val v = genId
         s"""
            |{
-           |  ?$s ?$p ?$v
-           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
-            .mkString("/")}") && ?$v != "${value.value}"^^xsd:string ) .
-           |  FILTER (?$s = ?i) .
+           |  ${generateAttributeClauses(
+            Some(v => s"""FILTER (?$v != "${value.value}"^^xsd:string ) .""")
+          )}
            |}
            |""".stripMargin
       }
@@ -135,16 +153,11 @@ case class SearchPredicateAttribute(attributePath: List[String])
   def like(value: SearchPredicateValue[String]): SearchPredicate =
     SearchPredicate(
       {
-        val s = genId
-        val p = genId
-        val v = genId
         s"""
            |{
-           |  ?$s ?$p ?$v
-           |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
-            .mkString("/")}")) .
-           |  FILTER REGEX(?$v, "${value.value}") .
-           |  FILTER (?$s = ?i) .
+           |  ${generateAttributeClauses(
+            Some(v => s"""FILTER REGEX(?$v, "${value.value}") .""")
+          )}
            |}
            |""".stripMargin
       }
@@ -156,15 +169,11 @@ case class SearchPredicateAttribute(attributePath: List[String])
       value: AnyVal
   ): SearchPredicate = SearchPredicate(
     {
-      val s = genId
-      val p = genId
-      val v = genId
       s"""
          |{
-         |  ?$s ?$p ?$v
-         |  FILTER (?$p = iri("https://w3id.org/agile-dm/ontology/${attributePath.reverse
-          .mkString("/")}") && ?$v $comparisonOperator ${value.toString} ) .
-         |  FILTER (?$s = ?i) .
+         |  ${generateAttributeClauses(
+          Some(v => s"FILTER (?$v $comparisonOperator ${value.toString} ) .")
+        )}
          |}
          |""".stripMargin
     }
