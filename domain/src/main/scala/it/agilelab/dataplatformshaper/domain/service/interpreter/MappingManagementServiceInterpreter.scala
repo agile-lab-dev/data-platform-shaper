@@ -187,26 +187,69 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
 
   def read(
       mappingKey: MappingKey
-          ): F[Either[ManagementServiceError, MappingDefinition]] =
-    ???
+  ): F[Either[ManagementServiceError, MappingDefinition]] =
+    val query =
+      s"""
+         |PREFIX ns: <${ns.getName}>
+         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |SELECT ?predicate ?object WHERE {
+         |   <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:mappedBy ?mappedByValue .
+         |   ns:${mappingKey.sourceEntityTypeName} <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:${mappingKey.targetEntityTypeName} .
+         |   ?mappedByValue ?predicate ?object
+         |   FILTER(?predicate != rdf:type && ?predicate != ns:isClassifiedBy)
+         |}
+         |""".stripMargin
+
+    val res = logger.trace(
+      s"Reading the mapping with name ${mappingKey.mappingName} with the query:\n$query"
+    ) *> repository.evaluateQuery(query)
+
+    summon[Functor[F]].map(res) { result =>
+      val pairs = Iterator
+        .continually(result)
+        .takeWhile(_.hasNext)
+        .map(_.next())
+        .map { bindingSet =>
+          val obj = Option(bindingSet.getValue("object"))
+            .map(_.stringValue())
+            .getOrElse("")
+          val pred = Option(bindingSet.getValue("predicate"))
+            .map(_.stringValue())
+            .getOrElse("")
+
+          (iri(pred).getLocalName, obj)
+        }
+        .filter { case (pred, obj) => pred.nonEmpty && obj.nonEmpty }
+        .toList
+
+      pairs match
+        case List(tuple1, tuple2) =>
+          Right(MappingDefinition(mappingKey, (tuple1, tuple2)))
+        case _ =>
+          Left(
+            MappingNotFoundError(
+              s"Mapping with name ${mappingKey.mappingName} has not been found or does not have exactly two pairs"
+            )
+          )
+    }
   end read
 
   def update(
       mappingKey: MappingKey,
       mapper: Tuple
-            ): F[Either[ManagementServiceError, Unit]] =
+  ): F[Either[ManagementServiceError, Unit]] =
     ???
   end update
 
   def delete(
       mappingKey: MappingKey
-            ): F[Either[ManagementServiceError, Unit]] =
+  ): F[Either[ManagementServiceError, Unit]] =
     ???
   end delete
 
   override def exist(
-                      mapperKey: MappingKey
-                    ): F[Either[ManagementServiceError, Boolean]] =
+      mapperKey: MappingKey
+  ): F[Either[ManagementServiceError, Boolean]] =
     val query =
       s"""
          |PREFIX ns:   <${ns.getName}>
@@ -229,7 +272,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       end if
     )
   end exist
-  
+
   override def createMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =

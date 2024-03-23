@@ -26,13 +26,31 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
+import org.scalactic.Equality
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.*
 import scala.language.{dynamics, implicitConversions}
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.asInstanceOf",
+    "scalafix:DisableSyntax.isInstanceOf",
+    "scalafix:DisableSyntax.=="
+  )
+)
 class MappingSpec extends CommonSpec:
+
+  given Equality[MappingDefinition] with
+    def areEqual(a: MappingDefinition, b: Any): Boolean =
+      b match
+        case bDef: MappingDefinition =>
+          a.mappingKey == bDef.mappingKey &&
+          a.mapper.productIterator.toSet == bDef.mapper.productIterator.toSet
+        case _ => false
+    end areEqual
+  end given
 
   given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
@@ -167,6 +185,28 @@ class MappingSpec extends CommonSpec:
 
   private val updateTargetType = EntityType(
     "UpdateTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val readSourceType = EntityType(
+    "ReadSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val readTargetType = EntityType(
+    "ReadTargetType",
     Set("MappingTarget"),
     StructType(
       List(
@@ -706,4 +746,52 @@ class MappingSpec extends CommonSpec:
       }
     }
   }
+
+  "Reading a mapping" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val mappingName = "read_mapping"
+      val mappingSourceName = "ReadSourceType"
+      val mappingTargetName = "ReadTargetType"
+      val expectedMappingKey =
+        MappingKey(mappingName, mappingSourceName, mappingTargetName)
+      val expectedMappingDef =
+        MappingDefinition(expectedMappingKey, mapperTuple)
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+          (for {
+            _ <- EitherT(tservice.create(readSourceType))
+            _ <- EitherT(tservice.create(readTargetType))
+            _ <- EitherT(mservice.create(expectedMappingDef))
+            res <- EitherT(mservice.read(expectedMappingKey))
+          } yield res).value
+        }
+        .asserting {
+          case Right(actualMappingDef) =>
+            actualMappingDef shouldEqual expectedMappingDef
+          case Left(error) =>
+            fail(
+              s"Expected a successful mapping definition but received error: $error"
+            )
+        }
+    }
+  }
+
 end MappingSpec
