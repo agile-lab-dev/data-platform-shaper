@@ -13,6 +13,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
+  MappingManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
@@ -56,6 +57,7 @@ object Server:
     val trms = TraitManagementServiceInterpreter[F](repository)
     val tms = TypeManagementServiceInterpreter[F](trms)
     val ims = InstanceManagementServiceInterpreter[F](tms)
+    val mms = MappingManagementServiceInterpreter[F](tms, ims)
 
     val assetsRoutes = resourceServiceBuilder("/").toRoutes
 
@@ -67,7 +69,7 @@ object Server:
     val allRoutes =
       interfaceFileRoute <+>
         assetsRoutes <+>
-        GenResource[F]().routes(OntologyManagerHandler[F](tms, ims, trms))
+        GenResource[F]().routes(OntologyManagerHandler[F](tms, ims, trms, mms))
 
     for _ <- EmberServerBuilder
         .default[F]

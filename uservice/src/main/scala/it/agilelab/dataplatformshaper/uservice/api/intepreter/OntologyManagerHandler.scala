@@ -15,12 +15,19 @@ import it.agilelab.dataplatformshaper.domain.model.l1.{
   Relationship,
   given_Conversion_String_Relationship
 }
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
+}
+import it.agilelab.dataplatformshaper.domain.service.{
+  ManagementServiceError,
+  MappingManagementService
 }
 import it.agilelab.dataplatformshaper.uservice.Resource.{
   CreateTypeResponse,
@@ -31,7 +38,8 @@ import it.agilelab.dataplatformshaper.uservice.definitions.{
   Trait,
   ValidationError,
   Entity as OpenApiEntity,
-  EntityType as OpenApiEntityType
+  EntityType as OpenApiEntityType,
+  MappingDefinition as OpenApiMappingDefinition
 }
 import it.agilelab.dataplatformshaper.uservice.{Handler, Resource}
 
@@ -42,7 +50,8 @@ import scala.util.Try
 class OntologyManagerHandler[F[_]: Async](
     tms: TypeManagementServiceInterpreter[F],
     ims: InstanceManagementServiceInterpreter[F],
-    trms: TraitManagementServiceInterpreter[F]
+    trms: TraitManagementServiceInterpreter[F],
+    mms: MappingManagementService[F]
 ) extends Handler[F]
     with StrictLogging:
 
@@ -875,4 +884,51 @@ class OntologyManagerHandler[F[_]: Async](
           }: Vector[String])
       })
 
+  override def createMapping(respond: Resource.CreateMappingResponse.type)(
+      body: OpenApiMappingDefinition
+  ): F[Resource.CreateMappingResponse] =
+    val res = (for {
+      schema <- EitherT(
+        tms
+          .read(body.mappingKey.targetEntityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(l => Vector(l.getMessage)))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(
+            jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
+              Vector(l.getMessage)
+            )
+          )
+      )
+      entityId <- EitherT(
+        mms
+          .create(
+            MappingDefinition(
+              MappingKey(
+                body.mappingKey.mappingName,
+                body.mappingKey.sourceEntityTypeName,
+                body.mappingKey.targetEntityTypeName
+              ),
+              tuple
+            )
+          )
+          .map(_.leftMap {
+            case err: ManagementServiceError.InstanceValidationError =>
+              err.errors.toVector
+            case err: ManagementServiceError =>
+              Vector(err.getMessage)
+          })
+      )
+    } yield entityId).value
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end createMapping
 end OntologyManagerHandler
