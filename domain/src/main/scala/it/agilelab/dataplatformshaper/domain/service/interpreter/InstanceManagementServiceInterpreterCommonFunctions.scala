@@ -901,6 +901,27 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       }
   end getParents
 
+  def getRoots(
+      logger: Logger[F],
+      repository: KnowledgeGraph[F],
+      entityTypeName: String
+  ): F[List[String]] =
+    def loop(pending: Set[String], roots: Set[String]): F[Set[String]] =
+      if pending.isEmpty then summon[Functor[F]].pure(roots)
+      else
+        val next = pending.head
+        getParents(logger, repository, next).flatMap { parents =>
+          if parents.isEmpty then loop(pending - next, roots + next)
+          else loop(pending - next ++ parents, roots)
+        }
+
+    getParents(logger, repository, entityTypeName).flatMap { initialParents =>
+      if !initialParents.isEmpty then
+        loop(initialParents.toSet, Set.empty).map(_.toList)
+      else summon[Functor[F]].pure(List(entityTypeName))
+    }
+  end getRoots
+
   def detectCycles(
       logger: Logger[F],
       repository: KnowledgeGraph[F],

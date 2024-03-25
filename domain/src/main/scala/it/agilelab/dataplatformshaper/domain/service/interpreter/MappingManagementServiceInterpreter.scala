@@ -27,7 +27,7 @@ import it.agilelab.dataplatformshaper.domain.service.{
 }
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
-import org.eclipse.rdf4j.model.util.Values.{iri, triple}
+import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -238,7 +238,59 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       mappingKey: MappingKey,
       mapper: Tuple
   ): F[Either[ManagementServiceError, Unit]] =
-    ???
+    (for {
+      mappings <- EitherT(
+        getMappingsForEntityType(
+          logger,
+          typeManagementService,
+          mappingKey.sourceEntityTypeName
+        )
+      )
+      filteredMappings = mappings.filter {
+        case (_, _, targetEntityType, _, _) =>
+          targetEntityType.name.equals(mappingKey.targetEntityTypeName)
+      }
+      firstMapping <- EitherT.fromOption[F](
+        filteredMappings.headOption,
+        MappingNotFoundError("No mappings found matching the criteria")
+      )
+      (_, _, _, pairs, mappingId) = firstMapping
+      oldStatements = pairs.toList.map { case (key: String, value: String) =>
+        val mappedToTriple1 = triple(
+          iri(ns, mappingId),
+          iri(ns, key),
+          literal(value)
+        )
+        statement(mappedToTriple1, L2)
+      }
+      newStatements = mapper.toList.map { case (key: String, value: String) =>
+        val mappedToTriple1 = triple(
+          iri(ns, mappingId),
+          iri(ns, key),
+          literal(value)
+        )
+        statement(mappedToTriple1, L2)
+      }
+      _ <- EitherT.liftF(
+        repository.removeAndInsertStatements(newStatements, oldStatements)
+      )
+      roots <- EitherT.liftF(
+        getRoots(logger, repository, mappingKey.sourceEntityTypeName)
+      )
+      rawInstanceIdsList <- roots.traverse { root =>
+        EitherT(
+          instanceManagementService.list(
+            instanceTypeName = root,
+            predicate = "",
+            returnEntities = false,
+            limit = None
+          )
+        ).map(_.collect { case s: String => s })
+      }
+      instanceIds = rawInstanceIdsList.flatten.distinct
+      _ <- EitherT.liftF(instanceIds.traverse(id => updateMappedInstances(id)))
+      _ <- EitherT.liftF(logger.trace(s"Selected mapping last string: $pairs"))
+    } yield ()).value
   end update
 
   def delete(

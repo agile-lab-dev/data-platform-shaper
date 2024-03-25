@@ -216,9 +216,47 @@ class MappingSpec extends CommonSpec:
     ): Schema
   )
 
+  private val updateMappingSourceType = EntityType(
+    "UpdateMappingSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val updateMappingMidType = EntityType(
+    "UpdateMappingMidType",
+    Set("MappingTarget", "MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val updateMappingTargetType = EntityType(
+    "UpdateMappingTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
   private val mapperTuple = (
     "field1" -> "instance.get('field1')",
     "field2" -> "instance.get('field2')"
+  )
+
+  private val updatedMapperTuple = (
+    "field1" -> "instance.get('field2')",
+    "field2" -> "instance.get('field1')"
   )
 
   "Creating mapping instances" - {
@@ -789,6 +827,72 @@ class MappingSpec extends CommonSpec:
           case Left(error) =>
             fail(
               s"Expected a successful mapping definition but received error: $error"
+            )
+        }
+    }
+  }
+
+  "Updating a mapping" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val secondMappingKey = MappingKey(
+        "mapping_mid_target",
+        "UpdateMappingMidType",
+        "UpdateMappingTargetType"
+      )
+
+      val expectedMappingDef =
+        MappingDefinition(secondMappingKey, updatedMapperTuple)
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+          (for {
+            _ <- EitherT(tservice.create(updateMappingSourceType))
+            _ <- EitherT(tservice.create(updateMappingMidType))
+            _ <- EitherT(tservice.create(updateMappingTargetType))
+            firstMappingKey = MappingKey(
+              "mapping_source_mid",
+              "UpdateMappingSourceType",
+              "UpdateMappingMidType"
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(firstMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(secondMappingKey, mapperTuple))
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "UpdateMappingSourceType",
+                Tuple2(("field1", "Hello"), ("field2", "Test"))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            _ <- EitherT(mservice.update(secondMappingKey, updatedMapperTuple))
+            res <- EitherT(mservice.read(secondMappingKey))
+          } yield res).value
+        }
+        .asserting {
+          case Right(actualMappingDef) =>
+            actualMappingDef shouldEqual expectedMappingDef
+          case Left(error) =>
+            fail(
+              s"Expected a mapping definition but received error: $error"
             )
         }
     }
