@@ -296,7 +296,86 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   def delete(
       mappingKey: MappingKey
   ): F[Either[ManagementServiceError, Unit]] =
-    ???
+    (for {
+      existInstances <- EitherT(
+        existMappedInstances(logger, repository, mappingKey)
+      )
+      _ <-
+        if (existInstances)
+          EitherT.leftT[F, Unit](ExistingInstancesError(mappingKey.mappingName))
+        else EitherT.rightT[F, ManagementServiceError](())
+      isMappingSource <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          mappingKey.sourceEntityTypeName,
+          "MappingSource"
+        )
+      )
+      isMappingTarget <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          mappingKey.sourceEntityTypeName,
+          "MappingTarget"
+        )
+      )
+      _ <-
+        if (!isMappingSource || isMappingTarget)
+          EitherT.leftT[F, Unit](
+            InvalidMappingError("Source is not a root of the mapping")
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      sourceMappings <- EitherT(
+        getMappingsForEntityType(
+          logger,
+          typeManagementService,
+          mappingKey.sourceEntityTypeName
+        )
+      )
+      filteredMappings = sourceMappings.filter {
+        case (_, sourceEntityType, targetEntityType, _, _) =>
+          sourceEntityType.name.equals(
+            mappingKey.sourceEntityTypeName
+          ) && targetEntityType.name.equals(mappingKey.targetEntityTypeName)
+      }
+      (
+        mappingName,
+        sourceEntityType,
+        targetEntityType,
+        mapper,
+        mapperId
+      ) = filteredMappings.head
+      firstMappingDefinition = MappingDefinition(
+        MappingKey(
+          mappingName,
+          sourceEntityType.name,
+          targetEntityType.name
+        ),
+        mapper
+      )
+      _ <- EitherT(
+        deleteMappedInstances(
+          logger,
+          repository,
+          typeManagementService,
+          firstMappingDefinition,
+          mapperId
+        )
+      )
+      children <- EitherT.liftF(
+        getRelations(logger, repository, mappingKey.targetEntityTypeName, false)
+      )
+      _ <- EitherT(
+        recursiveDelete(
+          logger,
+          repository,
+          mappingKey.targetEntityTypeName,
+          typeManagementService
+        )
+      )
+      _ <- EitherT.liftF(logger.trace(s"Selected mapping last string:"))
+    } yield ()).value
   end delete
 
   override def exist(

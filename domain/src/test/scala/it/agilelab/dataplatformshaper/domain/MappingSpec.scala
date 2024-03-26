@@ -18,7 +18,8 @@ import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.{
   InvalidMappingError,
   MappingCycleDetectedError,
-  UpdatedTypeIsMappingTargetError
+  UpdatedTypeIsMappingTargetError,
+  MappingNotFoundError
 }
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
@@ -240,6 +241,39 @@ class MappingSpec extends CommonSpec:
 
   private val updateMappingTargetType = EntityType(
     "UpdateMappingTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val deleteMappingSourceType = EntityType(
+    "DeleteMappingSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val deleteMappingMidType = EntityType(
+    "DeleteMappingMidType",
+    Set("MappingSource", "MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val deleteMappingTargetType = EntityType(
+    "DeleteMappingTargetType",
     Set("MappingTarget"),
     StructType(
       List(
@@ -893,6 +927,69 @@ class MappingSpec extends CommonSpec:
           case Left(error) =>
             fail(
               s"Expected a mapping definition but received error: $error"
+            )
+        }
+    }
+  }
+
+  "Deleting a mapping" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val firstMappingKey = MappingKey(
+        "delete_mapping_source_mid",
+        "DeleteMappingSourceType",
+        "DeleteMappingMidType"
+      )
+
+      val secondMappingKey = MappingKey(
+        "delete_mapping_mid_target",
+        "DeleteMappingMidType",
+        "DeleteMappingTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+          (for {
+            _ <- EitherT(tservice.create(deleteMappingSourceType))
+            _ <- EitherT(tservice.create(deleteMappingMidType))
+            _ <- EitherT(tservice.create(deleteMappingTargetType))
+            _ <- EitherT(
+              mservice.create(MappingDefinition(firstMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(secondMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              iservice.create(
+                "DeleteMappingSourceType",
+                Tuple2(("field1", "Test"), ("field2", "Delete"))
+              )
+            )
+            _ <- EitherT(mservice.delete(firstMappingKey))
+            res <- EitherT(mservice.read(secondMappingKey))
+          } yield res).value
+        }
+        .asserting {
+          case Left(error: MappingNotFoundError) => succeed
+          case _ =>
+            fail(
+              "Expected a MappingNotFoundError but received a different error or result"
             )
         }
     }

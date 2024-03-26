@@ -61,4 +61,10 @@ enum ManagementServiceError(errorMessage: String):
       extends ManagementServiceError(
         s"The entity $entityTypeName is the target of a mapping"
       )
+  case ExistingInstancesError(mappingName: String)
+      extends ManagementServiceError(
+        s"The mapping $mappingName has some instances associated to it and thus it cannot be deleted"
+      )
+
+  case MappingDeletionError(error: String) extends ManagementServiceError(error)
 end ManagementServiceError

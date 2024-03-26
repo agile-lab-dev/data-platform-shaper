@@ -7,8 +7,14 @@ import io.circe.Json
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
-import it.agilelab.dataplatformshaper.domain.model.NS.{L3, ns}
+import it.agilelab.dataplatformshaper.domain.model.NS.{L2, L3, ns}
 import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
+import it.agilelab.dataplatformshaper.domain.model.l1.Relationship.mappedTo
+import it.agilelab.dataplatformshaper.domain.model.l1.given_Conversion_Relationship_String
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
@@ -783,6 +789,172 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     summon[Functor[F]].map(res1)(_.sequence)
   end getMappingsForEntityType
 
+  def existMappedInstances(
+      logger: Logger[F],
+      repository: KnowledgeGraph[F],
+      mappingKey: MappingKey
+  ): F[Either[ManagementServiceError, Boolean]] =
+    val query =
+      s"""
+         |PREFIX ns: <https://w3id.org/agile-dm/ontology/>
+         |SELECT (COUNT(*) as ?count) WHERE {
+         |        ?instance1 ?predicate ?instance2 .
+         |        ?instance1 ns:isClassifiedBy ns:${mappingKey.sourceEntityTypeName} .
+         |        ?instance2 ns:isClassifiedBy ns:${mappingKey.targetEntityTypeName} .
+         |        ns:${mappingKey.sourceEntityTypeName} <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:${mappingKey.targetEntityTypeName} .
+         |        FILTER(?predicate = <${ns.getName}mappedTo#${mappingKey.mappingName}>)
+         |}
+         |""".stripMargin
+    val res = logger.trace(
+      s"Checking if the instances for the mapping ${mappingKey.mappingName} exist with the query:\n$query"
+    ) *> repository.evaluateQuery(query)
+    summon[Functor[F]].map(res)(res =>
+      val count = res.toList.headOption
+        .flatMap(row => Option(row.getValue("count")))
+        .flatMap(_.stringValue().toIntOption)
+        .getOrElse(0)
+      if count > 0 then Right[ManagementServiceError, Boolean](true)
+      else Right[ManagementServiceError, Boolean](false)
+      end if
+    )
+  end existMappedInstances
+
+  def recursiveDelete(
+      logger: Logger[F],
+      repository: KnowledgeGraph[F],
+      entityTypeName: String,
+      typeManagementService: TypeManagementService[F]
+  ): F[Either[ManagementServiceError, Unit]] =
+    val stack = scala.collection.mutable.Stack(entityTypeName)
+
+    def loop(): F[Either[ManagementServiceError, Unit]] =
+      if stack.isEmpty then summon[Functor[F]].pure(Right(()))
+      else
+        val currentType = stack.pop()
+        getRelations(logger, repository, currentType, isGetParent = false)
+          .flatMap { children =>
+            children.foreach(stack.push)
+            getMappingsForEntityType(logger, typeManagementService, currentType)
+              .flatMap {
+                case Right(mappings) =>
+                  val filteredMappings = mappings.filter {
+                    case (_, sourceEntityType, _, _, _) =>
+                      sourceEntityType.name.equals(currentType)
+                  }
+
+                  if filteredMappings.isEmpty then
+                    summon[Functor[F]].pure(Right(()))
+                  else
+                    val (
+                      mappingName,
+                      sourceEntityType,
+                      targetEntityType,
+                      mapper,
+                      mapperId
+                    ) = filteredMappings.head
+                    val firstMappingDefinition = MappingDefinition(
+                      MappingKey(
+                        mappingName,
+                        sourceEntityType.name,
+                        targetEntityType.name
+                      ),
+                      mapper
+                    )
+
+                    deleteMappedInstances(
+                      logger,
+                      repository,
+                      typeManagementService,
+                      firstMappingDefinition,
+                      mapperId
+                    ).map(Right(_))
+
+                case Left(error) => summon[Functor[F]].pure(Left(error))
+              }
+              .flatMap {
+                case Right(_)    => loop()
+                case Left(error) => summon[Functor[F]].pure(Left(error))
+              }
+          }
+          .handleErrorWith { error =>
+            val managementError: ManagementServiceError = MappingDeletionError(
+              "There was an error during the deletion of the mapping"
+            )
+            summon[Functor[F]].pure(Left(managementError))
+          }
+    loop()
+  end recursiveDelete
+
+  def deleteMappedInstances(
+      logger: Logger[F],
+      repository: KnowledgeGraph[F],
+      typeManagementService: TypeManagementService[F],
+      mappingDefinition: MappingDefinition,
+      mapperId: String
+  ): F[Either[ManagementServiceError, Unit]] =
+    val key = mappingDefinition.mappingKey
+    val mapper = mappingDefinition.mapper
+    val sourceEntityTypeIri = iri(ns, key.sourceEntityTypeName)
+    val targetEntityTypeIri = iri(ns, key.targetEntityTypeName)
+    val mapperIri = iri(ns, mapperId)
+
+    val mappedToTriple1 = triple(
+      sourceEntityTypeIri,
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#${key.mappingName}"),
+      targetEntityTypeIri
+    )
+
+    val mappedToTriple2 = triple(
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#${key.mappingName}"),
+      iri(ns, "singletonPropertyOf"),
+      iri(mappedTo.getNamespace, mappedTo)
+    )
+
+    val mappedToTriple3 = triple(
+      iri(mappedTo.getNamespace, s"${mappedTo: String}#${key.mappingName}"),
+      NS.MAPPEDBY,
+      mapperIri
+    )
+
+    val initialStatements = List(
+      statement(
+        mappedToTriple1,
+        L2
+      ),
+      statement(
+        mappedToTriple2,
+        L2
+      ),
+      statement(
+        mappedToTriple3,
+        L2
+      )
+    )
+
+    (for {
+      ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
+      stmts <- EitherT(
+        summon[Applicative[F]].pure(
+          emitStatementsForEntity(
+            mapperId,
+            ttype.name,
+            mapper,
+            schemaToMapperSchema(ttype.schema),
+            L2
+          )
+        )
+      )
+      res <- EitherT(
+        summon[Functor[F]].map(
+          repository.removeAndInsertStatements(
+            List.empty[Statement],
+            initialStatements ::: stmts
+          )
+        )(Right[ManagementServiceError, Unit])
+      )
+    } yield res).value
+  end deleteMappedInstances
+
   def getMappingsForEntity(
       logger: Logger[F],
       typeManagementService: TypeManagementService[F],
@@ -861,12 +1033,25 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     summon[Functor[F]].map(res1)(_.sequence)
   end getMappingsForEntity
 
-  def getParents(
+  def getRelations(
       logger: Logger[F],
       repository: KnowledgeGraph[F],
-      sourceEntityTypeName: String
+      sourceEntityTypeName: String,
+      isGetParent: Boolean
   ): F[List[String]] =
     val nsName = ns.getName
+    val (relationship, direction) =
+      if isGetParent then
+        (
+          "?mr ns:singletonPropertyOf ns:mappedTo",
+          s"?t ?mr ns:$sourceEntityTypeName"
+        )
+      else
+        (
+          s"ns:${sourceEntityTypeName} ?mr ?t",
+          "?mr ns:singletonPropertyOf ns:mappedTo"
+        )
+
     val query =
       s"""
          |PREFIX ns:   <${nsName}>
@@ -874,14 +1059,14 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
          |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
          |SELECT distinct ?mr ?t ?m WHERE {
-         |   ?mr ns:singletonPropertyOf ns:mappedTo .
-         |   ?t ?mr ns:${sourceEntityTypeName} .
+         |   $relationship .
+         |   $direction .
          |   ?mr ns:mappedBy ?m .
          |}
          |""".stripMargin
 
     logger.trace(
-      s"Executing getParents for $sourceEntityTypeName with query:\n$query"
+      s"Executing getRelations for $sourceEntityTypeName with query:\n$query"
     ) >>
       repository.evaluateQuery(query).flatMap { iterator =>
         @tailrec
@@ -899,7 +1084,6 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
         summon[Functor[F]].pure(loop(Nil).reverse)
       }
-  end getParents
 
   def getRoots(
       logger: Logger[F],
@@ -910,15 +1094,16 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       if pending.isEmpty then summon[Functor[F]].pure(roots)
       else
         val next = pending.head
-        getParents(logger, repository, next).flatMap { parents =>
+        getRelations(logger, repository, next, true).flatMap { parents =>
           if parents.isEmpty then loop(pending - next, roots + next)
           else loop(pending - next ++ parents, roots)
         }
 
-    getParents(logger, repository, entityTypeName).flatMap { initialParents =>
-      if !initialParents.isEmpty then
-        loop(initialParents.toSet, Set.empty).map(_.toList)
-      else summon[Functor[F]].pure(List(entityTypeName))
+    getRelations(logger, repository, entityTypeName, true).flatMap {
+      initialParents =>
+        if !initialParents.isEmpty then
+          loop(initialParents.toSet, Set.empty).map(_.toList)
+        else summon[Functor[F]].pure(List(entityTypeName))
     }
   end getRoots
 
@@ -945,7 +1130,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             )
           )
         else
-          getParents(logger, repository, currentType).flatMap { roots =>
+          getRelations(logger, repository, currentType, true).flatMap { roots =>
             val newVisited = visited + currentType
             val commonRoots = roots.toSet.intersect(newVisited)
             if commonRoots.nonEmpty then
