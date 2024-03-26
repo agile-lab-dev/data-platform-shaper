@@ -871,18 +871,29 @@ def tupleToJsonChecked(
             case LongType(mode, _) =>
               mode match
                 case Required =>
-                  Json.fromLong(tupleFieldValue.asInstanceOf[Long])
+                  tupleFieldValue match
+                    case v: Int =>
+                      Json.fromLong(v.toLong)
+                    case v: Long =>
+                      Json.fromLong(v)
+                  end match
                 case Repeated =>
                   Json.fromValues(
                     tupleFieldValue
-                      .asInstanceOf[List[Long]]
+                      .asInstanceOf[List[AnyVal]]
+                      .map {
+                        case v: Int  => Json.fromLong(v.toLong)
+                        case v: Long => Json.fromLong(v)
+                      }
                       .sorted
-                      .map(Json.fromLong)
                   )
                 case Nullable =>
                   tupleFieldValue
-                    .asInstanceOf[Option[Long]]
-                    .fold(Json.Null)(Json.fromLong)
+                    .asInstanceOf[Option[AnyVal]]
+                    .fold(Json.Null) {
+                      case v: Int  => Json.fromLong(v.toLong)
+                      case v: Long => Json.fromLong(v)
+                    }
               end match
             case BooleanType(mode, _) =>
               mode match

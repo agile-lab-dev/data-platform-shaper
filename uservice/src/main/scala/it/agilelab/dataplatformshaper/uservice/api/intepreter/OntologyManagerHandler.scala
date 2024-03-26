@@ -1020,7 +1020,9 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end updateMappedInstances
 
-  override def deleteMappedInstances(respond: Resource.DeleteMappedInstancesResponse.type)(body: String): F[Resource.DeleteMappedInstancesResponse] =
+  override def deleteMappedInstances(
+      respond: Resource.DeleteMappedInstancesResponse.type
+  )(body: String): F[Resource.DeleteMappedInstancesResponse] =
     val res = mms
       .deleteMappedInstances(body)
       .map(_.leftMap(err => Vector(err.getMessage)))
@@ -1032,5 +1034,5 @@ class OntologyManagerHandler[F[_]: Async](
       .onError(t =>
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
-  end deleteMappedInstances  
+  end deleteMappedInstances
 end OntologyManagerHandler
