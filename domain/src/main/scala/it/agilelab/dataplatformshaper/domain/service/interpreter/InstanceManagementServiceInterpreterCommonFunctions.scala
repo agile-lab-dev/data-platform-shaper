@@ -792,21 +792,59 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   def existMappedInstances(
       logger: Logger[F],
       repository: KnowledgeGraph[F],
-      mappingKey: MappingKey
+      sourceEntityTypeName: Option[String],
+      mappingName: Option[String],
+      targetEntityTypeName: Option[String]
   ): F[Either[ManagementServiceError, Boolean]] =
+    val predicateSource = sourceEntityTypeName
+      .map(value => s"?instance1 ns:isClassifiedBy ns:${value} .")
+      .getOrElse(s"?instance1 ns:isClassifiedBy ?entity3 .")
+    val predicateTarget = targetEntityTypeName
+      .map(value => s"?instance2 ns:isClassifiedBy ns:${value} .")
+      .getOrElse(s"?instance2 ns:isClassifiedBy ?entity4 .")
+
+    val semiSourcePredicateMappedTo =
+      sourceEntityTypeName.map(value => s"ns:${value}").getOrElse("?entity1")
+    val semiMappedToPredicate = mappingName
+      .map(value => s"<${ns.getName}mappedTo#${value}>")
+      .getOrElse("?mapping")
+    val semiTargetPredicateMappedTo = targetEntityTypeName
+      .map(value => s"ns:${value} .")
+      .getOrElse("?entity2 .")
+
+    val mappingPredicate: String = List(
+      semiSourcePredicateMappedTo,
+      semiMappedToPredicate,
+      semiTargetPredicateMappedTo
+    )
+      .mkString(" ")
+
+    val firstFilterMapping: String = mappingName
+      .map(value => s"FILTER(?predicate = <${ns.getName}mappedTo#${value}>) .")
+      .getOrElse("")
+
+    val secondFilterMapping: String = mappingName
+      .map(value =>
+        s"FILTER(STRSTARTS(STR(?mapping), '${ns.getName}mappedTo#$value')) ."
+      )
+      .getOrElse(
+        s"FILTER(STRSTARTS(STR(?mapping), '${ns.getName}mappedTo#')) ."
+      )
+
     val query =
       s"""
          |PREFIX ns: <https://w3id.org/agile-dm/ontology/>
          |SELECT (COUNT(*) as ?count) WHERE {
          |        ?instance1 ?predicate ?instance2 .
-         |        ?instance1 ns:isClassifiedBy ns:${mappingKey.sourceEntityTypeName} .
-         |        ?instance2 ns:isClassifiedBy ns:${mappingKey.targetEntityTypeName} .
-         |        ns:${mappingKey.sourceEntityTypeName} <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:${mappingKey.targetEntityTypeName} .
-         |        FILTER(?predicate = <${ns.getName}mappedTo#${mappingKey.mappingName}>)
+         |        $predicateSource
+         |        $predicateTarget
+         |        $mappingPredicate
+         |        $firstFilterMapping
+         |        $secondFilterMapping
          |}
          |""".stripMargin
     val res = logger.trace(
-      s"Checking if the instances for the mapping ${mappingKey.mappingName} exist with the query:\n$query"
+      s"Checking if the instances for the mapping ${mappingName.getOrElse(" ")} exist with the query:\n$query"
     ) *> repository.evaluateQuery(query)
     summon[Functor[F]].map(res)(res =>
       val count = res.toList.headOption

@@ -16,10 +16,11 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.{
+  ExistingInstancesError,
   InvalidMappingError,
   MappingCycleDetectedError,
-  UpdatedTypeIsMappingTargetError,
-  MappingNotFoundError
+  MappingNotFoundError,
+  UpdatedTypeIsMappingTargetError
 }
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
@@ -274,6 +275,28 @@ class MappingSpec extends CommonSpec:
 
   private val deleteMappingTargetType = EntityType(
     "DeleteMappingTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val twoMappedInstancesSourceType = EntityType(
+    "TwoMappedInstancesSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val twoMappedInstancesTargetType = EntityType(
+    "TwoMappedInstancesTargetType",
     Set("MappingTarget"),
     StructType(
       List(
@@ -987,6 +1010,59 @@ class MappingSpec extends CommonSpec:
         }
         .asserting {
           case Left(error: MappingNotFoundError) => succeed
+          case _ =>
+            fail(
+              "Expected a MappingNotFoundError but received a different error or result"
+            )
+        }
+    }
+  }
+
+  "Creating the mapped instances more than once" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val mappingKey = MappingKey(
+        "two_mapping_instances_map",
+        "TwoMappedInstancesSourceType",
+        "TwoMappedInstancesTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+          (for {
+            _ <- EitherT(tservice.create(twoMappedInstancesSourceType))
+            _ <- EitherT(tservice.create(twoMappedInstancesTargetType))
+            _ <- EitherT(
+              mservice.create(MappingDefinition(mappingKey, mapperTuple))
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "TwoMappedInstancesSourceType",
+                Tuple2(("field1", "Test"), ("field2", "Double Create"))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            res <- EitherT(mservice.createMappedInstances(sourceId))
+          } yield res).value
+        }
+        .asserting {
+          case Left(error: ExistingInstancesError) => succeed
           case _ =>
             fail(
               "Expected a MappingNotFoundError but received a different error or result"

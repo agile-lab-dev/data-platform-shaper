@@ -298,7 +298,13 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   ): F[Either[ManagementServiceError, Unit]] =
     (for {
       existInstances <- EitherT(
-        existMappedInstances(logger, repository, mappingKey)
+        existMappedInstances(
+          logger,
+          repository,
+          Some(mappingKey.sourceEntityTypeName),
+          Some(mappingKey.mappingName),
+          Some(mappingKey.targetEntityTypeName)
+        )
       )
       _ <-
         if (existInstances)
@@ -411,6 +417,20 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       sourceInstance <- EitherT(
         instanceManagementService.read(sourceInstanceId)
       )
+      existInstances <- EitherT(
+        existMappedInstances(
+          logger,
+          repository,
+          Some(sourceInstance.entityTypeName),
+          None,
+          None
+        )
+      )
+      _ <-
+        if (existInstances)
+          EitherT.leftT[F, Unit](ExistingInstancesError(" "))
+        else
+          EitherT.rightT[F, ManagementServiceError](())
       mappings <- EitherT(
         getMappingsForEntityType(
           logger,
