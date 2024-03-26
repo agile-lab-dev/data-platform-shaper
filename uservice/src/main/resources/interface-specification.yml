@@ -886,6 +886,135 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/mapping/yaml:
+    post:
+      tags:
+        - OntologyManager
+      summary: Create a mapping
+      operationId: createMappingByYaml
+      requestBody:
+        description: A YAML file containing a Mapping spec
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+  /ontology/mapping/createMappedInstances:
+    post:
+      tags:
+        - OntologyManager
+      summary: Create mapped instances
+      operationId: createMappedInstances
+      requestBody:
+        description: Source instance identifier
+        content:
+          application/text:
+            schema:
+              type: string
+        required: true
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+  /ontology/mapping/updateMappedInstances:
+    post:
+      tags:
+        - OntologyManager
+      summary: Update mapped instances
+      operationId: updateMappedInstances
+      requestBody:
+        description: Source instance identifier
+        content:
+          application/text:
+            schema:
+              type: string
+        required: true
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+  /ontology/mapping/deleteMappedInstances:
+    post:
+      tags:
+        - OntologyManager
+      summary: Delete mapped instances
+      operationId: deleteMappedInstances
+      requestBody:
+        description: Source instance identifier
+        content:
+          application/text:
+            schema:
+              type: string
+        required: true
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
 components:
   schemas:
     Entity:

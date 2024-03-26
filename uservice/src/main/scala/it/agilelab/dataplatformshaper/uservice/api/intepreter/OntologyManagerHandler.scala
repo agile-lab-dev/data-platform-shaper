@@ -902,7 +902,7 @@ class OntologyManagerHandler[F[_]: Async](
             )
           )
       )
-      entityId <- EitherT(
+      _ <- EitherT(
         mms
           .create(
             MappingDefinition(
@@ -914,14 +914,11 @@ class OntologyManagerHandler[F[_]: Async](
               tuple
             )
           )
-          .map(_.leftMap {
-            case err: ManagementServiceError.InstanceValidationError =>
-              err.errors.toVector
-            case err: ManagementServiceError =>
-              Vector(err.getMessage)
+          .map(_.leftMap { case err: ManagementServiceError =>
+            Vector(err.getMessage)
           })
       )
-    } yield entityId).value
+    } yield ()).value
     res
       .map {
         case Left(errors) => respond.BadRequest(ValidationError(errors))
@@ -931,4 +928,109 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createMapping
+
+  override def createMappingByYaml(
+      respond: Resource.CreateMappingByYamlResponse.type
+  )(body: Stream[F, Byte]): F[Resource.CreateMappingByYamlResponse] =
+    val getMappingDefinition = body
+      .through(text.utf8.decode)
+      .fold("")(_ + _)
+      .compile
+      .toList
+      .map(_.head)
+      .map(parser.parse(_).leftMap(_.getMessage))
+      .map(
+        _.flatMap(json =>
+          OpenApiMappingDefinition
+            .decodeMappingDefinition(json.hcursor)
+            .leftMap(_.getMessage)
+        ).leftMap(err => Vector(err))
+      )
+
+    val res = (for {
+      body <- EitherT(getMappingDefinition)
+      schema <- EitherT(
+        tms
+          .read(body.mappingKey.targetEntityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(l => Vector(l.getMessage)))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(
+            jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
+              Vector(l.getMessage)
+            )
+          )
+      )
+      _ <- EitherT(
+        mms
+          .create(
+            MappingDefinition(
+              MappingKey(
+                body.mappingKey.mappingName,
+                body.mappingKey.sourceEntityTypeName,
+                body.mappingKey.targetEntityTypeName
+              ),
+              tuple
+            )
+          )
+          .map(_.leftMap(err => Vector(err.getMessage)))
+      )
+    } yield ()).value
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end createMappingByYaml
+
+  override def createMappedInstances(
+      respond: Resource.CreateMappedInstancesResponse.type
+  )(body: String): F[Resource.CreateMappedInstancesResponse] =
+    val res = mms
+      .createMappedInstances(body)
+      .map(_.leftMap(err => Vector(err.getMessage)))
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end createMappedInstances
+
+  override def updateMappedInstances(
+      respond: Resource.UpdateMappedInstancesResponse.type
+  )(body: String): F[Resource.UpdateMappedInstancesResponse] =
+    val res = mms
+      .updateMappedInstances(body)
+      .map(_.leftMap(err => Vector(err.getMessage)))
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end updateMappedInstances
+
+  override def deleteMappedInstances(respond: Resource.DeleteMappedInstancesResponse.type)(body: String): F[Resource.DeleteMappedInstancesResponse] =
+    val res = mms
+      .deleteMappedInstances(body)
+      .map(_.leftMap(err => Vector(err.getMessage)))
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end deleteMappedInstances  
 end OntologyManagerHandler
