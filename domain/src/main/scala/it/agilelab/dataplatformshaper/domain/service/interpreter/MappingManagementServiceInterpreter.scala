@@ -192,7 +192,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       s"""
          |PREFIX ns: <${ns.getName}>
          |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-         |SELECT ?predicate ?object WHERE {
+         |SELECT DISTINCT ?predicate ?object WHERE {
          |   <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:mappedBy ?mappedByValue .
          |   ns:${mappingKey.sourceEntityTypeName} <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:${mappingKey.targetEntityTypeName} .
          |   ?mappedByValue ?predicate ?object
@@ -246,10 +246,12 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           mappingKey.sourceEntityTypeName
         )
       )
-      filteredMappings = mappings.filter {
-        case (_, _, targetEntityType, _, _) =>
+      filteredMappings <- EitherT.fromOption[F](
+        Some(mappings.filter { case (_, _, targetEntityType, _, _) =>
           targetEntityType.name.equals(mappingKey.targetEntityTypeName)
-      }
+        }),
+        MappingNotFoundError("No mappings found matching the criteria")
+      )
       firstMapping <- EitherT.fromOption[F](
         filteredMappings.headOption,
         MappingNotFoundError("No mappings found matching the criteria")
@@ -287,7 +289,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           )
         ).map(_.collect { case s: String => s })
       }
-      instanceIds = rawInstanceIdsList.flatten.distinct
+      instanceIds <- EitherT.liftF(
+        summon[Applicative[F]].pure(rawInstanceIdsList.flatten.distinct)
+      )
       _ <- EitherT.liftF(instanceIds.traverse(id => updateMappedInstances(id)))
       _ <- EitherT.liftF(logger.trace(s"Selected mapping last string: $pairs"))
     } yield ()).value
