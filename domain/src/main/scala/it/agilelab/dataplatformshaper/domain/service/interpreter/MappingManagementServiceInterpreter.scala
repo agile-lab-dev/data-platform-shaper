@@ -16,7 +16,7 @@ import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, MappingManagementService, TypeManagementService}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
-import org.eclipse.rdf4j.model.util.Values.{iri, triple}
+import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -174,13 +174,256 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end create
 
-  override def createMappedInstances( // TODO add a check to block the creation in case there are already instances created
+  def read(
+      mappingKey: MappingKey
+  ): F[Either[ManagementServiceError, MappingDefinition]] =
+    val query =
+      s"""
+         |PREFIX ns: <${ns.getName}>
+         |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |SELECT DISTINCT ?predicate ?object WHERE {
+         |   <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:mappedBy ?mappedByValue .
+         |   ns:${mappingKey.sourceEntityTypeName} <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:${mappingKey.targetEntityTypeName} .
+         |   ?mappedByValue ?predicate ?object
+         |   FILTER(?predicate != rdf:type && ?predicate != ns:isClassifiedBy)
+         |}
+         |""".stripMargin
+
+    val res = logger.trace(
+      s"Reading the mapping with name ${mappingKey.mappingName} with the query:\n$query"
+    ) *> repository.evaluateQuery(query)
+
+    summon[Functor[F]].map(res) { result =>
+      val pairs = Iterator
+        .continually(result)
+        .takeWhile(_.hasNext)
+        .map(_.next())
+        .map { bindingSet =>
+          val obj = Option(bindingSet.getValue("object"))
+            .map(_.stringValue())
+            .getOrElse("")
+          val pred = Option(bindingSet.getValue("predicate"))
+            .map(_.stringValue())
+            .getOrElse("")
+
+          (iri(pred).getLocalName, obj)
+        }
+        .filter { case (pred, obj) => pred.nonEmpty && obj.nonEmpty }
+        .toList
+
+      pairs match
+        case List(tuple1, tuple2) =>
+          Right(MappingDefinition(mappingKey, (tuple1, tuple2)))
+        case _ =>
+          Left(
+            MappingNotFoundError(
+              s"Mapping with name ${mappingKey.mappingName} has not been found or does not have exactly two pairs"
+            )
+          )
+    }
+  end read
+
+  def update(
+      mappingKey: MappingKey,
+      mapper: Tuple
+  ): F[Either[ManagementServiceError, Unit]] =
+    (for {
+      mappings <- EitherT(
+        getMappingsForEntityType(
+          logger,
+          typeManagementService,
+          mappingKey.sourceEntityTypeName
+        )
+      )
+      filteredMappings <- EitherT.fromOption[F](
+        Some(mappings.filter { case (_, _, targetEntityType, _, _) =>
+          targetEntityType.name.equals(mappingKey.targetEntityTypeName)
+        }),
+        MappingNotFoundError("No mappings found matching the criteria")
+      )
+      firstMapping <- EitherT.fromOption[F](
+        filteredMappings.headOption,
+        MappingNotFoundError("No mappings found matching the criteria")
+      )
+      (_, _, _, pairs, mappingId) = firstMapping
+      oldStatements = pairs.toList.map { case (key: String, value: String) =>
+        val mappedToTriple1 = triple(
+          iri(ns, mappingId),
+          iri(ns, key),
+          literal(value)
+        )
+        statement(mappedToTriple1, L2)
+      }
+      newStatements = mapper.toList.map { case (key: String, value: String) =>
+        val mappedToTriple1 = triple(
+          iri(ns, mappingId),
+          iri(ns, key),
+          literal(value)
+        )
+        statement(mappedToTriple1, L2)
+      }
+      _ <- EitherT.liftF(
+        repository.removeAndInsertStatements(newStatements, oldStatements)
+      )
+      roots <- EitherT.liftF(
+        getRoots(logger, repository, mappingKey.sourceEntityTypeName)
+      )
+      rawInstanceIdsList <- roots.traverse { root =>
+        EitherT(
+          instanceManagementService.list(
+            instanceTypeName = root,
+            predicate = "",
+            returnEntities = false,
+            limit = None
+          )
+        ).map(_.collect { case s: String => s })
+      }
+      instanceIds <- EitherT.liftF(
+        summon[Applicative[F]].pure(rawInstanceIdsList.flatten.distinct)
+      )
+      _ <- EitherT.liftF(instanceIds.traverse(id => updateMappedInstances(id)))
+      _ <- EitherT.liftF(logger.trace(s"Selected mapping last string: $pairs"))
+    } yield ()).value
+  end update
+
+  def delete(
+      mappingKey: MappingKey
+  ): F[Either[ManagementServiceError, Unit]] =
+    (for {
+      existInstances <- EitherT(
+        existMappedInstances(
+          logger,
+          repository,
+          Some(mappingKey.sourceEntityTypeName),
+          Some(mappingKey.mappingName),
+          Some(mappingKey.targetEntityTypeName)
+        )
+      )
+      _ <-
+        if (existInstances)
+          EitherT.leftT[F, Unit](ExistingInstancesError(mappingKey.mappingName))
+        else EitherT.rightT[F, ManagementServiceError](())
+      isMappingSource <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          mappingKey.sourceEntityTypeName,
+          "MappingSource"
+        )
+      )
+      isMappingTarget <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          mappingKey.sourceEntityTypeName,
+          "MappingTarget"
+        )
+      )
+      _ <-
+        if (!isMappingSource || isMappingTarget)
+          EitherT.leftT[F, Unit](
+            InvalidMappingError("Source is not a root of the mapping")
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      sourceMappings <- EitherT(
+        getMappingsForEntityType(
+          logger,
+          typeManagementService,
+          mappingKey.sourceEntityTypeName
+        )
+      )
+      filteredMappings = sourceMappings.filter {
+        case (_, sourceEntityType, targetEntityType, _, _) =>
+          sourceEntityType.name.equals(
+            mappingKey.sourceEntityTypeName
+          ) && targetEntityType.name.equals(mappingKey.targetEntityTypeName)
+      }
+      (
+        mappingName,
+        sourceEntityType,
+        targetEntityType,
+        mapper,
+        mapperId
+      ) = filteredMappings.head
+      firstMappingDefinition = MappingDefinition(
+        MappingKey(
+          mappingName,
+          sourceEntityType.name,
+          targetEntityType.name
+        ),
+        mapper
+      )
+      _ <- EitherT(
+        deleteMappedInstances(
+          logger,
+          repository,
+          typeManagementService,
+          firstMappingDefinition,
+          mapperId
+        )
+      )
+      children <- EitherT.liftF(
+        getRelations(logger, repository, mappingKey.targetEntityTypeName, false)
+      )
+      _ <- EitherT(
+        recursiveDelete(
+          logger,
+          repository,
+          mappingKey.targetEntityTypeName,
+          typeManagementService
+        )
+      )
+      _ <- EitherT.liftF(logger.trace(s"Selected mapping last string:"))
+    } yield ()).value
+  end delete
+
+  override def exist(
+      mapperKey: MappingKey
+  ): F[Either[ManagementServiceError, Boolean]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT distinct ?mr WHERE {
+         |   ?mr ns:singletonPropertyOf ns:mappedTo .
+         |   ns:${mapperKey.sourceEntityTypeName} ?mr ns:${mapperKey.targetEntityTypeName} .
+         |   FILTER(STR(?mr) = "${ns.getName}mappedTo#${mapperKey.mappingName}")
+         |}
+         |""".stripMargin
+    val res = logger.trace(
+      s"Checking the mapping existence with name ${mapperKey.mappingName} with the query:\n$query"
+    ) *> repository.evaluateQuery(query)
+    summon[Functor[F]].map(res)(res =>
+      val count = res.toList.length
+      if count > 0 then Right[ManagementServiceError, Boolean](true)
+      else Right[ManagementServiceError, Boolean](false)
+      end if
+    )
+  end exist
+
+  override def createMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
     (for {
       sourceInstance <- EitherT(
         instanceManagementService.read(sourceInstanceId)
       )
+      existInstances <- EitherT(
+        existMappedInstances(
+          logger,
+          repository,
+          Some(sourceInstance.entityTypeName),
+          None,
+          None
+        )
+      )
+      _ <-
+        if (existInstances)
+          EitherT.leftT[F, Unit](ExistingInstancesError(" "))
+        else
+          EitherT.rightT[F, ManagementServiceError](())
       mappings <- EitherT(
         getMappingsForEntityType(
           logger,
@@ -357,29 +600,4 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
     } yield ()).value
   end deleteMappedInstances
-
-  override def exist(
-      mapperKey: MappingKey
-  ): F[Either[ManagementServiceError, Boolean]] =
-    val query = s"""
-         |PREFIX ns:   <${ns.getName}>
-         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
-         |SELECT distinct ?mr WHERE {
-         |   ?mr ns:singletonPropertyOf ns:mappedTo .
-         |   ns:${mapperKey.sourceEntityTypeName} ?mr ns:${mapperKey.targetEntityTypeName} .
-         |   FILTER(STR(?mr) = "${ns.getName}mappedTo#${mapperKey.mappingName}")
-         |}
-         |""".stripMargin
-    val res = logger.trace(
-      s"Checking the mapping existence with name ${mapperKey.mappingName} with the query:\n$query"
-    ) *> repository.evaluateQuery(query)
-    summon[Functor[F]].map(res)(res =>
-      val count = res.toList.length
-      if count > 0 then Right[ManagementServiceError, Boolean](true)
-      else Right[ManagementServiceError, Boolean](false)
-      end if
-    )
-  end exist
 end MappingManagementServiceInterpreter
