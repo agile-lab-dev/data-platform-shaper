@@ -16,8 +16,10 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.{
+  ExistingInstancesError,
   InvalidMappingError,
   MappingCycleDetectedError,
+  MappingNotFoundError,
   UpdatedTypeIsMappingTargetError
 }
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
@@ -26,13 +28,31 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
+import org.scalactic.Equality
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.*
 import scala.language.{dynamics, implicitConversions}
 
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.asInstanceOf",
+    "scalafix:DisableSyntax.isInstanceOf",
+    "scalafix:DisableSyntax.=="
+  )
+)
 class MappingSpec extends CommonSpec:
+
+  given Equality[MappingDefinition] with
+    def areEqual(a: MappingDefinition, b: Any): Boolean =
+      b match
+        case bDef: MappingDefinition =>
+          a.mappingKey == bDef.mappingKey &&
+          a.mapper.productIterator.toSet == bDef.mapper.productIterator.toSet
+        case _ => false
+    end areEqual
+  end given
 
   given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
@@ -176,9 +196,124 @@ class MappingSpec extends CommonSpec:
     ): Schema
   )
 
+  private val readSourceType = EntityType(
+    "ReadSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val readTargetType = EntityType(
+    "ReadTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val updateMappingSourceType = EntityType(
+    "UpdateMappingSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val updateMappingMidType = EntityType(
+    "UpdateMappingMidType",
+    Set("MappingTarget", "MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val updateMappingTargetType = EntityType(
+    "UpdateMappingTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val deleteMappingSourceType = EntityType(
+    "DeleteMappingSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val deleteMappingMidType = EntityType(
+    "DeleteMappingMidType",
+    Set("MappingSource", "MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val deleteMappingTargetType = EntityType(
+    "DeleteMappingTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val twoMappedInstancesSourceType = EntityType(
+    "TwoMappedInstancesSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val twoMappedInstancesTargetType = EntityType(
+    "TwoMappedInstancesTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
   private val mapperTuple = (
     "field1" -> "instance.get('field1')",
     "field2" -> "instance.get('field2')"
+  )
+
+  private val updatedMapperTuple = (
+    "field1" -> "instance.get('field2')",
+    "field2" -> "instance.get('field1')"
   )
 
   "Creating mapping instances" - {
@@ -706,4 +841,234 @@ class MappingSpec extends CommonSpec:
       }
     }
   }
+
+  "Reading a mapping" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val mappingName = "read_mapping"
+      val mappingSourceName = "ReadSourceType"
+      val mappingTargetName = "ReadTargetType"
+      val expectedMappingKey =
+        MappingKey(mappingName, mappingSourceName, mappingTargetName)
+      val expectedMappingDef =
+        MappingDefinition(expectedMappingKey, mapperTuple)
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+          (for {
+            _ <- EitherT(tservice.create(readSourceType))
+            _ <- EitherT(tservice.create(readTargetType))
+            _ <- EitherT(mservice.create(expectedMappingDef))
+            res <- EitherT(mservice.read(expectedMappingKey))
+          } yield res).value
+        }
+        .asserting {
+          case Right(actualMappingDef) =>
+            actualMappingDef shouldEqual expectedMappingDef
+          case Left(error) =>
+            fail(
+              s"Expected a successful mapping definition but received error: $error"
+            )
+        }
+    }
+  }
+
+  "Updating a mapping" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val secondMappingKey = MappingKey(
+        "mapping_mid_target",
+        "UpdateMappingMidType",
+        "UpdateMappingTargetType"
+      )
+
+      val expectedMappingDef =
+        MappingDefinition(secondMappingKey, updatedMapperTuple)
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+          (for {
+            _ <- EitherT(tservice.create(updateMappingSourceType))
+            _ <- EitherT(tservice.create(updateMappingMidType))
+            _ <- EitherT(tservice.create(updateMappingTargetType))
+            firstMappingKey = MappingKey(
+              "mapping_source_mid",
+              "UpdateMappingSourceType",
+              "UpdateMappingMidType"
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(firstMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(secondMappingKey, mapperTuple))
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "UpdateMappingSourceType",
+                Tuple2(("field1", "Hello"), ("field2", "Test"))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            _ <- EitherT(mservice.update(secondMappingKey, updatedMapperTuple))
+            res <- EitherT(mservice.read(secondMappingKey))
+          } yield res).value
+        }
+        .asserting {
+          case Right(actualMappingDef) =>
+            actualMappingDef shouldEqual expectedMappingDef
+          case Left(error) =>
+            fail(
+              s"Expected a mapping definition but received error: $error"
+            )
+        }
+    }
+  }
+
+  "Deleting a mapping" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val firstMappingKey = MappingKey(
+        "delete_mapping_source_mid",
+        "DeleteMappingSourceType",
+        "DeleteMappingMidType"
+      )
+
+      val secondMappingKey = MappingKey(
+        "delete_mapping_mid_target",
+        "DeleteMappingMidType",
+        "DeleteMappingTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+          (for {
+            _ <- EitherT(tservice.create(deleteMappingSourceType))
+            _ <- EitherT(tservice.create(deleteMappingMidType))
+            _ <- EitherT(tservice.create(deleteMappingTargetType))
+            _ <- EitherT(
+              mservice.create(MappingDefinition(firstMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(secondMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              iservice.create(
+                "DeleteMappingSourceType",
+                Tuple2(("field1", "Test"), ("field2", "Delete"))
+              )
+            )
+            _ <- EitherT(mservice.delete(firstMappingKey))
+            res <- EitherT(mservice.read(secondMappingKey))
+          } yield res).value
+        }
+        .asserting {
+          case Left(error: MappingNotFoundError) => succeed
+          case _ =>
+            fail(
+              "Expected a MappingNotFoundError but received a different error or result"
+            )
+        }
+    }
+  }
+
+  "Creating the mapped instances more than once" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val mappingKey = MappingKey(
+        "two_mapping_instances_map",
+        "TwoMappedInstancesSourceType",
+        "TwoMappedInstancesTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+
+          (for {
+            _ <- EitherT(tservice.create(twoMappedInstancesSourceType))
+            _ <- EitherT(tservice.create(twoMappedInstancesTargetType))
+            _ <- EitherT(
+              mservice.create(MappingDefinition(mappingKey, mapperTuple))
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "TwoMappedInstancesSourceType",
+                Tuple2(("field1", "Test"), ("field2", "Double Create"))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            res <- EitherT(mservice.createMappedInstances(sourceId))
+          } yield res).value
+        }
+        .asserting {
+          case Left(error: ExistingInstancesError) => succeed
+          case _ =>
+            fail(
+              "Expected a MappingNotFoundError but received a different error or result"
+            )
+        }
+    }
+  }
+
 end MappingSpec
