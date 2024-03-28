@@ -371,6 +371,7 @@ class MappingSpec extends CommonSpec:
               None
             )
           )
+          res <- EitherT(mservice.readMappedInstances(res1))
         } yield (
           lt1.length,
           lt2.length,
@@ -379,10 +380,12 @@ class MappingSpec extends CommonSpec:
           lt5.length,
           lt6.length,
           lt7.length,
-          lt8.length
+          lt8.length,
+          res
         )).value
       } asserting (ret =>
-        ret should matchPattern { case Right((1, 1, 1, 1, 1, 1, 1, 1)) => }
+        ret.map(_(8)).map(_.mkString("\n")).foreach(println)
+        ret should matchPattern { case Right((1, 1, 1, 1, 1, 1, 1, 1, _)) => }
       )
     }
   }

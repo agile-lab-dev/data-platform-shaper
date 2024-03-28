@@ -8,23 +8,12 @@ import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, L3, ns}
+import it.agilelab.dataplatformshaper.domain.model.l0.Entity
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
-import it.agilelab.dataplatformshaper.domain.model.mapping.{
-  MappingDefinition,
-  MappingKey
-}
-import it.agilelab.dataplatformshaper.domain.model.schema.{
-  schemaToMapperSchema,
-  tupleToMappedTuple,
-  validateMappingTuple
-}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
+import it.agilelab.dataplatformshaper.domain.model.schema.{schemaToMapperSchema, tupleToMappedTuple, validateMappingTuple}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{
-  InstanceManagementService,
-  ManagementServiceError,
-  MappingManagementService,
-  TypeManagementService
-}
+import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, MappingManagementService, TypeManagementService}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, triple}
@@ -254,6 +243,27 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
     } yield ()).value
   end createMappedInstances
+
+  def readMappedInstances(
+                           sourceInstanceId: String
+                         ): F[Either[ManagementServiceError, List[(Entity, String, Entity)]]] =
+    (for {
+      entities <- EitherT(
+        getMappingsForEntity(
+          logger,
+          typeManagementService,
+          instanceManagementService,
+          sourceInstanceId
+        ).map(ml => ml.map(_.map(m=>(m(1), sourceInstanceId, m(3)))))
+      )
+      _ <- traceT(s"Read instances to update: $entities")
+      entities <- EitherT( 
+        summon[Functor[F]].map(
+          entities.map(e => readMappedInstances(e(2).entityId)).sequence
+        )(_.sequence.map(_.flatten).map(l => entities ::: l))
+      )
+    } yield entities).value
+  end readMappedInstances
 
   override def updateMappedInstances(
       sourceInstanceId: String

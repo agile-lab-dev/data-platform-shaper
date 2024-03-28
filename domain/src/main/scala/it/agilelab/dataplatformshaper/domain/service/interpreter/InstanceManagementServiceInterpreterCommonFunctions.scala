@@ -789,7 +789,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       instanceManagementService: InstanceManagementService[F],
       sourceEntityId: String
   ): F[Either[ManagementServiceError, List[
-    (EntityType, Entity, EntityType, Entity, Tuple)
+    (EntityType, Entity, EntityType, Entity, Tuple, String)
   ]]] =
     val query =
       s"""
@@ -854,6 +854,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             targetEntityType,
             targetEntity,
             tuple,
+            mapperId
           )).value
         )
         .sequence
