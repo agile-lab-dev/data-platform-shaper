@@ -37,8 +37,6 @@ import scala.language.{dynamics, implicitConversions}
 
 @SuppressWarnings(
   Array(
-    "scalafix:DisableSyntax.asInstanceOf",
-    "scalafix:DisableSyntax.isInstanceOf",
     "scalafix:DisableSyntax.=="
   )
 )

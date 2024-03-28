@@ -4,17 +4,28 @@ import cats.*
 import cats.data.*
 import cats.effect.*
 import cats.implicits.*
-import cats.syntax.all.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, L3, ns}
 import it.agilelab.dataplatformshaper.domain.model.l0.Entity
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
-import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
-import it.agilelab.dataplatformshaper.domain.model.schema.{schemaToMapperSchema, tupleToMappedTuple, validateMappingTuple}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
+import it.agilelab.dataplatformshaper.domain.model.schema.{
+  schemaToMapperSchema,
+  tupleToMappedTuple,
+  validateMappingTuple
+}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, MappingManagementService, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{
+  InstanceManagementService,
+  ManagementServiceError,
+  MappingManagementService,
+  TypeManagementService
+}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
@@ -302,7 +313,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       _ <-
         if (existInstances)
-          EitherT.leftT[F, Unit](ExistingCreatedInstancesError(mappingKey.mappingName))
+          EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
         else EitherT.rightT[F, ManagementServiceError](())
       isMappingSource <- EitherT(
         checkTraitForEntityType(
@@ -404,7 +415,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     )
   end exist
 
-  override def createMappedInstances( // TODO add a check to block the creation in case there are already instances created
+  override def createMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
     (for {
@@ -422,7 +433,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       _ <-
         if (existInstances)
-          EitherT.leftT[F, Unit](ExistingCreatedInstancesError(""))
+          EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
         else
           EitherT.rightT[F, ManagementServiceError](())
       mappings <- EitherT(
@@ -488,9 +499,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield ()).value
   end createMappedInstances
 
-  def readMappedInstances(
-                           sourceInstanceId: String
-                         ): F[Either[ManagementServiceError, List[(Entity, String, Entity)]]] =
+  override def readMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, List[(Entity, String, Entity)]]] =
     (for {
       entities <- EitherT(
         getMappingsForEntity(
@@ -498,10 +509,10 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           typeManagementService,
           instanceManagementService,
           sourceInstanceId
-        ).map(ml => ml.map(_.map(m=>(m(1), sourceInstanceId, m(3)))))
+        ).map(ml => ml.map(_.map(m => (m(1), m(5), m(3)))))
       )
       _ <- traceT(s"Read instances to update: $entities")
-      entities <- EitherT( 
+      entities <- EitherT(
         summon[Functor[F]].map(
           entities.map(e => readMappedInstances(e(2).entityId)).sequence
         )(_.sequence.map(_.flatten).map(l => entities ::: l))
