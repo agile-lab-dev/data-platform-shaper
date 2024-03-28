@@ -4,6 +4,7 @@ import cats.*
 import cats.data.*
 import cats.effect.*
 import cats.implicits.*
+import cats.syntax.all.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
@@ -301,7 +302,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       _ <-
         if (existInstances)
-          EitherT.leftT[F, Unit](ExistingInstancesError(mappingKey.mappingName))
+          EitherT.leftT[F, Unit](ExistingCreatedInstancesError(mappingKey.mappingName))
         else EitherT.rightT[F, ManagementServiceError](())
       isMappingSource <- EitherT(
         checkTraitForEntityType(
@@ -403,7 +404,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     )
   end exist
 
-  override def createMappedInstances(
+  override def createMappedInstances( // TODO add a check to block the creation in case there are already instances created
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
     (for {
@@ -421,7 +422,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       _ <-
         if (existInstances)
-          EitherT.leftT[F, Unit](ExistingInstancesError(" "))
+          EitherT.leftT[F, Unit](ExistingCreatedInstancesError(""))
         else
           EitherT.rightT[F, ManagementServiceError](())
       mappings <- EitherT(
@@ -584,7 +585,6 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       } yield ()).value
     end getMappedInstancesToDelete
 
-    import cats.syntax.all.*
     (for {
       stack <- EitherT.liftF(
         summon[Functor[F]].map(getMappedInstancesToDelete(sourceInstanceId))(

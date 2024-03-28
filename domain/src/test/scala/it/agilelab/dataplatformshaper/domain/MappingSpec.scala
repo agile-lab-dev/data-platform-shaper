@@ -16,7 +16,7 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.{
-  ExistingInstancesError,
+  ExistingCreatedInstancesError,
   InvalidMappingError,
   MappingCycleDetectedError,
   MappingNotFoundError,
@@ -1065,7 +1065,7 @@ class MappingSpec extends CommonSpec:
           } yield res).value
         }
         .asserting {
-          case Left(error: ExistingInstancesError) => succeed
+          case Left(error: ExistingCreatedInstancesError) => succeed
           case _ =>
             fail(
               "Expected a MappingNotFoundError but received a different error or result"
