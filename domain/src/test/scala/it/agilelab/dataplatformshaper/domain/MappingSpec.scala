@@ -20,7 +20,7 @@ import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.{
   InvalidMappingError,
   MappingCycleDetectedError,
   MappingNotFoundError,
-  UpdatedTypeIsMappingTargetError
+  TypeIsAMappingTargetError
 }
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
@@ -523,6 +523,97 @@ class MappingSpec extends CommonSpec:
     }
   }
 
+  "Trying to read, update, delete a mapping target" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        (for {
+          res1 <- EitherT(
+            iservice.list(
+              "TargetType1",
+              "field1 = 'value7' and field2 = 'value8'",
+              false,
+              None
+            )
+          )
+          _ <- EitherT(mservice.readMappedInstances(res1.head match {
+            case v: String => v;
+            case _         => ""
+          }))
+        } yield ()).value
+      } asserting (_ should matchPattern {
+        case Left(TypeIsAMappingTargetError(_)) =>
+      })
+
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        (for {
+          res1 <- EitherT(
+            iservice.list(
+              "TargetType1",
+              "field1 = 'value7' and field2 = 'value8'",
+              false,
+              None
+            )
+          )
+          _ <- EitherT(mservice.updateMappedInstances(res1.head match {
+            case v: String => v;
+            case _         => ""
+          }))
+        } yield ()).value
+      } asserting (_ should matchPattern {
+        case Left(TypeIsAMappingTargetError(_)) =>
+      })
+
+      session.use { session =>
+        val repository: Rdf4jKnowledgeGraph[IO] =
+          Rdf4jKnowledgeGraph[IO](session)
+        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trservice)
+        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val mservice =
+          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        (for {
+          res1 <- EitherT(
+            iservice.list(
+              "TargetType1",
+              "field1 = 'value7' and field2 = 'value8'",
+              false,
+              None
+            )
+          )
+          _ <- EitherT(mservice.deleteMappedInstances(res1.head match {
+            case v: String => v;
+            case _         => ""
+          }))
+        } yield ()).value
+      } asserting (_ should matchPattern {
+        case Left(TypeIsAMappingTargetError(_)) =>
+      })
+    }
+  }
+
   "Automatic deletion of instances driven by the mappings" - {
     "works" in {
       val session = Session[IO](
@@ -832,12 +923,9 @@ class MappingSpec extends CommonSpec:
               )
             )
           )
-        } yield (
-          res
-        )).value
+        } yield res).value
       } asserting { ret =>
-        ret should matchPattern {
-          case Left(UpdatedTypeIsMappingTargetError(_)) =>
+        ret should matchPattern { case Left(TypeIsAMappingTargetError(_)) =>
         }
       }
     }
@@ -1010,7 +1098,7 @@ class MappingSpec extends CommonSpec:
           } yield res).value
         }
         .asserting {
-          case Left(error: MappingNotFoundError) => succeed
+          case Left(MappingNotFoundError(_)) => succeed
           case _ =>
             fail(
               "Expected a MappingNotFoundError but received a different error or result"
@@ -1053,17 +1141,14 @@ class MappingSpec extends CommonSpec:
               mservice.create(MappingDefinition(mappingKey, mapperTuple))
             )
             sourceId <- EitherT(
-              iservice.create(
-                "TwoMappedInstancesSourceType",
-                Tuple2(("field1", "Test"), ("field2", "Double Create"))
-              )
+              iservice.create("TwoMappedInstancesSourceType", Tuple2(("field1", "Test"), ("field2", "Double Create")))
             )
             _ <- EitherT(mservice.createMappedInstances(sourceId))
             res <- EitherT(mservice.createMappedInstances(sourceId))
           } yield res).value
         }
         .asserting {
-          case Left(error: ExistingCreatedInstancesError) => succeed
+          case Left(ExistingCreatedInstancesError()) => succeed
           case _ =>
             fail(
               "Expected a MappingNotFoundError but received a different error or result"

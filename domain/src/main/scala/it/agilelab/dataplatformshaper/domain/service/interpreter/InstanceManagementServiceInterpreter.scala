@@ -144,7 +144,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <-
         if hasTrait then
           EitherT.leftT[F, Unit](
-            ManagementServiceError.UpdatedTypeIsMappingTargetError(
+            ManagementServiceError.TypeIsAMappingTargetError(
               entity.entityTypeName
             )
           )
