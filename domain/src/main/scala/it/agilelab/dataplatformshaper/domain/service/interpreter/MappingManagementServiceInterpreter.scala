@@ -312,8 +312,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
       )
       _ <-
-        if (existInstances)
-          EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
+        if existInstances
+        then EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
         else EitherT.rightT[F, ManagementServiceError](())
       isMappingSource <- EitherT(
         checkTraitForEntityType(
@@ -332,7 +332,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
       )
       _ <-
-        if (!isMappingSource || isMappingTarget)
+        if !(isMappingSource && !isMappingTarget)
+        then
           EitherT.leftT[F, Unit](
             InvalidMappingError("Source is not a root of the mapping")
           )
@@ -373,9 +374,6 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           firstMappingDefinition,
           mapperId
         )
-      )
-      children <- EitherT.liftF(
-        getRelations(logger, repository, mappingKey.targetEntityTypeName, false)
       )
       _ <- EitherT(
         recursiveDelete(
@@ -418,6 +416,80 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   override def createMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
+
+    def createMappedInstancesNoCheck(
+        sourceInstanceId: String
+    ): F[Either[ManagementServiceError, Unit]] =
+      (for {
+        sourceInstance <- EitherT(
+          instanceManagementService.read(sourceInstanceId)
+        )
+        mappings <- EitherT(
+          getMappingsForEntityType(
+            logger,
+            typeManagementService,
+            sourceInstance.entityTypeName
+          )
+        )
+        ids <- EitherT(
+          summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
+            val tuple: Either[ManagementServiceError, Tuple] =
+              tupleToMappedTuple(
+                sourceInstance.values,
+                mapping(1).schema,
+                mapping(3),
+                mapping(2).schema
+              ).leftMap(e => MapperInstanceValidationError(e))
+            val targetInstanceId = UUID.randomUUID().toString
+            val sourceEntityIri = iri(ns, sourceInstanceId)
+            val targetEntityIri = iri(ns, targetInstanceId)
+            val mapperIri = iri(ns, mapping(4))
+            val mappedToTriple1 = triple(
+              sourceEntityIri,
+              iri(mappedTo.getNamespace, s"${mappedTo: String}#${mapping(0)}"),
+              targetEntityIri
+            )
+            val mappedToTriple2 = triple(
+              iri(mappedTo.getNamespace, s"${mappedTo: String}#${mapping(0)}"),
+              iri(ns, "singletonPropertyOf"),
+              iri(mappedTo.getNamespace, mappedTo)
+            )
+            val mappedToTriple3 = triple(
+              iri(mappedTo.getNamespace, s"${mappedTo: String}#${mapping(0)}"),
+              NS.MAPPEDBY,
+              mapperIri
+            )
+            val initialStatements = List(
+              statement(mappedToTriple1, L3),
+              statement(mappedToTriple2, L3),
+              statement(mappedToTriple3, L3)
+            )
+            summon[Functor[F]].map(
+              tuple
+                .map(
+                  createInstanceNoCheck(
+                    logger,
+                    typeManagementService,
+                    targetInstanceId,
+                    mapping(2).name,
+                    _,
+                    initialStatements,
+                    List.empty
+                  )
+                )
+                .sequence
+            )(_.flatten)
+          )))(_.sequence)
+        )
+        _ <- EitherT(
+          summon[Functor[F]]
+            .map(ids.map(id => createMappedInstancesNoCheck(id)).sequence)(
+              _.sequence
+            )
+        )
+      } yield ()).value
+    end createMappedInstancesNoCheck
+
     (for {
       sourceInstance <- EitherT(
         instanceManagementService.read(sourceInstanceId)
@@ -432,146 +504,98 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
       )
       _ <-
-        if (existInstances)
-          EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
-        else
-          EitherT.rightT[F, ManagementServiceError](())
-      mappings <- EitherT(
-        getMappingsForEntityType(
+        if existInstances
+        then EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
+        else EitherT.rightT[F, ManagementServiceError](())
+      isMappingSource <- EitherT(
+        checkTraitForEntityType(
           logger,
-          typeManagementService,
-          sourceInstance.entityTypeName
+          repository,
+          sourceInstance.entityTypeName,
+          "MappingSource"
         )
       )
-      ids <- EitherT(
-        summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
-          val tuple: Either[ManagementServiceError, Tuple] = tupleToMappedTuple(
-            sourceInstance.values,
-            mapping(1).schema,
-            mapping(3),
-            mapping(2).schema
-          ).leftMap(e => MapperInstanceValidationError(e))
-          val targetInstanceId = UUID.randomUUID().toString
-          val sourceEntityIri = iri(ns, sourceInstanceId)
-          val targetEntityIri = iri(ns, targetInstanceId)
-          val mapperIri = iri(ns, mapping(4))
-          val mappedToTriple1 = triple(
-            sourceEntityIri,
-            iri(mappedTo.getNamespace, s"${mappedTo: String}#${mapping(0)}"),
-            targetEntityIri
-          )
-          val mappedToTriple2 = triple(
-            iri(mappedTo.getNamespace, s"${mappedTo: String}#${mapping(0)}"),
-            iri(ns, "singletonPropertyOf"),
-            iri(mappedTo.getNamespace, mappedTo)
-          )
-          val mappedToTriple3 = triple(
-            iri(mappedTo.getNamespace, s"${mappedTo: String}#${mapping(0)}"),
-            NS.MAPPEDBY,
-            mapperIri
-          )
-          val initialStatements = List(
-            statement(mappedToTriple1, L3),
-            statement(mappedToTriple2, L3),
-            statement(mappedToTriple3, L3)
-          )
-          summon[Functor[F]].map(
-            tuple
-              .map(
-                createInstanceNoCheck(
-                  logger,
-                  typeManagementService,
-                  targetInstanceId,
-                  mapping(2).name,
-                  _,
-                  initialStatements,
-                  List.empty
-                )
-              )
-              .sequence
-          )(_.flatten)
-        )))(_.sequence)
+      isMappingTarget <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          sourceInstance.entityTypeName,
+          "MappingTarget"
+        )
       )
-      _ <- EitherT(
-        summon[Functor[F]]
-          .map(ids.map(id => createMappedInstances(id)).sequence)(_.sequence)
-      )
-    } yield ()).value
+      _ <-
+        if !(isMappingSource && !isMappingTarget)
+        then EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
+        else EitherT.rightT[F, ManagementServiceError](())
+      res <- EitherT(createMappedInstancesNoCheck(sourceInstanceId))
+    } yield res).value
   end createMappedInstances
 
-  override def readMappedInstances(
+  def readMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, List[
     ((EntityType, Entity), String, (EntityType, Entity))
   ]]] =
+    def readMappedInstancesNoCheck(
+        sourceInstanceId: String
+    ): F[Either[ManagementServiceError, List[
+      ((EntityType, Entity), String, (EntityType, Entity))
+    ]]] =
+      (for {
+        entities <- EitherT(
+          getMappingsForEntity(
+            logger,
+            typeManagementService,
+            instanceManagementService,
+            sourceInstanceId
+          ).map(ml => ml.map(_.map(m => ((m(0), m(1)), m(5), (m(2), m(3))))))
+        )
+        _ <- traceT(s"Read instances to update: $entities")
+        entities <- EitherT(
+          summon[Functor[F]].map(
+            entities
+              .map(e => readMappedInstancesNoCheck(e(2)(1).entityId))
+              .sequence
+          )(_.sequence.map(_.flatten).map(l => entities ::: l))
+        )
+      } yield entities).value
+    end readMappedInstancesNoCheck
+
     (for {
-      entities <- EitherT(
-        getMappingsForEntity(
+      sourceInstance <- EitherT(
+        instanceManagementService.read(sourceInstanceId)
+      )
+      isMappingSource <- EitherT(
+        checkTraitForEntityType(
           logger,
-          typeManagementService,
-          instanceManagementService,
-          sourceInstanceId
-        ).map(ml => ml.map(_.map(m => ((m(0), m(1)), m(5), (m(2), m(3))))))
+          repository,
+          sourceInstance.entityTypeName,
+          "MappingSource"
+        )
       )
-      _ <- traceT(s"Read instances to update: $entities")
-      entities <- EitherT(
-        summon[Functor[F]].map(
-          entities.map(e => readMappedInstances(e(2)(1).entityId)).sequence
-        )(_.sequence.map(_.flatten).map(l => entities ::: l))
+      isMappingTarget <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          sourceInstance.entityTypeName,
+          "MappingTarget"
+        )
       )
-    } yield entities).value
+      _ <-
+        if !(isMappingSource && !isMappingTarget)
+        then
+          EitherT.leftT[F, Unit](
+            TypeIsAMappingTargetError(s"${sourceInstance.entityTypeName}")
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      res <- EitherT(readMappedInstancesNoCheck(sourceInstanceId))
+    } yield res).value
   end readMappedInstances
 
   override def updateMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
-    (for {
-      mappings <- EitherT(
-        getMappingsForEntity(
-          logger,
-          typeManagementService,
-          instanceManagementService,
-          sourceInstanceId
-        )
-      )
-      _ <- traceT(s"Retrieved mappings: $mappings")
-      ids <- EitherT(
-        summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
-          val tuple: Either[ManagementServiceError, Tuple] = tupleToMappedTuple(
-            mapping(1).values,
-            mapping(0).schema,
-            mapping(4),
-            mapping(2).schema
-          ).leftMap(e => MapperInstanceValidationError(e))
-          summon[Functor[F]].map(
-            tuple
-              .map(
-                updateInstanceNoCheck(
-                  logger,
-                  typeManagementService,
-                  instanceManagementService,
-                  mapping(3).entityId,
-                  _
-                )
-              )
-              .sequence
-          )(_.flatten)
-        )))(_.sequence)
-      )
-      _ <- traceT(s"Instances to update: $ids")
-      _ <- EitherT(
-        summon[Functor[F]]
-          .map(ids.map(id => updateMappedInstances(id)).sequence)(_.sequence)
-      )
-    } yield ()).value
-  end updateMappedInstances
-
-  override def deleteMappedInstances(
-      sourceInstanceId: String
-  ): F[Either[ManagementServiceError, Unit]] =
-    val instancesToDelete = mutable.Stack.empty[String]
-
-    def getMappedInstancesToDelete(
+    def updateMappedInstancesNoCheck(
         sourceInstanceId: String
     ): F[Either[ManagementServiceError, Unit]] =
       (for {
@@ -583,34 +607,153 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             sourceInstanceId
           )
         )
-        ids <- EitherT.liftF(
-          summon[Applicative[F]].pure(mappings.map(mapping =>
-            instancesToDelete.push(mapping(3).entityId)
-            mapping(3).entityId: String
-          ))
+        _ <- traceT(s"Retrieved mappings: $mappings")
+        ids <- EitherT(
+          summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
+            val tuple: Either[ManagementServiceError, Tuple] =
+              tupleToMappedTuple(
+                mapping(1).values,
+                mapping(0).schema,
+                mapping(4),
+                mapping(2).schema
+              ).leftMap(e => MapperInstanceValidationError(e))
+            summon[Functor[F]].map(
+              tuple
+                .map(
+                  updateInstanceNoCheck(
+                    logger,
+                    typeManagementService,
+                    instanceManagementService,
+                    mapping(3).entityId,
+                    _
+                  )
+                )
+                .sequence
+            )(_.flatten)
+          )))(_.sequence)
         )
+        _ <- traceT(s"Instances to update: $ids")
         _ <- EitherT(
           summon[Functor[F]]
-            .map(ids.map(id => getMappedInstancesToDelete(id)).sequence)(
+            .map(ids.map(id => updateMappedInstancesNoCheck(id)).sequence)(
               _.sequence
             )
         )
       } yield ()).value
-    end getMappedInstancesToDelete
+    end updateMappedInstancesNoCheck
 
     (for {
-      stack <- EitherT.liftF(
-        summon[Functor[F]].map(getMappedInstancesToDelete(sourceInstanceId))(
-          _ => instancesToDelete
+      sourceInstance <- EitherT(
+        instanceManagementService.read(sourceInstanceId)
+      )
+      isMappingSource <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          sourceInstance.entityTypeName,
+          "MappingSource"
         )
       )
-      _ <- EitherT(
-        summon[Functor[F]].map(
-          stack.popAll.toList
-            .map(id => instanceManagementService.delete(id))
-            .sequence
-        )(_.sequence)
+      isMappingTarget <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          sourceInstance.entityTypeName,
+          "MappingTarget"
+        )
       )
-    } yield ()).value
+      _ <-
+        if !(isMappingSource && !isMappingTarget)
+        then
+          EitherT.leftT[F, Unit](
+            TypeIsAMappingTargetError(s"${sourceInstance.entityTypeName}")
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      res <- EitherT(updateMappedInstancesNoCheck(sourceInstanceId))
+    } yield res).value
+  end updateMappedInstances
+
+  override def deleteMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, Unit]] =
+
+    def deleteMappedInstancesNoCheck(
+        sourceInstanceId: String
+    ): F[Either[ManagementServiceError, Unit]] =
+      val instancesToDelete = mutable.Stack.empty[String]
+
+      def getMappedInstancesToDelete(
+          sourceInstanceId: String
+      ): F[Either[ManagementServiceError, Unit]] =
+        (for {
+          mappings <- EitherT(
+            getMappingsForEntity(
+              logger,
+              typeManagementService,
+              instanceManagementService,
+              sourceInstanceId
+            )
+          )
+          ids <- EitherT.liftF(
+            summon[Applicative[F]].pure(mappings.map(mapping =>
+              instancesToDelete.push(mapping(3).entityId)
+              mapping(3).entityId: String
+            ))
+          )
+          _ <- EitherT(
+            summon[Functor[F]]
+              .map(ids.map(id => getMappedInstancesToDelete(id)).sequence)(
+                _.sequence
+              )
+          )
+        } yield ()).value
+      end getMappedInstancesToDelete
+
+      (for {
+        stack <- EitherT.liftF(
+          summon[Functor[F]].map(getMappedInstancesToDelete(sourceInstanceId))(
+            _ => instancesToDelete
+          )
+        )
+        _ <- EitherT(
+          summon[Functor[F]].map(
+            stack.popAll.toList
+              .map(id => instanceManagementService.delete(id))
+              .sequence
+          )(_.sequence)
+        )
+      } yield ()).value
+    end deleteMappedInstancesNoCheck
+
+    (for {
+      sourceInstance <- EitherT(
+        instanceManagementService.read(sourceInstanceId)
+      )
+      isMappingSource <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          sourceInstance.entityTypeName,
+          "MappingSource"
+        )
+      )
+      isMappingTarget <- EitherT(
+        checkTraitForEntityType(
+          logger,
+          repository,
+          sourceInstance.entityTypeName,
+          "MappingTarget"
+        )
+      )
+      _ <-
+        if !(isMappingSource && !isMappingTarget)
+        then
+          EitherT.leftT[F, Unit](
+            TypeIsAMappingTargetError(s"${sourceInstance.entityTypeName}")
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      res <- EitherT(deleteMappedInstancesNoCheck(sourceInstanceId))
+    } yield res).value
   end deleteMappedInstances
+
 end MappingManagementServiceInterpreter
