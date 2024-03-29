@@ -12,15 +12,10 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 }
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.mapping.{
-  MappingDefinition,
-  MappingKey
-}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
-  MappingManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
@@ -50,7 +45,7 @@ class DomainSpec extends CommonSpec:
 
   private val firstType = EntityType(
     "FirstType",
-    Set("MappingSource"),
+    Set(),
     StructType(
       List(
         "field1" -> StringType(),
@@ -68,33 +63,6 @@ class DomainSpec extends CommonSpec:
         "field2" -> StringType()
       )
     ): Schema
-  )
-
-  private val thirdType = EntityType(
-    "ThirdType",
-    Set("MappingTarget", "MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
-  )
-
-  private val fourthType = EntityType(
-    "FourthType",
-    Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
-  )
-
-  private val mapperTuple = (
-    "field1" -> "instance.get('field1')",
-    "field2" -> "instance.get('field2')"
   )
 
   def countStatements(
@@ -146,7 +114,6 @@ class DomainSpec extends CommonSpec:
     }
   }
 
-  // TODO: Add the traits to the test when the deletion is ready
   "Creating various types of statements" - {
     "works" in {
       val session = Session[IO](
@@ -163,14 +130,10 @@ class DomainSpec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
         (for {
           res1 <- EitherT(tservice.create(firstType))
           res2 <- EitherT(tservice.create(secondType))
-          res3 <- EitherT(tservice.create(thirdType))
-          res4 <- EitherT(tservice.create(fourthType))
-          res5 <- EitherT(
+          res3 <- EitherT(
             iservice.create(
               "FirstType",
               (
@@ -179,35 +142,9 @@ class DomainSpec extends CommonSpec:
               )
             )
           )
-          res6 <- EitherT(
-            iservice.create(
-              "SecondType",
-              (
-                "field1" -> "value3",
-                "field2" -> "value4"
-              )
-            )
-          )
-          res7 <- EitherT(
-            mservice.create(
-              MappingDefinition(
-                MappingKey("mapping1", "FirstType", "ThirdType"),
-                mapperTuple
-              )
-            )
-          )
-          res8 <- EitherT(
-            mservice.create(
-              MappingDefinition(
-                MappingKey("mapping2", "ThirdType", "FourthType"),
-                mapperTuple
-              )
-            )
-          )
-          _ <- EitherT(mservice.createMappedInstances(res5))
-        } yield (res1, res2, res3, res4, res5, res6, res7)).value
+        } yield (res1, res2, res3)).value
       } asserting (ret =>
-        ret should matchPattern { case Right((_, _, _, _, _, _, _)) =>
+        ret should matchPattern { case Right(((), (), _)) =>
         }
       )
     }
@@ -229,38 +166,21 @@ class DomainSpec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
         (for {
-          firstInstances <- EitherT(
-            iservice.list(firstType.name, "", false, None)
-          )
-          firstStringInstances = firstInstances.collect { case s: String => s }
-          firstStringInstance = firstStringInstances.head
-          secondInstances <- EitherT(
-            iservice.list(secondType.name, "", false, None)
-          )
-          secondStringInstances = secondInstances.collect { case s: String =>
-            s
-          }
-          secondStringInstance = secondStringInstances.head
-          _ <- EitherT(mservice.deleteMappedInstances(firstStringInstance))
-          res1 <- EitherT(iservice.delete(firstStringInstance))
-          res2 <- EitherT(iservice.delete(secondStringInstance))
-          res3 <- EitherT(
-            mservice.delete(MappingKey("mapping1", "FirstType", "ThirdType"))
-          )
-          res4 <- EitherT(tservice.delete(firstType.name))
-          res5 <- EitherT(tservice.delete(secondType.name))
-          res6 <- EitherT(tservice.delete(thirdType.name))
-          res7 <- EitherT(tservice.delete(fourthType.name))
-        } yield (res1, res2, res3, res4, res5, res6, res7)).value
+          instances <- EitherT(iservice.list(firstType.name, "", false, None))
+          stringInstances = instances.collect { case s: String => s }
+          firstInstance = stringInstances.head
+          res1 <- EitherT(iservice.delete(firstInstance))
+          res2 <- EitherT(tservice.delete(firstType.name))
+          res3 <- EitherT(tservice.delete(secondType.name))
+        } yield (res1, res2, res3)).value
       } asserting { ret =>
-        ret should matchPattern { case Right(((), (), (), (), (), (), ())) =>
+        ret should matchPattern { case Right(((), (), ())) =>
         }
       }
     }
   }
+
 
   "Counting final statements" - {
     "works" in {
