@@ -16,7 +16,7 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.{
-  ExistingInstancesError,
+  ExistingCreatedInstancesError,
   InvalidMappingError,
   MappingCycleDetectedError,
   MappingNotFoundError,
@@ -37,8 +37,6 @@ import scala.language.{dynamics, implicitConversions}
 
 @SuppressWarnings(
   Array(
-    "scalafix:DisableSyntax.asInstanceOf",
-    "scalafix:DisableSyntax.isInstanceOf",
     "scalafix:DisableSyntax.=="
   )
 )
@@ -506,6 +504,7 @@ class MappingSpec extends CommonSpec:
               None
             )
           )
+          res <- EitherT(mservice.readMappedInstances(res1))
         } yield (
           lt1.length,
           lt2.length,
@@ -514,10 +513,12 @@ class MappingSpec extends CommonSpec:
           lt5.length,
           lt6.length,
           lt7.length,
-          lt8.length
+          lt8.length,
+          res
         )).value
       } asserting (ret =>
-        ret should matchPattern { case Right((1, 1, 1, 1, 1, 1, 1, 1)) => }
+        ret.map(_(8)).map(_.mkString("\n")).foreach(println)
+        ret should matchPattern { case Right((1, 1, 1, 1, 1, 1, 1, 1, _)) => }
       )
     }
   }
@@ -1062,7 +1063,7 @@ class MappingSpec extends CommonSpec:
           } yield res).value
         }
         .asserting {
-          case Left(error: ExistingInstancesError) => succeed
+          case Left(error: ExistingCreatedInstancesError) => succeed
           case _ =>
             fail(
               "Expected a MappingNotFoundError but received a different error or result"

@@ -15,12 +15,19 @@ import it.agilelab.dataplatformshaper.domain.model.l1.{
   Relationship,
   given_Conversion_String_Relationship
 }
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
+}
+import it.agilelab.dataplatformshaper.domain.service.{
+  ManagementServiceError,
+  MappingManagementService
 }
 import it.agilelab.dataplatformshaper.uservice.Resource.{
   CreateTypeResponse,
@@ -28,10 +35,12 @@ import it.agilelab.dataplatformshaper.uservice.Resource.{
   UpdateTypeConstraintsResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
+  MappedInstancesItem,
   Trait,
   ValidationError,
   Entity as OpenApiEntity,
-  EntityType as OpenApiEntityType
+  EntityType as OpenApiEntityType,
+  MappingDefinition as OpenApiMappingDefinition
 }
 import it.agilelab.dataplatformshaper.uservice.{Handler, Resource}
 
@@ -42,7 +51,8 @@ import scala.util.Try
 class OntologyManagerHandler[F[_]: Async](
     tms: TypeManagementServiceInterpreter[F],
     ims: InstanceManagementServiceInterpreter[F],
-    trms: TraitManagementServiceInterpreter[F]
+    trms: TraitManagementServiceInterpreter[F],
+    mms: MappingManagementService[F]
 ) extends Handler[F]
     with StrictLogging:
 
@@ -823,7 +833,7 @@ class OntologyManagerHandler[F[_]: Async](
                 tupleToJson(et.values, p(0)) match
                   case Left(error) =>
                     logger.error(
-                      s"Error querying instances with type $entityTypeName and query ${query}: ${error.getMessage}"
+                      s"Error querying instances with type $entityTypeName and query $query: ${error.getMessage}"
                     )
                     throw Exception("It shouldn't be here")
                   case Right(json) =>
@@ -875,4 +885,226 @@ class OntologyManagerHandler[F[_]: Async](
           }: Vector[String])
       })
 
+  override def createMapping(respond: Resource.CreateMappingResponse.type)(
+      body: OpenApiMappingDefinition
+  ): F[Resource.CreateMappingResponse] =
+    val res = (for {
+      schema <- EitherT(
+        tms
+          .read(body.mappingKey.targetEntityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(l => Vector(l.getMessage)))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(
+            jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
+              Vector(l.getMessage)
+            )
+          )
+      )
+      _ <- EitherT(
+        mms
+          .create(
+            MappingDefinition(
+              MappingKey(
+                body.mappingKey.mappingName,
+                body.mappingKey.sourceEntityTypeName,
+                body.mappingKey.targetEntityTypeName
+              ),
+              tuple
+            )
+          )
+          .map(_.leftMap { case err: ManagementServiceError =>
+            Vector(err.getMessage)
+          })
+      )
+    } yield ()).value
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end createMapping
+
+  override def createMappingByYaml(
+      respond: Resource.CreateMappingByYamlResponse.type
+  )(body: Stream[F, Byte]): F[Resource.CreateMappingByYamlResponse] =
+    val getMappingDefinition = body
+      .through(text.utf8.decode)
+      .fold("")(_ + _)
+      .compile
+      .toList
+      .map(_.head)
+      .map(parser.parse(_).leftMap(_.getMessage))
+      .map(
+        _.flatMap(json =>
+          OpenApiMappingDefinition
+            .decodeMappingDefinition(json.hcursor)
+            .leftMap(_.getMessage)
+        ).leftMap(err => Vector(err))
+      )
+
+    val res = (for {
+      body <- EitherT(getMappingDefinition)
+      schema <- EitherT(
+        tms
+          .read(body.mappingKey.targetEntityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(l => Vector(l.getMessage)))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(
+            jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
+              Vector(l.getMessage)
+            )
+          )
+      )
+      _ <- EitherT(
+        mms
+          .create(
+            MappingDefinition(
+              MappingKey(
+                body.mappingKey.mappingName,
+                body.mappingKey.sourceEntityTypeName,
+                body.mappingKey.targetEntityTypeName
+              ),
+              tuple
+            )
+          )
+          .map(_.leftMap(err => Vector(err.getMessage)))
+      )
+    } yield ()).value
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end createMappingByYaml
+
+  override def createMappedInstances(
+      respond: Resource.CreateMappedInstancesResponse.type
+  )(body: String): F[Resource.CreateMappedInstancesResponse] =
+    val res = mms
+      .createMappedInstances(body)
+      .map(_.leftMap(err => Vector(err.getMessage)))
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end createMappedInstances
+
+  override def updateMappedInstances(
+      respond: Resource.UpdateMappedInstancesResponse.type
+  )(body: String): F[Resource.UpdateMappedInstancesResponse] =
+    val res = mms
+      .updateMappedInstances(body)
+      .map(_.leftMap(err => Vector(err.getMessage)))
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end updateMappedInstances
+
+  override def deleteMappedInstances(
+      respond: Resource.DeleteMappedInstancesResponse.type
+  )(sourceInstanceId: String): F[Resource.DeleteMappedInstancesResponse] =
+    val res = mms
+      .deleteMappedInstances(sourceInstanceId)
+      .map(_.leftMap(err => Vector(err.getMessage)))
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping created successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end deleteMappedInstances
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.throw"
+    )
+  )
+  override def readMappedInstances(
+      respond: Resource.ReadMappedInstancesResponse.type
+  )(sourceInstanceId: String): F[Resource.ReadMappedInstancesResponse] =
+    (for {
+      listItems <- EitherT(
+        mms.readMappedInstances(sourceInstanceId)
+      )
+    } yield listItems).value
+      .map(
+        _.map(
+          _.toVector.map(
+            {
+              case (
+                    (sourceEntityType, sourceEntity),
+                    mappingRelationship,
+                    (targetEntityType, targetEntity)
+                  ) =>
+                val se =
+                  tupleToJson(
+                    sourceEntity.values,
+                    sourceEntityType.schema
+                  ) match
+                    case Left(error) =>
+                      logger.error(
+                        s"Error getting mapped instances: ${error.getMessage}"
+                      )
+                      throw Exception("It shouldn't be here")
+                    case Right(json) =>
+                      OpenApiEntity(
+                        sourceEntity.entityId,
+                        sourceEntity.entityTypeName,
+                        json
+                      )
+                  end match
+                val te =
+                  tupleToJson(
+                    targetEntity.values,
+                    targetEntityType.schema
+                  ) match
+                    case Left(error) =>
+                      logger.error(
+                        s"Error getting mapped instances: ${error.getMessage}"
+                      )
+                      throw Exception("It shouldn't be here")
+                    case Right(json) =>
+                      OpenApiEntity(
+                        targetEntity.entityId,
+                        targetEntity.entityTypeName,
+                        json
+                      )
+                  end match
+                MappedInstancesItem(se, mappingRelationship, te)
+            }
+          )
+        )
+      )
+      .map(
+        {
+          case Left(error) =>
+            respond.BadRequest(ValidationError(Vector(error.getMessage)))
+          case Right(entities) =>
+            respond.Ok(entities)
+        }
+      )
+  end readMappedInstances
 end OntologyManagerHandler

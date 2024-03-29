@@ -999,7 +999,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       instanceManagementService: InstanceManagementService[F],
       sourceEntityId: String
   ): F[Either[ManagementServiceError, List[
-    (EntityType, Entity, EntityType, Entity, Tuple)
+    (EntityType, Entity, EntityType, Entity, Tuple, String)
   ]]] =
     val query =
       s"""
@@ -1022,6 +1022,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       bit.toList
         .map(b =>
           val mapperId = iri(b.getBinding("m").getValue.toString).getLocalName
+          val mappingRelationship = iri(
+            b.getBinding("mr").getValue.toString
+          ).toString.replaceFirst(ns.getName, "")
           val targetEntityId =
             iri(b.getBinding("t").getValue.toString).getLocalName
           (for {
@@ -1064,6 +1067,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             targetEntityType,
             targetEntity,
             tuple,
+            mappingRelationship
           )).value
         )
         .sequence

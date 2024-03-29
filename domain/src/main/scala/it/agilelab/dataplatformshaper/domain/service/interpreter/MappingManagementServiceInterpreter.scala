@@ -8,6 +8,7 @@ import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, L3, ns}
+import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
@@ -312,7 +313,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       _ <-
         if (existInstances)
-          EitherT.leftT[F, Unit](ExistingInstancesError(mappingKey.mappingName))
+          EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
         else EitherT.rightT[F, ManagementServiceError](())
       isMappingSource <- EitherT(
         checkTraitForEntityType(
@@ -432,7 +433,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       _ <-
         if (existInstances)
-          EitherT.leftT[F, Unit](ExistingInstancesError(" "))
+          EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
         else
           EitherT.rightT[F, ManagementServiceError](())
       mappings <- EitherT(
@@ -497,6 +498,29 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
     } yield ()).value
   end createMappedInstances
+
+  override def readMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, List[
+    ((EntityType, Entity), String, (EntityType, Entity))
+  ]]] =
+    (for {
+      entities <- EitherT(
+        getMappingsForEntity(
+          logger,
+          typeManagementService,
+          instanceManagementService,
+          sourceInstanceId
+        ).map(ml => ml.map(_.map(m => ((m(0), m(1)), m(5), (m(2), m(3))))))
+      )
+      _ <- traceT(s"Read instances to update: $entities")
+      entities <- EitherT(
+        summon[Functor[F]].map(
+          entities.map(e => readMappedInstances(e(2)(1).entityId)).sequence
+        )(_.sequence.map(_.flatten).map(l => entities ::: l))
+      )
+    } yield entities).value
+  end readMappedInstances
 
   override def updateMappedInstances(
       sourceInstanceId: String
@@ -574,7 +598,6 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       } yield ()).value
     end getMappedInstancesToDelete
 
-    import cats.syntax.all.*
     (for {
       stack <- EitherT.liftF(
         summon[Functor[F]].map(getMappedInstancesToDelete(sourceInstanceId))(

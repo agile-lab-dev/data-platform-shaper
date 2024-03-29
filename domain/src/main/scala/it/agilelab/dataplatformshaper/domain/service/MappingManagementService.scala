@@ -1,9 +1,10 @@
 package it.agilelab.dataplatformshaper.domain.service
 
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
-  MappingKey,
-  MappingDefinition
+  MappingDefinition,
+  MappingKey
 }
 
 trait MappingManagementService[F[_]]:
@@ -32,6 +33,12 @@ trait MappingManagementService[F[_]]:
   def createMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]]
+
+  def readMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, List[
+    ((EntityType, Entity), String, (EntityType, Entity))
+  ]]]
 
   def updateMappedInstances(
       sourceInstanceId: String
