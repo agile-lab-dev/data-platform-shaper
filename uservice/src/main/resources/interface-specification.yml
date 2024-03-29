@@ -919,7 +919,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-  /ontology/mapping/createMappedInstances:
+  /ontology/mapping/mappedInstances:
     post:
       tags:
         - OntologyManager
@@ -951,8 +951,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-  /ontology/mapping/updateMappedInstances:
-    post:
+    put:
       tags:
         - OntologyManager
       summary: Update mapped instances
@@ -983,19 +982,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-  /ontology/mapping/deleteMappedInstances:
-    post:
+  /ontology/mapping/mappedInstances/{sourceInstanceId}:
+    get:
+      tags:
+        - OntologyManager
+      summary: Read mapped instances
+      operationId: readMappedInstances
+      parameters:
+        - in: path
+          name: sourceInstanceId
+          description: The id of the source type instance
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MappedInstancesItem'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+    delete:
       tags:
         - OntologyManager
       summary: Delete mapped instances
       operationId: deleteMappedInstances
-      requestBody:
-        description: Source instance identifier
-        content:
-          application/text:
-            schema:
-              type: string
-        required: true
+      parameters:
+        - in: path
+          name: sourceInstanceId
+          description: The id of the source type instance
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: If successful returns "OK"
@@ -1121,6 +1153,19 @@ components:
           $ref: '#/components/schemas/MappingKey'
         mapper:
           $ref: '#/components/schemas/Values'
+    MappedInstancesItem:
+      type: object
+      required:
+        - sourceEntity
+        - mappingRelationship
+        - targetEntity
+      properties:
+        sourceEntity:
+          $ref: '#/components/schemas/Entity'
+        mappingRelationship:
+          type: string
+        targetEntity:
+          $ref: '#/components/schemas/Entity'
     ValidationError:
       required:
         - errors

@@ -35,6 +35,7 @@ import it.agilelab.dataplatformshaper.uservice.Resource.{
   UpdateTypeConstraintsResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
+  MappedInstancesItem,
   Trait,
   ValidationError,
   Entity as OpenApiEntity,
@@ -832,7 +833,7 @@ class OntologyManagerHandler[F[_]: Async](
                 tupleToJson(et.values, p(0)) match
                   case Left(error) =>
                     logger.error(
-                      s"Error querying instances with type $entityTypeName and query ${query}: ${error.getMessage}"
+                      s"Error querying instances with type $entityTypeName and query $query: ${error.getMessage}"
                     )
                     throw Exception("It shouldn't be here")
                   case Right(json) =>
@@ -1022,9 +1023,9 @@ class OntologyManagerHandler[F[_]: Async](
 
   override def deleteMappedInstances(
       respond: Resource.DeleteMappedInstancesResponse.type
-  )(body: String): F[Resource.DeleteMappedInstancesResponse] =
+  )(sourceInstanceId: String): F[Resource.DeleteMappedInstancesResponse] =
     val res = mms
-      .deleteMappedInstances(body)
+      .deleteMappedInstances(sourceInstanceId)
       .map(_.leftMap(err => Vector(err.getMessage)))
     res
       .map {
@@ -1035,4 +1036,75 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end deleteMappedInstances
+
+  @SuppressWarnings(
+    Array(
+      "scalafix:DisableSyntax.throw"
+    )
+  )
+  override def readMappedInstances(
+      respond: Resource.ReadMappedInstancesResponse.type
+  )(sourceInstanceId: String): F[Resource.ReadMappedInstancesResponse] =
+    (for {
+      listItems <- EitherT(
+        mms.readMappedInstances(sourceInstanceId)
+      )
+    } yield listItems).value
+      .map(
+        _.map(
+          _.toVector.map(
+            {
+              case (
+                    (sourceEntityType, sourceEntity),
+                    mappingRelationship,
+                    (targetEntityType, targetEntity)
+                  ) =>
+                val se =
+                  tupleToJson(
+                    sourceEntity.values,
+                    sourceEntityType.schema
+                  ) match
+                    case Left(error) =>
+                      logger.error(
+                        s"Error getting mapped instances: ${error.getMessage}"
+                      )
+                      throw Exception("It shouldn't be here")
+                    case Right(json) =>
+                      OpenApiEntity(
+                        sourceEntity.entityId,
+                        sourceEntity.entityTypeName,
+                        json
+                      )
+                  end match
+                val te =
+                  tupleToJson(
+                    targetEntity.values,
+                    targetEntityType.schema
+                  ) match
+                    case Left(error) =>
+                      logger.error(
+                        s"Error getting mapped instances: ${error.getMessage}"
+                      )
+                      throw Exception("It shouldn't be here")
+                    case Right(json) =>
+                      OpenApiEntity(
+                        targetEntity.entityId,
+                        targetEntity.entityTypeName,
+                        json
+                      )
+                  end match
+                MappedInstancesItem(se, mappingRelationship, te)
+            }
+          )
+        )
+      )
+      .map(
+        {
+          case Left(error) =>
+            respond.BadRequest(ValidationError(Vector(error.getMessage)))
+          case Right(entities) =>
+            respond.Ok(entities)
+        }
+      )
+  end readMappedInstances
 end OntologyManagerHandler
