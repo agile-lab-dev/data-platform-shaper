@@ -789,19 +789,19 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     summon[Functor[F]].map(res1)(_.sequence)
   end getMappingsForEntityType
 
-  def existMappedInstances(
+  def queryMappedInstances(
       logger: Logger[F],
       repository: KnowledgeGraph[F],
       sourceEntityTypeName: Option[String],
       mappingName: Option[String],
       targetEntityTypeName: Option[String]
-  ): F[Either[ManagementServiceError, Boolean]] =
+  ): F[Either[ManagementServiceError, List[(String, String, String)]]] =
     val predicateSource = sourceEntityTypeName
       .map(value => s"?instance1 ns:isClassifiedBy ns:${value} .")
-      .getOrElse(s"?instance1 ns:isClassifiedBy ?entity3 .")
+      .getOrElse("?instance1 ns:isClassifiedBy ?entity3 .")
     val predicateTarget = targetEntityTypeName
       .map(value => s"?instance2 ns:isClassifiedBy ns:${value} .")
-      .getOrElse(s"?instance2 ns:isClassifiedBy ?entity4 .")
+      .getOrElse("?instance2 ns:isClassifiedBy ?entity4 .")
 
     val semiSourcePredicateMappedTo =
       sourceEntityTypeName.map(value => s"ns:${value}").getOrElse("?entity1")
@@ -834,7 +834,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     val query =
       s"""
          |PREFIX ns: <https://w3id.org/agile-dm/ontology/>
-         |SELECT (COUNT(*) as ?count) WHERE {
+         |SELECT ?instance1 ?predicate ?instance2 WHERE {
          |        ?instance1 ?predicate ?instance2 .
          |        $predicateSource
          |        $predicateTarget
@@ -843,19 +843,25 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
          |        $secondFilterMapping
          |}
          |""".stripMargin
+
     val res = logger.trace(
-      s"Checking if the instances for the mapping ${mappingName.getOrElse(" ")} exist with the query:\n$query"
+      s"Retrieving instances for the mapping ${mappingName.getOrElse(" ")} with the query:\n$query"
     ) *> repository.evaluateQuery(query)
-    summon[Functor[F]].map(res)(res =>
-      val count = res.toList.headOption
-        .flatMap(row => Option(row.getValue("count")))
-        .flatMap(_.stringValue().toIntOption)
-        .getOrElse(0)
-      if count > 0 then Right[ManagementServiceError, Boolean](true)
-      else Right[ManagementServiceError, Boolean](false)
-      end if
+
+    summon[Functor[F]].map(res)(rows =>
+      Right(
+        rows.toList.map(row =>
+          (
+            (
+              row.getValue("instance1").stringValue(),
+              row.getValue("predicate").stringValue(),
+              row.getValue("instance2").stringValue()
+            )
+          )
+        )
+      )
     )
-  end existMappedInstances
+  end queryMappedInstances
 
   def recursiveDelete(
       logger: Logger[F],
@@ -954,7 +960,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       mapperIri
     )
 
-    val initialStatements = List(
+    val initialStatementsL2 = List(
       statement(
         mappedToTriple1,
         L2
@@ -966,6 +972,17 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       statement(
         mappedToTriple3,
         L2
+      )
+    )
+
+    val initialStatementsL3 = List(
+      statement(
+        mappedToTriple2,
+        L3
+      ),
+      statement(
+        mappedToTriple3,
+        L3
       )
     )
 
@@ -986,7 +1003,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
         summon[Functor[F]].map(
           repository.removeAndInsertStatements(
             List.empty[Statement],
-            initialStatements ::: stmts
+            initialStatementsL2 ::: initialStatementsL3 ::: stmts
           )
         )(Right[ManagementServiceError, Unit])
       )

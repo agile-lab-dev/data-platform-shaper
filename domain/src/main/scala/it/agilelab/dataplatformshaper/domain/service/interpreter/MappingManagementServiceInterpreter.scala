@@ -301,8 +301,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       mappingKey: MappingKey
   ): F[Either[ManagementServiceError, Unit]] =
     (for {
-      existInstances <- EitherT(
-        existMappedInstances(
+      existingInstances <- EitherT(
+        queryMappedInstances(
           logger,
           repository,
           Some(mappingKey.sourceEntityTypeName),
@@ -311,7 +311,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
       )
       _ <-
-        if (existInstances)
+        if (existingInstances.nonEmpty)
           EitherT.leftT[F, Unit](ExistingInstancesError(mappingKey.mappingName))
         else EitherT.rightT[F, ManagementServiceError](())
       isMappingSource <- EitherT(
@@ -421,8 +421,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       sourceInstance <- EitherT(
         instanceManagementService.read(sourceInstanceId)
       )
-      existInstances <- EitherT(
-        existMappedInstances(
+      existingInstances <- EitherT(
+        queryMappedInstances(
           logger,
           repository,
           Some(sourceInstance.entityTypeName),
@@ -431,7 +431,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
       )
       _ <-
-        if (existInstances)
+        if (existingInstances.nonEmpty)
           EitherT.leftT[F, Unit](ExistingInstancesError(" "))
         else
           EitherT.rightT[F, ManagementServiceError](())
@@ -557,6 +557,33 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             typeManagementService,
             instanceManagementService,
             sourceInstanceId
+          )
+        )
+        entity <- EitherT(instanceManagementService.read(sourceInstanceId))
+        mappedInstances <- EitherT(
+          queryMappedInstances(
+            logger,
+            repository,
+            Some(entity.entityTypeName),
+            None,
+            None
+          )
+        )
+        filteredInstances = mappedInstances.filter(mappedInstance =>
+          iri(mappedInstance(0)).getLocalName.equals(sourceInstanceId)
+        )
+        statementsToRemove = filteredInstances.map(filteredInstance =>
+          statement(
+            iri(filteredInstance(0)),
+            iri(filteredInstance(1)),
+            iri(filteredInstance(2)),
+            L3
+          )
+        )
+        _ <- EitherT.liftF(
+          repository.removeAndInsertStatements(
+            List.empty[Statement],
+            statementsToRemove
           )
         )
         ids <- EitherT.liftF(
