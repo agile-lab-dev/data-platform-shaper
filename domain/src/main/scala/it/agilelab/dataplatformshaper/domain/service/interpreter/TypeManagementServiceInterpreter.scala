@@ -13,7 +13,6 @@ import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.NonExistentInstanceTypeError
 import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
   TraitManagementService,
@@ -548,14 +547,16 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           EitherT.rightT[F, ManagementServiceError](())
         else
           EitherT.leftT[F, Unit](
-            ManagementServiceError.NonExistentTraitError(nonExistentTraits.head)
+            ManagementServiceError(
+              s"The trait ${nonExistentTraits.head} does not exist"
+            )
           )
       }
       stmts <- EitherT(statementsForInheritance)
       _ <- EitherT[F, ManagementServiceError, Unit](
         summon[Applicative[F]].pure(
           cueValidateModel(entityType.schema).leftMap(errors =>
-            ManagementServiceError.InvalidConstraints(errors)
+            ManagementServiceError(s"Invalid constraints" :: errors)
           )
         )
       )
@@ -571,8 +572,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
             summon[Applicative[F]]
               .pure(
                 Left[ManagementServiceError, Unit](
-                  ManagementServiceError.TypeAlreadyDefinedError(
-                    entityType.name
+                  ManagementServiceError(
+                    s"The EntityType ${entityType.name} has been already defined"
                   )
                 )
               )
@@ -671,8 +672,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         else
           summon[Applicative[F]].pure(
             Left[ManagementServiceError, EntityType](
-              ManagementServiceError.NonExistentInstanceTypeError(
-                instanceTypeName
+              ManagementServiceError(
+                s"The EntityType $instanceTypeName does not exist"
               )
             )
           )
@@ -749,7 +750,9 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           case Right(true) =>
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Unit](
-                ManagementServiceError.TypeHasInstancesError(instanceTypeName)
+                ManagementServiceError(
+                  s"The EntityType $instanceTypeName cannot be deleted because there are related instances"
+                )
               )
             )
 
@@ -759,7 +762,9 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
               case Right(true) =>
                 summon[Applicative[F]].pure(
                   Left[ManagementServiceError, Unit](
-                    ManagementServiceError.TypeIsFatherError(instanceTypeName)
+                    ManagementServiceError(
+                      s"The EntityType $instanceTypeName cannot be deleted because is inherited by other EntityType"
+                    )
                   )
                 )
 
@@ -786,8 +791,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       case Right(false) =>
         summon[Applicative[F]].pure(
           Left[ManagementServiceError, Unit](
-            ManagementServiceError.NonExistentInstanceTypeError(
-              instanceTypeName
+            ManagementServiceError(
+              s"The EntityType $instanceTypeName does not exist"
             )
           )
         )
@@ -806,7 +811,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       _ <- EitherT[F, ManagementServiceError, Unit](
         summon[Applicative[F]].pure(
           cueValidateModel(entityTypeRequest.schema).leftMap(errors =>
-            ManagementServiceError.InvalidConstraints(errors)
+            ManagementServiceError(s"Invalid constraints" :: errors)
           )
         )
       )
@@ -817,7 +822,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
               Right[ManagementServiceError, Unit](())
             } else {
               Left[ManagementServiceError, Unit](
-                ManagementServiceError.MismatchingSchemas(
+                ManagementServiceError(
                   "Schemas did not match during update"
                 )
               )

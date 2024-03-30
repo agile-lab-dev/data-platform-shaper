@@ -15,13 +15,7 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.{
-  ExistingCreatedInstancesError,
-  InvalidMappingError,
-  MappingCycleDetectedError,
-  MappingNotFoundError,
-  TypeIsAMappingTargetError
-}
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   MappingManagementServiceInterpreter,
@@ -557,7 +551,7 @@ class MappingSpec extends CommonSpec:
           }))
         } yield ()).value
       } asserting (_ should matchPattern {
-        case Left(TypeIsAMappingTargetError(_)) =>
+        case Left(ManagementServiceError(_)) =>
       })
 
       session.use { session =>
@@ -583,7 +577,7 @@ class MappingSpec extends CommonSpec:
           }))
         } yield ()).value
       } asserting (_ should matchPattern {
-        case Left(TypeIsAMappingTargetError(_)) =>
+        case Left(ManagementServiceError(_)) =>
       })
 
       session.use { session =>
@@ -609,7 +603,7 @@ class MappingSpec extends CommonSpec:
           }))
         } yield ()).value
       } asserting (_ should matchPattern {
-        case Left(TypeIsAMappingTargetError(_)) =>
+        case Left(ManagementServiceError(_)) =>
       })
     }
   }
@@ -799,7 +793,7 @@ class MappingSpec extends CommonSpec:
         )).value
 
       } asserting (ret =>
-        ret should matchPattern { case Left(MappingCycleDetectedError(_)) =>
+        ret should matchPattern { case Left(ManagementServiceError(_)) =>
         }
       )
     }
@@ -850,7 +844,7 @@ class MappingSpec extends CommonSpec:
         )).value
 
       } asserting (ret =>
-        ret should matchPattern { case Left(InvalidMappingError(_)) =>
+        ret should matchPattern { case Left(ManagementServiceError(_)) =>
         }
       )
     }
@@ -925,7 +919,7 @@ class MappingSpec extends CommonSpec:
           )
         } yield res).value
       } asserting { ret =>
-        ret should matchPattern { case Left(TypeIsAMappingTargetError(_)) =>
+        ret should matchPattern { case Left(ManagementServiceError(_)) =>
         }
       }
     }
@@ -1098,7 +1092,7 @@ class MappingSpec extends CommonSpec:
           } yield res).value
         }
         .asserting {
-          case Left(MappingNotFoundError(_)) => succeed
+          case Left(ManagementServiceError(_)) => succeed
           case _ =>
             fail(
               "Expected a MappingNotFoundError but received a different error or result"
@@ -1141,14 +1135,17 @@ class MappingSpec extends CommonSpec:
               mservice.create(MappingDefinition(mappingKey, mapperTuple))
             )
             sourceId <- EitherT(
-              iservice.create("TwoMappedInstancesSourceType", Tuple2(("field1", "Test"), ("field2", "Double Create")))
+              iservice.create(
+                "TwoMappedInstancesSourceType",
+                Tuple2(("field1", "Test"), ("field2", "Double Create"))
+              )
             )
             _ <- EitherT(mservice.createMappedInstances(sourceId))
             res <- EitherT(mservice.createMappedInstances(sourceId))
           } yield res).value
         }
         .asserting {
-          case Left(ExistingCreatedInstancesError()) => succeed
+          case Left(ManagementServiceError(_)) => succeed
           case _ =>
             fail(
               "Expected a MappingNotFoundError but received a different error or result"

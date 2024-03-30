@@ -106,7 +106,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             _.flatMap(exist =>
               if exist then
                 Left[ManagementServiceError, Unit](
-                  InvalidMappingError(
+                  ManagementServiceError(
                     s"the mapping with name ${key.mappingName}, source type ${key.sourceEntityTypeName} and target type ${key.targetEntityTypeName} already exists"
                   )
                 )
@@ -127,7 +127,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             _.flatMap(exist =>
               if !exist then
                 Left[ManagementServiceError, Unit](
-                  InvalidMappingError(
+                  ManagementServiceError(
                     s"in the mapping with name ${key.mappingName}, the source type ${key.sourceEntityTypeName} doesn't contain the trait MappingSource"
                   )
                 )
@@ -148,7 +148,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             _.flatMap(exist =>
               if !exist then
                 Left[ManagementServiceError, Unit](
-                  InvalidMappingError(
+                  ManagementServiceError(
                     s"in the mapping with name ${key.mappingName}, the target type ${key.targetEntityTypeName} doesn't contain the trait MappingTarget"
                   )
                 )
@@ -160,7 +160,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       _ <- EitherT(
         summon[Applicative[F]].pure(
           validateMappingTuple(mapper, ttype.schema).leftMap(error =>
-            MapperInstanceValidationError(error)
+            ManagementServiceError(s"The mapper instance is invalid: $error")
           )
         )
       )
@@ -228,7 +228,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           Right(MappingDefinition(mappingKey, (tuple1, tuple2)))
         case _ =>
           Left(
-            MappingNotFoundError(
+            ManagementServiceError(
               s"Mapping with name ${mappingKey.mappingName} has not been found or does not have exactly two pairs"
             )
           )
@@ -251,11 +251,11 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         Some(mappings.filter { case (_, _, targetEntityType, _, _) =>
           targetEntityType.name.equals(mappingKey.targetEntityTypeName)
         }),
-        MappingNotFoundError("No mappings found matching the criteria")
+        ManagementServiceError("No mappings found matching the criteria")
       )
       firstMapping <- EitherT.fromOption[F](
         filteredMappings.headOption,
-        MappingNotFoundError("No mappings found matching the criteria")
+        ManagementServiceError("No mappings found matching the criteria")
       )
       (_, _, _, pairs, mappingId) = firstMapping
       oldStatements = pairs.toList.map { case (key: String, value: String) =>
@@ -313,7 +313,12 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       _ <-
         if existInstances
-        then EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
+        then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"Cannot delete the mapping, there are associated instances"
+            )
+          )
         else EitherT.rightT[F, ManagementServiceError](())
       isMappingSource <- EitherT(
         checkTraitForEntityType(
@@ -335,7 +340,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         if !(isMappingSource && !isMappingTarget)
         then
           EitherT.leftT[F, Unit](
-            InvalidMappingError("Source is not a root of the mapping")
+            ManagementServiceError("Source is not a root of the mapping")
           )
         else EitherT.rightT[F, ManagementServiceError](())
       sourceMappings <- EitherT(
@@ -439,7 +444,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
                 mapping(1).schema,
                 mapping(3),
                 mapping(2).schema
-              ).leftMap(e => MapperInstanceValidationError(e))
+              ).leftMap(e =>
+                ManagementServiceError(s"The mapper instance is invalid: $e")
+              )
             val targetInstanceId = UUID.randomUUID().toString
             val sourceEntityIri = iri(ns, sourceInstanceId)
             val targetEntityIri = iri(ns, targetInstanceId)
@@ -505,7 +512,12 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       _ <-
         if existInstances
-        then EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
+        then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"The instances for this mapping have already been created"
+            )
+          )
         else EitherT.rightT[F, ManagementServiceError](())
       isMappingSource <- EitherT(
         checkTraitForEntityType(
@@ -525,7 +537,12 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       _ <-
         if !(isMappingSource && !isMappingTarget)
-        then EitherT.leftT[F, Unit](ExistingCreatedInstancesError())
+        then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              "This instance is also a MappingTarget, it's probably not a root in the mapping DAG"
+            )
+          )
         else EitherT.rightT[F, ManagementServiceError](())
       res <- EitherT(createMappedInstancesNoCheck(sourceInstanceId))
     } yield res).value
@@ -585,7 +602,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         if !(isMappingSource && !isMappingTarget)
         then
           EitherT.leftT[F, Unit](
-            TypeIsAMappingTargetError(s"${sourceInstance.entityTypeName}")
+            ManagementServiceError(
+              "This instance is also a MappingTarget, it's probably not a root in the mapping DAG"
+            )
           )
         else EitherT.rightT[F, ManagementServiceError](())
       res <- EitherT(readMappedInstancesNoCheck(sourceInstanceId))
@@ -616,7 +635,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
                 mapping(0).schema,
                 mapping(4),
                 mapping(2).schema
-              ).leftMap(e => MapperInstanceValidationError(e))
+              ).leftMap(e =>
+                ManagementServiceError(s"The mapper instance is invalid: $e")
+              )
             summon[Functor[F]].map(
               tuple
                 .map(
@@ -666,7 +687,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         if !(isMappingSource && !isMappingTarget)
         then
           EitherT.leftT[F, Unit](
-            TypeIsAMappingTargetError(s"${sourceInstance.entityTypeName}")
+            ManagementServiceError(
+              "This instance is also a MappingTarget, it's probably not a root in the mapping DAG"
+            )
           )
         else EitherT.rightT[F, ManagementServiceError](())
       res <- EitherT(updateMappedInstancesNoCheck(sourceInstanceId))
@@ -749,7 +772,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         if !(isMappingSource && !isMappingTarget)
         then
           EitherT.leftT[F, Unit](
-            TypeIsAMappingTargetError(s"${sourceInstance.entityTypeName}")
+            ManagementServiceError(
+              "This instance is also a MappingTarget, it's probably not a root in the mapping DAG"
+            )
           )
         else EitherT.rightT[F, ManagementServiceError](())
       res <- EitherT(deleteMappedInstancesNoCheck(sourceInstanceId))

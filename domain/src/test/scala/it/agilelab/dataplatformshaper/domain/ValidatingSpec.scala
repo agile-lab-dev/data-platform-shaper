@@ -16,7 +16,6 @@ import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.JsonType
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.InstanceValidationError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
@@ -467,7 +466,7 @@ class ValidatingSpec extends CommonSpec:
           nonConformingTuple
         )
       } asserting (_ should matchPattern {
-        case Left(InstanceValidationError(errors)) if errors.size.equals(4) =>
+        case Left(ManagementServiceError(errors)) if errors.size.equals(5) =>
       })
     }
   }
@@ -551,11 +550,11 @@ class ValidatingSpec extends CommonSpec:
           )
         } yield update).value
       } asserting {
-        case Left(InstanceValidationError(errors)) =>
+        case Left(ManagementServiceError(errors)) =>
           withClue(
             "Update should fail with ValidationError containing specific errors: "
           ) {
-            errors.size shouldBe 4
+            errors.size shouldBe 5
           }
         case _ =>
           fail("Expected ValidationError but received a different result")
@@ -633,8 +632,7 @@ class ValidatingSpec extends CommonSpec:
 
         result
       } asserting { ret =>
-        ret should matchPattern {
-          case Left(ManagementServiceError.MismatchingSchemas(_)) =>
+        ret should matchPattern { case Left(ManagementServiceError(_)) =>
         }
       }
     }
@@ -670,8 +668,7 @@ class ValidatingSpec extends CommonSpec:
         } yield res
         result
       } asserting { ret =>
-        ret should matchPattern {
-          case Left(ManagementServiceError.InvalidConstraints(_)) =>
+        ret should matchPattern { case Left(ManagementServiceError(_)) =>
         }
       }
     }
@@ -718,8 +715,7 @@ class ValidatingSpec extends CommonSpec:
         } yield res
         result
       } asserting { ret =>
-        ret should matchPattern {
-          case Left(ManagementServiceError.InvalidConstraints(_)) =>
+        ret should matchPattern { case Left(ManagementServiceError(_)) =>
         }
       }
     }

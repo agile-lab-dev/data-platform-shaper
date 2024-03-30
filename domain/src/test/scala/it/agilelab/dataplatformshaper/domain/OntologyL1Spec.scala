@@ -11,6 +11,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.l1.Relationship
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
@@ -184,8 +185,7 @@ class OntologyL1Spec extends CommonSpec:
           case Right(_) =>
             false shouldBe true
           case Left(error) =>
-            error should matchPattern {
-              case InstanceHasLinkedInstancesError(_) =>
+            error should matchPattern { case ManagementServiceError(_) =>
             }
         }
       )
@@ -210,7 +210,7 @@ class OntologyL1Spec extends CommonSpec:
       } asserting (res =>
         res should matchPattern {
           case Left(
-                TraitsHaveLinkedInstancesError("DataProduct", "OutputPort")
+                ManagementServiceError(_)
               ) =>
         }
       )
@@ -247,7 +247,7 @@ class OntologyL1Spec extends CommonSpec:
           res <- EitherT(ims.link(dp, Relationship.hasPart, at1))
         } yield res).value
       } asserting (res =>
-        res should matchPattern { case Left(InvalidLinkType(_, "hasPart", _)) =>
+        res should matchPattern { case Left(ManagementServiceError(_)) =>
         }
       )
     }

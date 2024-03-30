@@ -58,8 +58,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           summon[Applicative[F]]
             .pure(
               Left[ManagementServiceError, String](
-                ManagementServiceError.NonExistentInstanceTypeError(
-                  instanceTypeName
+                ManagementServiceError(
+                  s"The EntityType $instanceTypeName does not exist"
                 )
               )
             )
@@ -117,7 +117,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           EitherT(
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Entity](
-                ManagementServiceError.NonExistentInstanceError(instanceId)
+                ManagementServiceError(
+                  s"The instance with id $instanceId does not exist"
+                )
               )
             )
           )
@@ -144,8 +146,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <-
         if hasTrait then
           EitherT.leftT[F, Unit](
-            ManagementServiceError.TypeIsAMappingTargetError(
-              entity.entityTypeName
+            ManagementServiceError(
+              s"This instance with id $instanceId because its type ${entity.entityTypeName} is also a MappingTarget"
             )
           )
         else EitherT.rightT[F, ManagementServiceError](())
@@ -164,7 +166,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       if exist then res
       else
         summon[Applicative[F]].pure(
-          Left(ManagementServiceError.NonExistentInstanceError(instanceId))
+          Left(
+            ManagementServiceError(
+              s"This instance with id $instanceId does not exist"
+            )
+          )
         )
     }.value
   end update
@@ -228,14 +234,18 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         if linkedInstancesExisting then
           summon[Applicative[F]].pure(
             Left[ManagementServiceError, Unit](
-              ManagementServiceError.InstanceHasLinkedInstancesError(instanceId)
+              ManagementServiceError(
+                s"This instance with id $instanceId cannot be deleted because has linked instances"
+              )
             )
           )
         else if exist then res
         else
           summon[Applicative[F]].pure(
             Left[ManagementServiceError, Unit](
-              ManagementServiceError.NonExistentInstanceError(instanceId)
+              ManagementServiceError(
+                s"This instance with id $instanceId cannot be deleted because does not exist"
+              )
             )
           )
       )
@@ -332,7 +342,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       summon[Applicative[F]].pure(
         (if query.trim.isEmpty then Either.right(None)
          else Either.catchNonFatal(Some(generateSearchPredicate(query)))).left
-          .map(t => ManagementServiceError.InvalidSearchPredicate(t.getMessage))
+          .map(t =>
+            ManagementServiceError(s"Invalid search predicate: ${t.getMessage}")
+          )
       )
 
     (for {
@@ -405,7 +417,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
               else
                 summon[Applicative[F]].pure(
                   Left[ManagementServiceError, Unit](
-                    InvalidLinkType(instanceId1, linkType, instanceId2)
+                    ManagementServiceError(
+                      s"Linking $instanceId1 to $instanceId2 with relationship $linkType: invalid relationship"
+                    )
                   )
                 )
               end if
@@ -416,7 +430,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           then
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Unit](
-                NonExistentInstanceError(instanceId1)
+                ManagementServiceError(
+                  s"This instance with id $instanceId1 cannot be linked because does not exist"
+                )
               )
             )
           else
@@ -424,13 +440,17 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             then
               summon[Applicative[F]].pure(
                 Left[ManagementServiceError, Unit](
-                  NonExistentInstanceError(instanceId2)
+                  ManagementServiceError(
+                    s"This instance with id $instanceId2 cannot be linked because does not exist"
+                  )
                 )
               )
             else
               summon[Applicative[F]].pure(
                 Left[ManagementServiceError, Unit](
-                  NonExistentInstanceError(instanceId1)
+                  ManagementServiceError(
+                    s"This instance with id $instanceId1 or $instanceId2 cannot be linked because does not exist"
+                  )
                 )
               )
             end if
@@ -472,20 +492,26 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           if !exist1 then
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Unit](
-                NonExistentInstanceError(instanceId1)
+                ManagementServiceError(
+                  s"This instance with id $instanceId1 cannot be unlinked because does not exist"
+                )
               )
             )
           else
             if !exist2 then
               summon[Applicative[F]].pure(
                 Left[ManagementServiceError, Unit](
-                  NonExistentInstanceError(instanceId2)
+                  ManagementServiceError(
+                    s"This instance with id $instanceId1 cannot be unlinked because does not exist"
+                  )
                 )
               )
             else
               summon[Applicative[F]].pure(
                 Left[ManagementServiceError, Unit](
-                  NonExistentInstanceError(instanceId1)
+                  ManagementServiceError(
+                    s"This instance with id $instanceId1 or $instanceId2 cannot be unlinked because does not exist"
+                  )
                 )
               )
             end if
@@ -533,7 +559,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         else
           summon[Applicative[F]].pure(
             Left[ManagementServiceError, List[String]](
-              NonExistentInstanceError(instanceId)
+              ManagementServiceError(
+                s"This instance with id $instanceId does not exist"
+              )
             )
           )
       )
