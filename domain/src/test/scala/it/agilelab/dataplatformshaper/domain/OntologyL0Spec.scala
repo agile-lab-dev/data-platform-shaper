@@ -733,7 +733,7 @@ class OntologyL0Spec extends CommonSpec:
       }) asserting {
         case (
               true,
-              Left(ManagementServiceError.TypeIsFatherError(_)),
+              Left(ManagementServiceError(_)),
               Right(_),
               true
             ) =>
@@ -787,8 +787,8 @@ class OntologyL0Spec extends CommonSpec:
         }
 
       testResult asserting {
-        case Left(ManagementServiceError.TypeHasInstancesError(_)) => succeed
-        case _ => fail("Unexpected result")
+        case Left(ManagementServiceError(_)) => succeed
+        case _                               => fail("Unexpected result")
       }
     }
   }
@@ -843,8 +843,8 @@ class OntologyL0Spec extends CommonSpec:
         }
 
       testResult asserting {
-        case Left(ManagementServiceError.TypeHasInstancesError(_)) => succeed
-        case _ => fail("Unexpected result")
+        case Left(ManagementServiceError(_)) => succeed
+        case _                               => fail("Unexpected result")
       }
     }
   }

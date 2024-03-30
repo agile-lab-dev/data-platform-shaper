@@ -99,11 +99,8 @@ class OntologyManagerHandler[F[_]: Async](
               )
           )
           .map {
-            _.leftMap {
-              case err: ManagementServiceError.InvalidConstraints =>
-                err.errors.toVector
-              case err: ManagementServiceError =>
-                Vector(err.getMessage)
+            _.leftMap { case ManagementServiceError(errors) =>
+              errors.toVector
             }
           }
       )
@@ -123,7 +120,7 @@ class OntologyManagerHandler[F[_]: Async](
       name: String
   ): F[Resource.DeleteTypeResponse] =
     val res: F[Either[String, String]] = for {
-      deleteResult <- tms.delete(name).map(_.bimap(_.getMessage, _ => "OK"))
+      deleteResult <- tms.delete(name).map(_.bimap(_.errors.head, _ => "OK"))
     } yield deleteResult
 
     res
@@ -149,11 +146,8 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .updateConstraints(entityType)
           .map {
-            _.leftMap {
-              case err: ManagementServiceError.InvalidConstraints =>
-                err.errors.toVector
-              case err: ManagementServiceError =>
-                Vector(err.getMessage)
+            _.leftMap { case ManagementServiceError(errors) =>
+              errors.toVector
             }
           }
       )
@@ -214,7 +208,7 @@ class OntologyManagerHandler[F[_]: Async](
                 fn
               )
           )
-          .map(_.leftMap(_.getMessage))
+          .map(_.leftMap(_.errors.head))
       )
     } yield res
 
@@ -257,7 +251,7 @@ class OntologyManagerHandler[F[_]: Async](
               None
             )
           )
-          .map(_.leftMap(_.getMessage))
+          .map(_.leftMap(_.errors.head))
       )
     } yield res
 
@@ -278,7 +272,7 @@ class OntologyManagerHandler[F[_]: Async](
     val res = for {
       et <- tms
         .read(name)
-        .map(_.leftMap(_.getMessage))
+        .map(_.leftMap(_.errors.head))
     } yield et
 
     res
@@ -298,7 +292,7 @@ class OntologyManagerHandler[F[_]: Async](
       et <- EitherT(
         tms
           .read(name)
-          .map(_.leftMap(_.getMessage))
+          .map(_.leftMap(_.errors.head))
       )
       stream <- EitherT(
         summon[Applicative[F]].pure(
@@ -340,7 +334,7 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.entityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(l => Vector(l.getMessage)))
+          .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
@@ -351,11 +345,8 @@ class OntologyManagerHandler[F[_]: Async](
       entityId <- EitherT(
         ims
           .create(body.entityTypeName, tuple)
-          .map(_.leftMap {
-            case err: ManagementServiceError.InstanceValidationError =>
-              err.errors.toVector
-            case err: ManagementServiceError =>
-              Vector(err.getMessage)
+          .map(_.leftMap { case ManagementServiceError(errors) =>
+            errors.toVector
           })
       )
     } yield entityId).value
@@ -376,7 +367,7 @@ class OntologyManagerHandler[F[_]: Async](
       .delete(deleteId)
       .map {
         case Left(error) =>
-          respond.BadRequest(ValidationError(Vector(error.getMessage)))
+          respond.BadRequest(ValidationError(Vector(error.errors.head)))
         case Right(_) => respond.Ok("Entity deleted successfully")
       }
       .onError { t =>
@@ -393,7 +384,7 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.entityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(l => Vector(l.getMessage)))
+          .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
@@ -404,11 +395,8 @@ class OntologyManagerHandler[F[_]: Async](
       entityId <- EitherT(
         ims
           .update(updateId, tuple)
-          .map(_.leftMap {
-            case err: ManagementServiceError.InstanceValidationError =>
-              err.errors.toVector
-            case err: ManagementServiceError =>
-              Vector(err.getMessage)
+          .map(_.leftMap { case ManagementServiceError(errors) =>
+            errors.toVector
           })
       )
     } yield entityId).value
@@ -448,14 +436,14 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.entityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(_.getMessage))
+          .map(_.leftMap(_.errors.head))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
           .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
       )
       _ <- EitherT(
-        ims.update(id, tuple).map(_.leftMap(_.getMessage))
+        ims.update(id, tuple).map(_.leftMap(_.errors.head))
       )
     } yield id).value
 
@@ -491,14 +479,14 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.entityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(_.getMessage))
+          .map(_.leftMap(_.errors.head))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
           .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
       )
       entityId <- EitherT(
-        ims.create(body.entityTypeName, tuple).map(_.leftMap(_.getMessage))
+        ims.create(body.entityTypeName, tuple).map(_.leftMap(_.errors.head))
       )
     } yield entityId).value
 
@@ -516,9 +504,9 @@ class OntologyManagerHandler[F[_]: Async](
       id: String
   ): F[Resource.ReadEntityResponse] =
     val res = (for {
-      et <- EitherT(ims.read(id).map(_.leftMap(_.getMessage)))
+      et <- EitherT(ims.read(id).map(_.leftMap(_.errors.head)))
       schema <- EitherT(
-        tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.getMessage))
+        tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.errors.head))
       )
       values <- EitherT(
         summon[Applicative[F]]
@@ -547,9 +535,9 @@ class OntologyManagerHandler[F[_]: Async](
       respond: Resource.ReadEntityAsYamlResponse.type
   )(id: String): F[Resource.ReadEntityAsYamlResponse[F]] =
     val res = (for {
-      et <- EitherT(ims.read(id).map(_.leftMap(_.getMessage)))
+      et <- EitherT(ims.read(id).map(_.leftMap(_.errors.head)))
       schema <- EitherT(
-        tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.getMessage))
+        tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.errors.head))
       )
       values <- EitherT(
         summon[Applicative[F]]
@@ -594,8 +582,8 @@ class OntologyManagerHandler[F[_]: Async](
 
     res.map {
       case Left(error) =>
-        logger.error(s"Error: ${error.getMessage}")
-        respond.BadRequest(ValidationError(Vector(error.getMessage)))
+        logger.error(s"Error: ${error.errors.head}")
+        respond.BadRequest(ValidationError(Vector(error.errors.head)))
       case Right(_) =>
         respond.Ok("Trait created successfully")
     }
@@ -625,9 +613,11 @@ class OntologyManagerHandler[F[_]: Async](
         res match
           case Left(serviceError) =>
             logger.error(
-              s"Service error in linking traits: ${serviceError.getMessage}"
+              s"Service error in linking traits: ${serviceError.errors.head}"
             )
-            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+            respond.BadRequest(
+              ValidationError(Vector(serviceError.errors.head))
+            )
           case Right(_) =>
             respond.Ok(
               s"Traits $trait1 and $trait2 linked successfully with relationship $rel"
@@ -660,9 +650,11 @@ class OntologyManagerHandler[F[_]: Async](
         res match
           case Left(serviceError) =>
             logger.error(
-              s"Service error in unlinking traits: ${serviceError.getMessage}"
+              s"Service error in unlinking traits: ${serviceError.errors.head}"
             )
-            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+            respond.BadRequest(
+              ValidationError(Vector(serviceError.errors.head))
+            )
           case Right(_) =>
             respond.Ok(
               s"Traits $trait1 and $trait2 with relationship $rel unlinked successfully"
@@ -694,9 +686,11 @@ class OntologyManagerHandler[F[_]: Async](
         res match
           case Left(serviceError) =>
             logger.error(
-              s"Service error in getting linked traits: ${serviceError.getMessage}"
+              s"Service error in getting linked traits: ${serviceError.errors.head}"
             )
-            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+            respond.BadRequest(
+              ValidationError(Vector(serviceError.errors.head))
+            )
           case Right(traitsList) =>
             respond.Ok(traitsList.toVector)
         end match
@@ -729,9 +723,11 @@ class OntologyManagerHandler[F[_]: Async](
         res match
           case Left(serviceError) =>
             logger.error(
-              s"Service error in linking traits: ${serviceError.getMessage}"
+              s"Service error in linking traits: ${serviceError.errors.head}"
             )
-            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+            respond.BadRequest(
+              ValidationError(Vector(serviceError.errors.head))
+            )
           case Right(_) =>
             respond.Ok(
               s"Instances with ids $instanceId1 and $instanceId2 linked successfully with relationship $rel"
@@ -766,9 +762,11 @@ class OntologyManagerHandler[F[_]: Async](
         res match
           case Left(serviceError) =>
             logger.error(
-              s"Service error in getting linked traits: ${serviceError.getMessage}"
+              s"Service error in getting linked traits: ${serviceError.errors.head}"
             )
-            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+            respond.BadRequest(
+              ValidationError(Vector(serviceError.errors.head))
+            )
           case Right(_) =>
             respond.Ok(
               s"Instances with ids $instanceId1 and $instanceId2 and with relationship $rel unlinked successfully"
@@ -800,9 +798,11 @@ class OntologyManagerHandler[F[_]: Async](
         entities match {
           case Left(serviceError) =>
             logger.error(
-              s"Service error in getting linked entities: ${serviceError.getMessage}"
+              s"Service error in getting linked entities: ${serviceError.errors.head}"
             )
-            respond.BadRequest(ValidationError(Vector(serviceError.getMessage)))
+            respond.BadRequest(
+              ValidationError(Vector(serviceError.errors.head))
+            )
           case Right(entitiesList) =>
             respond.Ok(entitiesList.toVector)
         }
@@ -851,7 +851,7 @@ class OntologyManagerHandler[F[_]: Async](
       .map(
         {
           case Left(error) =>
-            respond.BadRequest(ValidationError(Vector(error.getMessage)))
+            respond.BadRequest(ValidationError(Vector(error.errors.head)))
           case Right(entities) =>
             respond.Ok(entities)
         }
@@ -875,9 +875,9 @@ class OntologyManagerHandler[F[_]: Async](
       .map({
         case Left(error) =>
           logger.error(
-            s"Error querying instances with type $entityTypeName and query $query: ${error.getMessage}"
+            s"Error querying instances with type $entityTypeName and query $query: ${error.errors.head}"
           )
-          respond.BadRequest(ValidationError(Vector(error.getMessage)))
+          respond.BadRequest(ValidationError(Vector(error.errors.head)))
         case Right(entities) =>
           respond.Ok(entities.toVector.map {
             case str: String => str
@@ -893,7 +893,7 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.mappingKey.targetEntityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(l => Vector(l.getMessage)))
+          .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
@@ -916,7 +916,7 @@ class OntologyManagerHandler[F[_]: Async](
             )
           )
           .map(_.leftMap { case err: ManagementServiceError =>
-            Vector(err.getMessage)
+            Vector(err.errors.head)
           })
       )
     } yield ()).value
@@ -954,7 +954,7 @@ class OntologyManagerHandler[F[_]: Async](
         tms
           .read(body.mappingKey.targetEntityTypeName)
           .map(_.map(_.schema))
-          .map(_.leftMap(l => Vector(l.getMessage)))
+          .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
         summon[Applicative[F]]
@@ -976,7 +976,7 @@ class OntologyManagerHandler[F[_]: Async](
               tuple
             )
           )
-          .map(_.leftMap(err => Vector(err.getMessage)))
+          .map(_.leftMap(err => Vector(err.errors.head)))
       )
     } yield ()).value
     res
@@ -994,7 +994,7 @@ class OntologyManagerHandler[F[_]: Async](
   )(body: String): F[Resource.CreateMappedInstancesResponse] =
     val res = mms
       .createMappedInstances(body)
-      .map(_.leftMap(err => Vector(err.getMessage)))
+      .map(_.leftMap(err => Vector(err.errors.head)))
     res
       .map {
         case Left(errors) => respond.BadRequest(ValidationError(errors))
@@ -1010,7 +1010,7 @@ class OntologyManagerHandler[F[_]: Async](
   )(body: String): F[Resource.UpdateMappedInstancesResponse] =
     val res = mms
       .updateMappedInstances(body)
-      .map(_.leftMap(err => Vector(err.getMessage)))
+      .map(_.leftMap(err => Vector(err.errors.head)))
     res
       .map {
         case Left(errors) => respond.BadRequest(ValidationError(errors))
@@ -1026,7 +1026,7 @@ class OntologyManagerHandler[F[_]: Async](
   )(sourceInstanceId: String): F[Resource.DeleteMappedInstancesResponse] =
     val res = mms
       .deleteMappedInstances(sourceInstanceId)
-      .map(_.leftMap(err => Vector(err.getMessage)))
+      .map(_.leftMap(err => Vector(err.errors.head)))
     res
       .map {
         case Left(errors) => respond.BadRequest(ValidationError(errors))
@@ -1101,7 +1101,7 @@ class OntologyManagerHandler[F[_]: Async](
       .map(
         {
           case Left(error) =>
-            respond.BadRequest(ValidationError(Vector(error.getMessage)))
+            respond.BadRequest(ValidationError(Vector(error.errors.head)))
           case Right(entities) =>
             respond.Ok(entities)
         }

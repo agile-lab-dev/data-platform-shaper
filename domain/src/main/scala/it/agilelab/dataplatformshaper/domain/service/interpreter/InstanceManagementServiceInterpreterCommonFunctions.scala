@@ -71,7 +71,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       _ <- EitherT[F, ManagementServiceError, Unit](
         summon[Applicative[F]].pure(
           cueValidate(schema, tuple).leftMap(errors =>
-            InstanceValidationError(errors)
+            ManagementServiceError(s"Instance validation error" :: errors)
           )
         )
       )
@@ -279,7 +279,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     ) match
       case Left(parsingError) =>
         Left[ManagementServiceError, List[Statement]](
-          TupleIsNotConformToSchema(parsingError)
+          ManagementServiceError(
+            s"The tuple is not conform to the schema: $parsingError"
+          )
         )
       case Right(_) =>
         Right[ManagementServiceError, List[Statement]](statements)
@@ -687,7 +689,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       _ <- EitherT[F, ManagementServiceError, Unit](
         summon[Applicative[F]].pure(
           cueValidate(entityType.schema, values).leftMap(errors =>
-            InstanceValidationError(errors)
+            ManagementServiceError(s"Instance validation error" :: errors)
           )
         )
       )
@@ -711,7 +713,11 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       if exist then res
       else
         summon[Applicative[F]].pure(
-          Left(ManagementServiceError.NonExistentInstanceError(instanceId))
+          Left(
+            ManagementServiceError(
+              s"The instance with id $instanceId does not exist"
+            )
+          )
         )
     }.value
   end updateInstanceNoCheck
@@ -731,7 +737,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
          |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
          |SELECT DISTINCT ?mr ?t ?m WHERE {
          |   ?mr ns:singletonPropertyOf ns:mappedTo .
-         |   ns:${sourceEntityTypeName} ?mr ?t .
+         |   ns:$sourceEntityTypeName ?mr ?t .
          |   ?mr ns:mappedBy ?m .
          |}
          |""".stripMargin
@@ -797,19 +803,19 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       targetEntityTypeName: Option[String]
   ): F[Either[ManagementServiceError, Boolean]] =
     val predicateSource = sourceEntityTypeName
-      .map(value => s"?instance1 ns:isClassifiedBy ns:${value} .")
+      .map(value => s"?instance1 ns:isClassifiedBy ns:$value .")
       .getOrElse(s"?instance1 ns:isClassifiedBy ?entity3 .")
     val predicateTarget = targetEntityTypeName
-      .map(value => s"?instance2 ns:isClassifiedBy ns:${value} .")
+      .map(value => s"?instance2 ns:isClassifiedBy ns:$value .")
       .getOrElse(s"?instance2 ns:isClassifiedBy ?entity4 .")
 
     val semiSourcePredicateMappedTo =
-      sourceEntityTypeName.map(value => s"ns:${value}").getOrElse("?entity1")
+      sourceEntityTypeName.map(value => s"ns:$value").getOrElse("?entity1")
     val semiMappedToPredicate = mappingName
-      .map(value => s"<${ns.getName}mappedTo#${value}>")
+      .map(value => s"<${ns.getName}mappedTo#$value>")
       .getOrElse("?mapping")
     val semiTargetPredicateMappedTo = targetEntityTypeName
-      .map(value => s"ns:${value} .")
+      .map(value => s"ns:$value .")
       .getOrElse("?entity2 .")
 
     val mappingPredicate: String = List(
@@ -820,7 +826,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       .mkString(" ")
 
     val firstFilterMapping: String = mappingName
-      .map(value => s"FILTER(?predicate = <${ns.getName}mappedTo#${value}>) .")
+      .map(value => s"FILTER(?predicate = <${ns.getName}mappedTo#$value>) .")
       .getOrElse("")
 
     val secondFilterMapping: String = mappingName
@@ -915,10 +921,13 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
               }
           }
           .handleErrorWith { error =>
-            val managementError: ManagementServiceError = MappingDeletionError(
-              "There was an error during the deletion of the mapping"
+            summon[Functor[F]].pure(
+              Left(
+                ManagementServiceError(
+                  s"There was an error during the deletion of the mapping: $error"
+                )
+              )
             )
-            summon[Functor[F]].pure(Left(managementError))
           }
     loop()
   end recursiveDelete
@@ -1009,7 +1018,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
          |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
          |SELECT distinct ?mr ?t ?m WHERE {
          |   ?mr ns:singletonPropertyOf ns:mappedTo .
-         |   ns:${sourceEntityId} ?mr ?t .
+         |   ns:$sourceEntityId ?mr ?t .
          |   ?mr ns:mappedBy ?m .
          |}
          |""".stripMargin
@@ -1090,13 +1099,13 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
         )
       else
         (
-          s"ns:${sourceEntityTypeName} ?mr ?t",
+          s"ns:$sourceEntityTypeName ?mr ?t",
           "?mr ns:singletonPropertyOf ns:mappedTo"
         )
 
     val query =
       s"""
-         |PREFIX ns:   <${nsName}>
+         |PREFIX ns:   <$nsName>
          |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
          |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
@@ -1166,7 +1175,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
         if visited.contains(currentType) then
           summon[Functor[F]].pure(
             Left(
-              MappingCycleDetectedError(
+              ManagementServiceError(
                 s"Cycle detected in the hierarchy when processing '$currentType'"
               )
             )
@@ -1178,8 +1187,8 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             if commonRoots.nonEmpty then
               summon[Functor[F]].pure(
                 Left(
-                  MappingCycleDetectedError(
-                    s"Cycle detected in the hierarchy when processing one of the roots of '$currentType'"
+                  ManagementServiceError(
+                    "Cycle detected in the hierarchy when processing one of the roots of '$currentType'"
                   )
                 )
               )

@@ -265,7 +265,7 @@ class ApiSpec
           resp should be(
             ReadTypeResponse.BadRequest(
               ValidationError(
-                Vector("The instance type with name deleteType does not exist")
+                Vector("The EntityType deleteType does not exist")
               )
             )
           )

@@ -71,7 +71,9 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
           summon[Applicative[F]]
             .pure(
               Left[ManagementServiceError, Unit](
-                ManagementServiceError.TraitAlreadyDefinedError(traitName)
+                ManagementServiceError(
+                  s"The trait $traitName has been already defined"
+                )
               )
             )
       }
@@ -168,7 +170,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
           then
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Unit](
-                NonExistentTraitError(traitName1)
+                ManagementServiceError(s"The trait $traitName1 does not exist")
               )
             )
           else
@@ -176,13 +178,17 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
             then
               summon[Applicative[F]].pure(
                 Left[ManagementServiceError, Unit](
-                  NonExistentTraitError(traitName2)
+                  ManagementServiceError(
+                    s"The trait $traitName2 does not exist"
+                  )
                 )
               )
             else
               summon[Applicative[F]].pure(
                 Left[ManagementServiceError, Unit](
-                  NonExistentTraitError(traitName1)
+                  ManagementServiceError(
+                    s"The trait $traitName1 $traitName2 or does not exist"
+                  )
                 )
               )
             end if
@@ -258,7 +264,9 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
               else
                 summon[Applicative[F]].pure(
                   Left[ManagementServiceError, Unit](
-                    TraitsHaveLinkedInstancesError(traitName1, traitName2)
+                    ManagementServiceError(
+                      s"Traits $traitName1 and $traitName2 have linked instance"
+                    )
                   )
                 )
               end if
@@ -269,7 +277,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
           then
             summon[Applicative[F]].pure(
               Left[ManagementServiceError, Unit](
-                NonExistentTraitError(traitName1)
+                ManagementServiceError(s"The trait $traitName1 does not exist")
               )
             )
           else
@@ -277,13 +285,17 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
             then
               summon[Applicative[F]].pure(
                 Left[ManagementServiceError, Unit](
-                  NonExistentTraitError(traitName2)
+                  ManagementServiceError(
+                    s"The trait $traitName2 does not exist"
+                  )
                 )
               )
             else
               summon[Applicative[F]].pure(
                 Left[ManagementServiceError, Unit](
-                  NonExistentTraitError(traitName1)
+                  ManagementServiceError(
+                    s"The trait $traitName1 or $traitName2 does not exist"
+                  )
                 )
               )
             end if
@@ -331,7 +343,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         else
           summon[Applicative[F]].pure(
             Left[ManagementServiceError, List[String]](
-              NonExistentTraitError(traitName)
+              ManagementServiceError(s"The trait $traitName does not exist")
             )
           )
       )
