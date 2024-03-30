@@ -743,6 +743,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       instanceTypeName: String
   ): F[Either[ManagementServiceError, Unit]] = {
     val existenceCheck = exist(instanceTypeName)
+    val testEntity = read(instanceTypeName)
     summon[Monad[F]].flatMap(existenceCheck) {
       case Right(true) =>
         val instanceCheck = hasInstances(instanceTypeName)
@@ -769,12 +770,18 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
                 )
 
               case Right(false) =>
-                val schemaF = getSchemaFromEntityType(instanceTypeName)
-                cache.delete(instanceTypeName) *>
-                  summon[Monad[F]].flatMap(schemaF) { schema =>
-                    val entityType = EntityType(instanceTypeName, schema)
-                    createOrDelete(entityType, isCreation = false)
-                  }
+                summon[Monad[F]].flatMap(testEntity) {
+                  case Right(entity) =>
+                    val schemaF = getSchemaFromEntityType(instanceTypeName)
+                    cache.delete(instanceTypeName) *>
+                      summon[Monad[F]].flatMap(schemaF) { schema =>
+                        val entityType =
+                          EntityType(instanceTypeName, entity.traits, schema)
+                        createOrDelete(entityType, isCreation = false)
+                      }
+                  case Left(error) =>
+                    summon[Applicative[F]].pure(Left(error))
+                }
 
               case Left(error) =>
                 summon[Applicative[F]].pure(
