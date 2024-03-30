@@ -72,6 +72,17 @@ class DomainSpec extends CommonSpec:
 
   private val thirdType = EntityType(
     "ThirdType",
+    Set("MappingTarget", "MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val fourthType = EntityType(
+    "FourthType",
     Set("MappingTarget"),
     StructType(
       List(
@@ -158,7 +169,8 @@ class DomainSpec extends CommonSpec:
           res1 <- EitherT(tservice.create(firstType))
           res2 <- EitherT(tservice.create(secondType))
           res3 <- EitherT(tservice.create(thirdType))
-          res4 <- EitherT(
+          res4 <- EitherT(tservice.create(fourthType))
+          res5 <- EitherT(
             iservice.create(
               "FirstType",
               (
@@ -167,7 +179,7 @@ class DomainSpec extends CommonSpec:
               )
             )
           )
-          res5 <- EitherT(
+          res6 <- EitherT(
             iservice.create(
               "SecondType",
               (
@@ -176,7 +188,7 @@ class DomainSpec extends CommonSpec:
               )
             )
           )
-          res6 <- EitherT(
+          res7 <- EitherT(
             mservice.create(
               MappingDefinition(
                 MappingKey("mapping1", "FirstType", "ThirdType"),
@@ -184,9 +196,18 @@ class DomainSpec extends CommonSpec:
               )
             )
           )
-        } yield (res1, res2, res3, res4, res5, res6)).value
+          res8 <- EitherT(
+            mservice.create(
+              MappingDefinition(
+                MappingKey("mapping2", "ThirdType", "FourthType"),
+                mapperTuple
+              )
+            )
+          )
+          _ <- EitherT(mservice.createMappedInstances(res5))
+        } yield (res1, res2, res3, res4, res5, res6, res7)).value
       } asserting (ret =>
-        ret should matchPattern { case Right((_, _, _, _, _, _)) =>
+        ret should matchPattern { case Right((_, _, _, _, _, _, _)) =>
         }
       )
     }
@@ -223,6 +244,7 @@ class DomainSpec extends CommonSpec:
             s
           }
           secondStringInstance = secondStringInstances.head
+          _ <- EitherT(mservice.deleteMappedInstances(firstStringInstance))
           res1 <- EitherT(iservice.delete(firstStringInstance))
           res2 <- EitherT(iservice.delete(secondStringInstance))
           res3 <- EitherT(
@@ -231,9 +253,10 @@ class DomainSpec extends CommonSpec:
           res4 <- EitherT(tservice.delete(firstType.name))
           res5 <- EitherT(tservice.delete(secondType.name))
           res6 <- EitherT(tservice.delete(thirdType.name))
-        } yield (res1, res2, res3, res4, res5, res6)).value
+          res7 <- EitherT(tservice.delete(fourthType.name))
+        } yield (res1, res2, res3, res4, res5, res6, res7)).value
       } asserting { ret =>
-        ret should matchPattern { case Right(((), (), (), (), (), ())) =>
+        ret should matchPattern { case Right(((), (), (), (), (), (), ())) =>
         }
       }
     }
