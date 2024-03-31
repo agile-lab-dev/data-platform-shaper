@@ -1188,7 +1188,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
               summon[Functor[F]].pure(
                 Left(
                   ManagementServiceError(
-                    "Cycle detected in the hierarchy when processing one of the roots of '$currentType'"
+                    s"Cycle detected in the hierarchy when processing one of the roots of '$currentType'"
                   )
                 )
               )

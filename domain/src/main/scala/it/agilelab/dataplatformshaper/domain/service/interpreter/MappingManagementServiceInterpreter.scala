@@ -128,7 +128,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               if !exist then
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
-                    s"in the mapping with name ${key.mappingName}, the source type ${key.sourceEntityTypeName} doesn't contain the trait MappingSource"
+                    s"in the mapping with name ${key.mappingName}, the source type ${key.sourceEntityTypeName} does not contain the trait MappingSource"
                   )
                 )
               else Right[ManagementServiceError, Unit](())
@@ -149,7 +149,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               if !exist then
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
-                    s"in the mapping with name ${key.mappingName}, the target type ${key.targetEntityTypeName} doesn't contain the trait MappingTarget"
+                    s"In the mapping with name ${key.mappingName}, the target type ${key.targetEntityTypeName} does not contain the trait MappingTarget"
                   )
                 )
               else Right[ManagementServiceError, Unit](())

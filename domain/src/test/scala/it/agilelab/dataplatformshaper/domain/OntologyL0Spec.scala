@@ -963,7 +963,9 @@ class OntologyL0Spec extends CommonSpec:
           fileBasedDataCollectionTuple
         )
       } asserting (ret =>
-        ret should matchPattern { case Left(_) =>
+        ret should matchPattern {
+          case Left(ManagementServiceError(List(error)))
+              if error.contains("does not exist") =>
         }
       )
     }
@@ -1166,8 +1168,10 @@ class OntologyL0Spec extends CommonSpec:
           )
         } yield readResult).value
       } asserting {
-        case Left(_) => succeed
-        case Right(_) =>
+        case Left(ManagementServiceError(List(error)))
+            if error.contains("does not exist") =>
+          succeed
+        case _ =>
           fail("Expected an error for non-existent entity, but got success")
       }
     }

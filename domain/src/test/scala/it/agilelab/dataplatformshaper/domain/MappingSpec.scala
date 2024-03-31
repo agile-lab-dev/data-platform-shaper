@@ -528,7 +528,8 @@ class MappingSpec extends CommonSpec:
         "repo1",
         false
       )
-      session.use { session =>
+
+      val s1 = session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
@@ -551,10 +552,13 @@ class MappingSpec extends CommonSpec:
           }))
         } yield ()).value
       } asserting (_ should matchPattern {
-        case Left(ManagementServiceError(_)) =>
+        case Left(ManagementServiceError(List(error)))
+            if error.contains(
+              "This instance is also a MappingTarget, it's probably not a root in the mapping DAG"
+            ) =>
       })
 
-      session.use { session =>
+      val s2 = session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
@@ -577,10 +581,13 @@ class MappingSpec extends CommonSpec:
           }))
         } yield ()).value
       } asserting (_ should matchPattern {
-        case Left(ManagementServiceError(_)) =>
+        case Left(ManagementServiceError(List(error)))
+            if error.contains(
+              "This instance is also a MappingTarget, it's probably not a root in the mapping DAG"
+            ) =>
       })
 
-      session.use { session =>
+      val s3 = session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
@@ -603,8 +610,13 @@ class MappingSpec extends CommonSpec:
           }))
         } yield ()).value
       } asserting (_ should matchPattern {
-        case Left(ManagementServiceError(_)) =>
+        case Left(ManagementServiceError(List(error)))
+            if error.contains(
+              "This instance is also a MappingTarget, it's probably not a root in the mapping DAG"
+            ) =>
       })
+
+      s1 *> s2 *> s3
     }
   }
 
@@ -718,7 +730,12 @@ class MappingSpec extends CommonSpec:
           )
         } yield res).value
 
-      } asserting (ret => ret should matchPattern { case Left(_) => })
+      } asserting (ret =>
+        ret should matchPattern {
+          case Left(ManagementServiceError(List(error)))
+              if error.contains("already exists") =>
+        }
+      )
     }
   }
 
@@ -793,7 +810,11 @@ class MappingSpec extends CommonSpec:
         )).value
 
       } asserting (ret =>
-        ret should matchPattern { case Left(ManagementServiceError(_)) =>
+        ret should matchPattern {
+          case Left(ManagementServiceError(List(error)))
+              if error.contains(
+                "Cycle detected in the hierarchy when processing one of the roots of"
+              ) =>
         }
       )
     }
@@ -844,7 +865,9 @@ class MappingSpec extends CommonSpec:
         )).value
 
       } asserting (ret =>
-        ret should matchPattern { case Left(ManagementServiceError(_)) =>
+        ret should matchPattern {
+          case Left(ManagementServiceError(List(error)))
+              if error.contains("does not contain the trait MappingSource") =>
         }
       )
     }
@@ -919,7 +942,9 @@ class MappingSpec extends CommonSpec:
           )
         } yield res).value
       } asserting { ret =>
-        ret should matchPattern { case Left(ManagementServiceError(_)) =>
+        ret should matchPattern {
+          case Left(ManagementServiceError(List(error)))
+              if error.contains("is also a MappingTarget") =>
         }
       }
     }

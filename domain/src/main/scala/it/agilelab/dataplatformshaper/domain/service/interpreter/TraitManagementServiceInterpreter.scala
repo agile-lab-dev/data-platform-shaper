@@ -265,7 +265,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
                 summon[Applicative[F]].pure(
                   Left[ManagementServiceError, Unit](
                     ManagementServiceError(
-                      s"Traits $traitName1 and $traitName2 have linked instance"
+                      s"Traits $traitName1 and $traitName2 have linked instances"
                     )
                   )
                 )

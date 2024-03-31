@@ -210,8 +210,8 @@ class OntologyL1Spec extends CommonSpec:
       } asserting (res =>
         res should matchPattern {
           case Left(
-                ManagementServiceError(_)
-              ) =>
+                ManagementServiceError(List(error))
+              ) if error.contains("have linked instances") =>
         }
       )
     }
@@ -247,7 +247,9 @@ class OntologyL1Spec extends CommonSpec:
           res <- EitherT(ims.link(dp, Relationship.hasPart, at1))
         } yield res).value
       } asserting (res =>
-        res should matchPattern { case Left(ManagementServiceError(_)) =>
+        res should matchPattern {
+          case Left(ManagementServiceError(List(error)))
+              if error.contains("invalid relationship") =>
         }
       )
     }

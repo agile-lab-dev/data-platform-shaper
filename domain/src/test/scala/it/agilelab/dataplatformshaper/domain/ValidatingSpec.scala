@@ -632,7 +632,9 @@ class ValidatingSpec extends CommonSpec:
 
         result
       } asserting { ret =>
-        ret should matchPattern { case Left(ManagementServiceError(_)) =>
+        ret should matchPattern {
+          case Left(ManagementServiceError(List(error)))
+              if error.contains("Schemas did not match during update") =>
         }
       }
     }
@@ -668,7 +670,8 @@ class ValidatingSpec extends CommonSpec:
         } yield res
         result
       } asserting { ret =>
-        ret should matchPattern { case Left(ManagementServiceError(_)) =>
+        ret should matchPattern {
+          case Left(ManagementServiceError(List("Invalid constraints", _))) =>
         }
       }
     }
@@ -715,7 +718,8 @@ class ValidatingSpec extends CommonSpec:
         } yield res
         result
       } asserting { ret =>
-        ret should matchPattern { case Left(ManagementServiceError(_)) =>
+        ret should matchPattern {
+          case Left(ManagementServiceError(List("Invalid constraints", _))) =>
         }
       }
     }
