@@ -302,8 +302,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       mappingKey: MappingKey
   ): F[Either[ManagementServiceError, Unit]] =
     (for {
-      existInstances <- EitherT(
-        existMappedInstances(
+      existingInstances <- EitherT(
+        queryMappedInstances(
           logger,
           repository,
           Some(mappingKey.sourceEntityTypeName),
@@ -312,7 +312,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
       )
       _ <-
-        if existInstances
+        if existingInstances.nonEmpty
         then
           EitherT.leftT[F, Unit](
             ManagementServiceError(
@@ -501,8 +501,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       sourceInstance <- EitherT(
         instanceManagementService.read(sourceInstanceId)
       )
-      existInstances <- EitherT(
-        existMappedInstances(
+      existingInstances <- EitherT(
+        queryMappedInstances(
           logger,
           repository,
           Some(sourceInstance.entityTypeName),
@@ -511,7 +511,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
       )
       _ <-
-        if existInstances
+        if existingInstances.nonEmpty
         then
           EitherT.leftT[F, Unit](
             ManagementServiceError(
@@ -704,7 +704,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         sourceInstanceId: String
     ): F[Either[ManagementServiceError, Unit]] =
       val instancesToDelete = mutable.Stack.empty[String]
-
+      val statementsToRemove = mutable.Stack.empty[Statement]
       def getMappedInstancesToDelete(
           sourceInstanceId: String
       ): F[Either[ManagementServiceError, Unit]] =
@@ -716,6 +716,31 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               instanceManagementService,
               sourceInstanceId
             )
+          )
+          entity <- EitherT(instanceManagementService.read(sourceInstanceId))
+          mappedInstances <- EitherT(
+            queryMappedInstances(
+              logger,
+              repository,
+              Some(entity.entityTypeName),
+              None,
+              None
+            )
+          )
+          filteredInstances = mappedInstances.filter(mappedInstance =>
+            iri(mappedInstance(0)).getLocalName.equals(sourceInstanceId)
+          )
+          filteredStatements = filteredInstances.map(filteredInstance =>
+            statement(
+              iri(filteredInstance(0)),
+              iri(filteredInstance(1)),
+              iri(filteredInstance(2)),
+              L3
+            )
+          )
+          _ <- EitherT.liftF(
+            summon[Applicative[F]]
+              .pure(statementsToRemove.pushAll(filteredStatements))
           )
           ids <- EitherT.liftF(
             summon[Applicative[F]].pure(mappings.map(mapping =>
@@ -736,6 +761,12 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         stack <- EitherT.liftF(
           summon[Functor[F]].map(getMappedInstancesToDelete(sourceInstanceId))(
             _ => instancesToDelete
+          )
+        )
+        _ <- EitherT.liftF(
+          repository.removeAndInsertStatements(
+            List.empty[Statement],
+            statementsToRemove.toList
           )
         )
         _ <- EitherT(
