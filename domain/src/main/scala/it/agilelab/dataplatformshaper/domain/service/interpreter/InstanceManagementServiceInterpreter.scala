@@ -294,6 +294,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |        BIND(iri("${ns.getName}$instanceTypeName") as ?entityType)
          |        ?i rdf:type ns:Entity .
          |        ?i ns:isClassifiedBy ?entityType .
+         |        FILTER NOT EXISTS { ?m ns:mappedBy ?i  }
          |    }
          |    ${predicate.fold("")(_.querySegment)}
          |}
