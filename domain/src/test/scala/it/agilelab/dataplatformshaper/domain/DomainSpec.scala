@@ -140,7 +140,7 @@ class DomainSpec extends CommonSpec:
             initialStatements = count
             IO(assert(count >= 0))
           case Left(error) =>
-            IO(fail(s"Failed to count statements: ${error.getMessage}"))
+            IO(fail(s"Failed to count statements: ${error}"))
         }
       }
     }
@@ -284,7 +284,7 @@ class DomainSpec extends CommonSpec:
           case Right(count) =>
             IO(assert(count.equals(initialStatements)))
           case Left(error) =>
-            IO(fail(s"Failed to count statements: ${error.getMessage}"))
+            IO(fail(s"Failed to count statements: ${error}"))
         }
       }
     }
