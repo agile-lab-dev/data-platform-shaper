@@ -255,4 +255,72 @@ class OntologyL1Spec extends CommonSpec:
     }
   }
 
+  "Link with relationship hasPart when traits are inherited" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trs = TraitManagementServiceInterpreter[IO](repository)
+        val tms = TypeManagementServiceInterpreter[IO](trs)
+        val ims = InstanceManagementServiceInterpreter[IO](tms)
+        (for {
+          _ <- EitherT(trs.create("Trait1", None))
+          _ <- EitherT(trs.create("Trait2", None))
+          _ <- EitherT(trs.link("Trait1", Relationship.hasPart, "Trait2"))
+          _ <- EitherT(
+            tms.create(
+              EntityType(
+                "CommonType1",
+                Set("Trait1"),
+                StructType(List("name" -> StringType())): Schema
+              )
+            )
+          )
+          _ <- EitherT(
+            tms.create(
+              EntityType(
+                "CommonType2",
+                Set("Trait2"),
+                StructType(List("name" -> StringType())): Schema
+              )
+            )
+          )
+          commonType1 <- EitherT(tms.read("CommonType1"))
+          commonType2 <- EitherT(tms.read("CommonType2"))
+          _ <- EitherT(
+            tms.create(
+              EntityType(
+                "Type1",
+                StructType(List("name" -> StringType())): Schema,
+                commonType1
+              )
+            )
+          )
+          _ <- EitherT(
+            tms.create(
+              EntityType(
+                "Type2",
+                StructType(List("name" -> StringType())): Schema,
+                commonType2
+              )
+            )
+          )
+          inst1 <- EitherT(ims.create("Type1", Tuple1("name" -> "tp1")))
+          inst2 <- EitherT(ims.create("Type2", Tuple1("name" -> "tp22")))
+          res <- EitherT(ims.link(inst1, Relationship.hasPart, inst2))
+        } yield res).value
+      } asserting (res =>
+        res should matchPattern { case Right(_) =>
+        }
+      )
+    }
+  }
 end OntologyL1Spec

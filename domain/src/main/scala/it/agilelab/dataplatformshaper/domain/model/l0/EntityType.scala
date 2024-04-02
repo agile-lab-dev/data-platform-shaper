@@ -9,10 +9,16 @@ import it.agilelab.dataplatformshaper.domain.model.schema.Schema
 )
 final case class EntityType(
     name: String,
-    traits: Set[String],
+    baseTraits: Set[String],
     baseSchema: Schema,
     father: Option[EntityType]
 ):
+  def traits: Set[String] =
+    var trs = baseTraits
+    father.foreach(et => trs = trs ++ et.traits)
+    trs
+  end traits
+
   def schema: Schema =
     var sc = baseSchema
     father.foreach(et =>
