@@ -260,7 +260,18 @@ class DomainSpec extends CommonSpec:
           res8 <- EitherT(trservice.unlink("Trait1", hasPart, "Trait2"))
           res9 <- EitherT(trservice.delete("Trait2"))
           res10 <- EitherT(trservice.delete("Trait1"))
-        } yield (res1, res2, res3, res4, res5, res6, res7, res8, res9, res10)).value
+        } yield (
+          res1,
+          res2,
+          res3,
+          res4,
+          res5,
+          res6,
+          res7,
+          res8,
+          res9,
+          res10
+        )).value
       } asserting { ret =>
         ret should matchPattern {
           case Right(((), (), (), (), (), (), (), (), (), ())) =>
