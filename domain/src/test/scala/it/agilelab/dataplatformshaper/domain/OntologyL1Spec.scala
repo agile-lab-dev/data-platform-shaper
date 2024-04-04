@@ -128,6 +128,48 @@ class OntologyL1Spec extends CommonSpec:
     }
   }
 
+  "Deleting a trait while an entity has it" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val exampleSchema: StructType = StructType(
+        List(
+          "ExampleField1" -> StringType(),
+          "ExampleField2" -> StringType()
+        )
+      )
+
+      val exampleEntityType = EntityType(
+        "ExampleEntityType",
+        Set("ExampleTrait"),
+        exampleSchema
+      )
+
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trms)
+        (for {
+          _ <- EitherT(trms.create("ExampleTrait", None))
+          _ <- EitherT(tservice.create(exampleEntityType))
+          _ <- EitherT(trms.delete("ExampleTrait"))
+          res <- EitherT(trms.exist("ExampleTrait"))
+        } yield res).value
+      } asserting {
+        case Left(error) => error shouldBe a[ManagementServiceError]
+        case Right(_) =>
+          fail("Expected a ManagementServiceError, but got success instead")
+      }
+    }
+  }
+
   "Linking a trait to another trait" - {
     "works" in {
       val session = Session[IO](

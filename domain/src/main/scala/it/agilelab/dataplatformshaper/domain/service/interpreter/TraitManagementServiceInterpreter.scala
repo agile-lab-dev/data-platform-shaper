@@ -110,6 +110,15 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
             )
           )
         else EitherT.rightT[F, ManagementServiceError](())
+      hasEntities <- EitherT(entityHasTrait(traitName))
+      _ <-
+        if hasEntities then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"An entity has the trait $traitName"
+            )
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
       hasLinks <- EitherT(hasLinkedTraits(traitName))
       _ <-
         if hasLinks then
@@ -165,16 +174,6 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       _ <- traceT(
         s"Looking for linked traits for trait $traitName"
       )
-      exist <- EitherT(exist(traitName))
-      _ <-
-        if !exist then
-          EitherT.leftT[F, Unit](
-            ManagementServiceError(
-              s"The trait $traitName does not exist"
-            )
-          )
-        else EitherT.rightT[F, ManagementServiceError](())
-      _ <- traceT(s"Looking for linked traits with the query: $query")
       queryResult = repository.evaluateQuery(query)
       res <- EitherT(summon[Functor[F]].map(queryResult) { resultSet =>
         val resultList = resultSet.toList
@@ -187,6 +186,39 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       })
     } yield res).value
   end hasLinkedTraits
+
+  private def entityHasTrait(
+      traitName: String
+  ): F[Either[ManagementServiceError, Boolean]] =
+    val traitIri = iri(ns, traitName)
+    val query = s"""
+                   |PREFIX ns:  <${ns.getName}>
+                   |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                   |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+                   |SELECT (COUNT(DISTINCT *) AS ?count) WHERE {
+                   |     ?entityType ?predicate ?trait .
+                   |     ?trait rdf:type owl:NamedIndividual .
+                   |     ?trait rdf:type ns:Trait .
+                   |     ?entityType rdf:type ns:EntityType .
+                   |     FILTER(?trait = <$traitIri>)
+                   |}
+                   |""".stripMargin
+    (for {
+      _ <- traceT(
+        s"Looking for entities having trait $traitName"
+      )
+      queryResult = repository.evaluateQuery(query)
+      res <- EitherT(summon[Functor[F]].map(queryResult) { resultSet =>
+        val resultList = resultSet.toList
+        Right(
+          resultList.nonEmpty && resultList.head
+            .getValue("count")
+            .stringValue()
+            .toInt > 0
+        )
+      })
+    } yield res).value
+  end entityHasTrait
 
   private def getSuperClassOf(
       traitName: String
