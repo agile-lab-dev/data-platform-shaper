@@ -12,6 +12,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 }
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
+import it.agilelab.dataplatformshaper.domain.model.l1.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -61,7 +62,7 @@ class DomainSpec extends CommonSpec:
 
   private val secondType = EntityType(
     "SecondType",
-    Set(),
+    Set("Trait1"),
     StructType(
       List(
         "field1" -> StringType(),
@@ -146,7 +147,6 @@ class DomainSpec extends CommonSpec:
     }
   }
 
-  // TODO: Add the traits to the test when the deletion is ready
   "Creating various types of statements" - {
     "works" in {
       val session = Session[IO](
@@ -166,6 +166,9 @@ class DomainSpec extends CommonSpec:
         val mservice =
           MappingManagementServiceInterpreter[IO](tservice, iservice)
         (for {
+          _ <- EitherT(trservice.create("Trait1", None))
+          _ <- EitherT(trservice.create("Trait2", Some("Trait1")))
+          _ <- EitherT(trservice.link("Trait1", hasPart, "Trait2"))
           res1 <- EitherT(tservice.create(firstType))
           res2 <- EitherT(tservice.create(secondType))
           res3 <- EitherT(tservice.create(thirdType))
@@ -205,9 +208,9 @@ class DomainSpec extends CommonSpec:
             )
           )
           _ <- EitherT(mservice.createMappedInstances(res5))
-        } yield (res1, res2, res3, res4, res5, res6, res7)).value
+        } yield (res1, res2, res3, res4, res5, res6, res7, res8)).value
       } asserting (ret =>
-        ret should matchPattern { case Right((_, _, _, _, _, _, _)) =>
+        ret should matchPattern { case Right((_, _, _, _, _, _, _, _)) =>
         }
       )
     }
@@ -254,9 +257,13 @@ class DomainSpec extends CommonSpec:
           res5 <- EitherT(tservice.delete(secondType.name))
           res6 <- EitherT(tservice.delete(thirdType.name))
           res7 <- EitherT(tservice.delete(fourthType.name))
-        } yield (res1, res2, res3, res4, res5, res6, res7)).value
+          res8 <- EitherT(trservice.unlink("Trait1", hasPart, "Trait2"))
+          res9 <- EitherT(trservice.delete("Trait2"))
+          res10 <- EitherT(trservice.delete("Trait1"))
+        } yield (res1, res2, res3, res4, res5, res6, res7, res8, res9, res10)).value
       } asserting { ret =>
-        ret should matchPattern { case Right(((), (), (), (), (), (), ())) =>
+        ret should matchPattern {
+          case Right(((), (), (), (), (), (), (), (), (), ())) =>
         }
       }
     }
