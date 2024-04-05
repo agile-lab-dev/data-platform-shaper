@@ -170,6 +170,37 @@ class OntologyL1Spec extends CommonSpec:
     }
   }
 
+  "Deleting a trait while another trait is its subClass" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        (for {
+          _ <- EitherT(trms.create("FatherExampleTrait", None))
+          _ <- EitherT(
+            trms.create("SonExampleTrait", Some("FatherExampleTrait"))
+          )
+          _ <- EitherT(trms.delete("FatherExampleTrait"))
+          res <- EitherT(trms.exist("FatherExampleTrait"))
+        } yield res).value
+      } asserting {
+        case Left(error) => error shouldBe a[ManagementServiceError]
+        case Right(_) =>
+          fail("Expected a ManagementServiceError, but got success instead")
+      }
+    }
+  }
+
   "Linking a trait to another trait" - {
     "works" in {
       val session = Session[IO](
