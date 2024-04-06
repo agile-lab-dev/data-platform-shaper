@@ -81,6 +81,172 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     } yield ()).value
   end create
 
+  override def delete(
+      traitName: String
+  ): F[Either[ManagementServiceError, Unit]] =
+    val traitIri = iri(ns, traitName)
+    val initialStatements: List[Statement] = List(
+      statement(triple(traitIri, RDF.TYPE, OWL.NAMEDINDIVIDUAL), L1),
+      statement(triple(traitIri, RDF.TYPE, NS.TRAIT), L1)
+    )
+    (for {
+      _ <-
+        if traitName.equals("MappingSource") || traitName.equals(
+            "MappingTarget"
+          )
+        then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"Cannot delete the trait $traitName"
+            )
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      traitExists <- EitherT(exist(traitName))
+      _ <-
+        if !traitExists then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"The trait $traitName does not exist"
+            )
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      hasEntities <- EitherT(entityHasTrait(traitName))
+      _ <-
+        if hasEntities then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"An entity has the trait $traitName"
+            )
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      hasLinks <- EitherT(hasLinkedTraits(traitName))
+      _ <-
+        if hasLinks then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"The trait $traitName is linked to another trait (inheritance or linking)"
+            )
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      superClass <- EitherT.liftF(getSuperClassOf(traitName))
+      additionalStatements <- EitherT.liftF(
+        summon[Applicative[F]].pure(
+          superClass
+            .map(trait2 =>
+              List(
+                statement(
+                  triple(traitIri, RDFS.SUBCLASSOF, iri(ns, trait2)),
+                  L1
+                )
+              )
+            )
+            .getOrElse(List.empty[Statement])
+        )
+      )
+      statementsToRemove = initialStatements ::: additionalStatements
+      _ <- EitherT.liftF(
+        repository
+          .removeAndInsertStatements(List.empty[Statement], statementsToRemove)
+      )
+    } yield ()).value
+  end delete
+
+  private def hasLinkedTraits(
+      traitName: String
+  ): F[Either[ManagementServiceError, Boolean]] =
+    val traitIri = iri(ns, traitName)
+
+    val query = s"""
+        |PREFIX ns:  <${ns.getName}>
+        |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+        |SELECT (COUNT(DISTINCT *) AS ?count) WHERE {
+        |     ?trait1 ?predicate ?trait2 .
+        |     ?trait1 rdf:type owl:NamedIndividual .
+        |     ?trait1 rdf:type ns:Trait .
+        |     ?trait2 rdf:type owl:NamedIndividual .
+        |     ?trait2 rdf:type ns:Trait .
+        |     FILTER(?trait1 = <$traitIri> || ?trait2 = <$traitIri>)
+        |     FILTER(?trait1 != <$traitIri> || ?predicate != rdfs:subClassOf)
+        |}
+        |""".stripMargin
+    (for {
+      _ <- traceT(
+        s"Looking for linked traits for trait $traitName"
+      )
+      queryResult = repository.evaluateQuery(query)
+      res <- EitherT(summon[Functor[F]].map(queryResult) { resultSet =>
+        val resultList = resultSet.toList
+        Right(
+          resultList.nonEmpty && resultList.head
+            .getValue("count")
+            .stringValue()
+            .toInt > 0
+        )
+      })
+    } yield res).value
+  end hasLinkedTraits
+
+  private def entityHasTrait(
+      traitName: String
+  ): F[Either[ManagementServiceError, Boolean]] =
+    val traitIri = iri(ns, traitName)
+    val query = s"""
+                   |PREFIX ns:  <${ns.getName}>
+                   |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                   |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+                   |SELECT (COUNT(DISTINCT *) AS ?count) WHERE {
+                   |     ?entityType ?predicate ?trait .
+                   |     ?trait rdf:type owl:NamedIndividual .
+                   |     ?trait rdf:type ns:Trait .
+                   |     ?entityType rdf:type ns:EntityType .
+                   |     FILTER(?trait = <$traitIri>)
+                   |}
+                   |""".stripMargin
+    (for {
+      _ <- traceT(
+        s"Looking for entities having trait $traitName"
+      )
+      queryResult = repository.evaluateQuery(query)
+      res <- EitherT(summon[Functor[F]].map(queryResult) { resultSet =>
+        val resultList = resultSet.toList
+        Right(
+          resultList.nonEmpty && resultList.head
+            .getValue("count")
+            .stringValue()
+            .toInt > 0
+        )
+      })
+    } yield res).value
+  end entityHasTrait
+
+  private def getSuperClassOf(
+      traitName: String
+  ): F[Option[String]] =
+    val traitIri = iri(ns.getName, traitName)
+    val query = s"""
+        |PREFIX ns:  <${ns.getName}>
+        |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        |PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        |PREFIX owl: <http://www.w3.org/2002/07/owl#>
+        |SELECT ?trait2 WHERE {
+        |   ?trait1 ?predicate ?trait2 .
+        |   ?trait1 rdf:type owl:NamedIndividual .
+        |   ?trait1 rdf:type ns:Trait .
+        |   ?trait2 rdf:type owl:NamedIndividual .
+        |   ?trait2 rdf:type ns:Trait .
+        |   FILTER(?predicate = rdfs:subClassOf && ?trait1 = <$traitIri>)
+        |}
+        |""".stripMargin
+
+    val queryResult = repository.evaluateQuery(query)
+    summon[Functor[F]].map(queryResult)(
+      _.nextOption().map(bs =>
+        iri(bs.getValue("trait2").stringValue()).getLocalName
+      )
+    )
+  end getSuperClassOf
+
   override def exist(
       traitName: String
   ): F[Either[ManagementServiceError, Boolean]] =

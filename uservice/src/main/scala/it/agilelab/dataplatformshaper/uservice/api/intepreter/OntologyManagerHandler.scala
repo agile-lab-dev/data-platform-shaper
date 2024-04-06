@@ -589,6 +589,20 @@ class OntologyManagerHandler[F[_]: Async](
     }
   end createTrait
 
+  override def deleteTrait(respond: Resource.DeleteTraitResponse.type)(
+      traitName: String
+  ): F[Resource.DeleteTraitResponse] =
+    val res = trms.delete(traitName)
+
+    res.map {
+      case Left(error) =>
+        logger.error(s"Error: ${error.errors.head}")
+        respond.BadRequest(ValidationError(Vector(error.errors.head)))
+      case Right(_) =>
+        respond.Ok("Trait deleted successfully")
+    }
+  end deleteTrait
+
   override def linkTrait(respond: Resource.LinkTraitResponse.type)(
       trait1: String,
       rel: String,

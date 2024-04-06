@@ -10,6 +10,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 }
 import it.agilelab.dataplatformshaper.domain.model.l0.*
 import it.agilelab.dataplatformshaper.domain.model.l1.Relationship
+import it.agilelab.dataplatformshaper.domain.model.l1.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
@@ -72,6 +73,130 @@ class OntologyL1Spec extends CommonSpec:
           res <- EitherT(trms.exist("ANewTrait"))
         } yield res).value
       } asserting (res => res should be(Right(true)))
+    }
+  }
+
+  "Deleting a trait" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        (for {
+          _ <- EitherT(trms.create("DeleteTrait", None))
+          _ <- EitherT(trms.delete("DeleteTrait"))
+          res <- EitherT(trms.exist("DeleteTrait"))
+        } yield res).value
+      } asserting (res => res should be(Right(false)))
+    }
+  }
+
+  "Deleting a trait with existing links" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        (for {
+          _ <- EitherT(trms.create("LinkTrait1", None))
+          _ <- EitherT(trms.create("LinkTrait2", None))
+          _ <- EitherT(trms.link("LinkTrait1", hasPart, "LinkTrait2"))
+          _ <- EitherT(trms.delete("LinkTrait2"))
+          res <- EitherT(trms.exist("LinkTrait2"))
+        } yield res).value
+      } asserting {
+        case Left(error) => error shouldBe a[ManagementServiceError]
+        case Right(_) =>
+          fail("Expected a ManagementServiceError, but got success instead")
+      }
+    }
+  }
+
+  "Deleting a trait while an entity has it" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val exampleSchema: StructType = StructType(
+        List(
+          "ExampleField1" -> StringType(),
+          "ExampleField2" -> StringType()
+        )
+      )
+
+      val exampleEntityType = EntityType(
+        "ExampleEntityType",
+        Set("ExampleTrait"),
+        exampleSchema
+      )
+
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val tservice = TypeManagementServiceInterpreter[IO](trms)
+        (for {
+          _ <- EitherT(trms.create("ExampleTrait", None))
+          _ <- EitherT(tservice.create(exampleEntityType))
+          _ <- EitherT(trms.delete("ExampleTrait"))
+          res <- EitherT(trms.exist("ExampleTrait"))
+        } yield res).value
+      } asserting {
+        case Left(error) => error shouldBe a[ManagementServiceError]
+        case Right(_) =>
+          fail("Expected a ManagementServiceError, but got success instead")
+      }
+    }
+  }
+
+  "Deleting a trait while another trait is its subClass" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        (for {
+          _ <- EitherT(trms.create("FatherExampleTrait", None))
+          _ <- EitherT(
+            trms.create("SonExampleTrait", Some("FatherExampleTrait"))
+          )
+          res <- EitherT(trms.delete("FatherExampleTrait"))
+        } yield res).value
+      } asserting {
+        case Left(error) => error shouldBe a[ManagementServiceError]
+        case Right(_) =>
+          fail("Expected a ManagementServiceError, but got success instead")
+      }
     }
   }
 

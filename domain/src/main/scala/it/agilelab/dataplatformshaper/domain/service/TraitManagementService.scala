@@ -12,6 +12,8 @@ trait TraitManagementService[F[_]]:
       inheritsFrom: Option[String]
   ): F[Either[ManagementServiceError, Unit]]
 
+  def delete(traitName: String): F[Either[ManagementServiceError, Unit]]
+
   def exist(
       traitName: String
   ): F[Either[ManagementServiceError, Boolean]]

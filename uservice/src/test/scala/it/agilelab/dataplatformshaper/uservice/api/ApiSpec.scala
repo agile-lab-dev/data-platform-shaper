@@ -31,7 +31,8 @@ import it.agilelab.dataplatformshaper.uservice.{
   UnlinkTraitResponse,
   UpdateEntityByYamlResponse,
   UpdateEntityResponse,
-  UpdateTypeConstraintsResponse
+  UpdateTypeConstraintsResponse,
+  DeleteTraitResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
@@ -584,6 +585,27 @@ class ApiSpec
             value.size should be(2)
           }
         )
+    }
+  }
+
+  "Deleting a trait" - {
+    "should delete an existing trait" in {
+
+      val trait1 = "deleteTrait"
+
+      val resp: Resource[IO, DeleteTraitResponse] = for
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(Client.httpClient(_, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait(trait1)))
+        deleteTraitResp <- Resource.liftK(client.deleteTrait(trait1))
+      yield deleteTraitResp
+
+      resp.use(resp => IO.pure(resp)).asserting { response =>
+        response should matchPattern { case DeleteTraitResponse.Ok(_) =>
+        }
+      }
     }
   }
 
