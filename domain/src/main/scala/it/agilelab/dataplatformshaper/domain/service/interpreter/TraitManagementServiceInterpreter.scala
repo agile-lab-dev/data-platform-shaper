@@ -124,7 +124,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         if hasLinks then
           EitherT.leftT[F, Unit](
             ManagementServiceError(
-              s"The trait $traitName is linked to another instance"
+              s"The trait $traitName is linked to another trait (inheritance or linking)"
             )
           )
         else EitherT.rightT[F, ManagementServiceError](())

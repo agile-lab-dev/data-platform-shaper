@@ -190,8 +190,7 @@ class OntologyL1Spec extends CommonSpec:
           _ <- EitherT(
             trms.create("SonExampleTrait", Some("FatherExampleTrait"))
           )
-          _ <- EitherT(trms.delete("FatherExampleTrait"))
-          res <- EitherT(trms.exist("FatherExampleTrait"))
+          res <- EitherT(trms.delete("FatherExampleTrait"))
         } yield res).value
       } asserting {
         case Left(error) => error shouldBe a[ManagementServiceError]
