@@ -11,14 +11,27 @@ import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
 import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.l1.Relationship.mappedTo
 import it.agilelab.dataplatformshaper.domain.model.l1.given_Conversion_Relationship_String
-import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
-import it.agilelab.dataplatformshaper.domain.model.schema.{DataType, Schema, cueValidate, schemaToMapperSchema, unfoldTuple}
+import it.agilelab.dataplatformshaper.domain.model.schema.{
+  DataType,
+  Schema,
+  cueValidate,
+  schemaToMapperSchema,
+  unfoldTuple
+}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{
+  InstanceManagementService,
+  ManagementServiceError,
+  TypeManagementService
+}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF

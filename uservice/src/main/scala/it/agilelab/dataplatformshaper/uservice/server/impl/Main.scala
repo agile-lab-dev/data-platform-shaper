@@ -3,7 +3,10 @@ import cats.effect.std.Random
 import cats.effect.{ExitCode, IO, IOApp}
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
 import it.agilelab.dataplatformshaper.uservice.system.ApplicationConfiguration.*
 import org.http4s.ember.client.EmberClientBuilder
@@ -87,14 +90,8 @@ object Main extends IOApp:
     end if
   end createRepository
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.null"
-    )
-  )
   private def loadInitialOntologies(session: Session): IO[Unit] = {
     val repository = Rdf4jKnowledgeGraph[IO](session)
-    println("CICCCIOCCCCCCC")
     repository.loadBaseOntologies()
   }
 
