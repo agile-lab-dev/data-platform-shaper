@@ -98,18 +98,18 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
   ): Statement =
     statement(
       triple(entity, NS.CONSTRAINTS, literal(constraints.getOrElse("null"))),
-      L2
+      L1
     )
   end constraintsToStatement
 
   private def modeToStatement(entity: IRI, mode: Mode): Statement =
     mode match
       case Nullable =>
-        statement(triple(entity, NS.MODE, NS.NULLABLE), L2)
+        statement(triple(entity, NS.MODE, NS.NULLABLE), L1)
       case Repeated =>
-        statement(triple(entity, NS.MODE, NS.REPEATED), L2)
+        statement(triple(entity, NS.MODE, NS.REPEATED), L1)
       case Required =>
-        statement(triple(entity, NS.MODE, NS.REQUIRED), L2)
+        statement(triple(entity, NS.MODE, NS.REQUIRED), L1)
     end match
   end modeToStatement
 
@@ -200,10 +200,10 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       case StructType(records, mode) =>
         val structTypeInstance = iri(ns, UUID.randomUUID().toString)
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
-          statement(triple(childEntity, RDFS.RANGE, structTypeInstance), L2),
-          statement(triple(structTypeInstance, RDF.TYPE, NS.STRUCTTYPE), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
+          statement(triple(childEntity, RDFS.RANGE, structTypeInstance), L1),
+          statement(triple(structTypeInstance, RDF.TYPE, NS.STRUCTTYPE), L1),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, None)
         ) ++ records.flatMap(record =>
@@ -216,94 +216,94 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         )
       case StringType(mode, constraints) =>
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
           statement(
             triple(childEntity, RDFS.RANGE, NS.STRINGATTRIBUTETYPE),
-            L2
+            L1
           ),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, constraints)
         )
       case DateType(mode, constraints) =>
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
           statement(
             triple(childEntity, RDFS.RANGE, NS.DATEATTRIBUTETYPE),
-            L2
+            L1
           ),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, constraints)
         )
       case JsonType(mode) =>
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
           statement(
             triple(childEntity, RDFS.RANGE, NS.JSONATTRIBUTETYPE),
-            L2
+            L1
           ),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, None)
         )
       case TimestampType(mode, constraints) =>
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
           statement(
             triple(childEntity, RDFS.RANGE, NS.TIMESTAMPATTRIBUTETYPE),
-            L2
+            L1
           ),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, constraints)
         )
       case DoubleType(mode, constraints) =>
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
           statement(
             triple(childEntity, RDFS.RANGE, NS.DOUBLEATTRIBUTETYPE),
-            L2
+            L1
           ),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, constraints)
         )
       case FloatType(mode, constraints) =>
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
           statement(
             triple(childEntity, RDFS.RANGE, NS.FLOATATTRIBUTETYPE),
-            L2
+            L1
           ),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, constraints)
         )
       case LongType(mode, constraints) =>
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
-          statement(triple(childEntity, RDFS.RANGE, NS.LONGATTRIBUTETYPE), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
+          statement(triple(childEntity, RDFS.RANGE, NS.LONGATTRIBUTETYPE), L1),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, constraints)
         )
       case BooleanType(mode, constraints) =>
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
           statement(
             triple(childEntity, RDFS.RANGE, NS.BOOLEANATTRIBUTETYPE),
-            L2
+            L1
           ),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, constraints)
         )
       case IntType(mode, constraints) =>
         List(
-          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L2),
-          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L2),
-          statement(triple(childEntity, RDFS.RANGE, NS.INTATTRIBUTETYPE), L2),
+          statement(triple(fatherEntity, NS.HASATTRIBUTETYPE, childEntity), L1),
+          statement(triple(childEntity, RDFS.DOMAIN, fatherEntity), L1),
+          statement(triple(childEntity, RDFS.RANGE, NS.INTATTRIBUTETYPE), L1),
           modeToStatement(childEntity, mode),
           constraintsToStatement(childEntity, constraints)
         )
@@ -512,7 +512,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
               List(
                 statement(
                   triple(instanceType, INHERITSFROM, iri(ns, entityType.name)),
-                  L2
+                  L1
                 )
               )
             else List.empty[Statement]
@@ -524,15 +524,15 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       .map(`trait` =>
         statement(
           triple(instanceType, NS.HASTRAIT, iri(ns, `trait`: String)),
-          L2
+          L1
         )
       )
       .toList
 
     val typeInstanceStatements = List(
-      statement(triple(instanceType, RDF.TYPE, OWL.NAMEDINDIVIDUAL), L2),
-      statement(triple(instanceType, RDF.TYPE, ENTITYTYPE), L2),
-      statement(triple(instanceType, TYPENAME, literal(entityType.name)), L2)
+      statement(triple(instanceType, RDF.TYPE, OWL.NAMEDINDIVIDUAL), L1),
+      statement(triple(instanceType, RDF.TYPE, ENTITYTYPE), L1),
+      statement(triple(instanceType, TYPENAME, literal(entityType.name)), L1)
     )
 
     val attributeStatements =

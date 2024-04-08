@@ -8,9 +8,8 @@ object NS:
   val ns = SimpleNamespace("ns", "https://w3id.org/agile-dm/ontology/")
 
   val L0 = iri(ns, "L0") // Base Ontology
-  val L1 = iri(ns, "L1") // Traits
-  val L2 = iri(ns, "L2") // User Defined Types
-  val L3 = iri(ns, "L3") // Instances
+  val L1 = iri(ns, "L1") // User Defined Types
+  val L2 = iri(ns, "L2") // Instances
 
   // L0
   val TYPENAME = iri(ns, "typeName")
@@ -39,7 +38,5 @@ object NS:
   val TRAIT = iri(ns, "Trait")
   val MAPPINGNAME = iri(ns, "mappingName")
   val MAPPEDBY = iri(ns, "mappedBy")
-
-  // L1
 
 end NS

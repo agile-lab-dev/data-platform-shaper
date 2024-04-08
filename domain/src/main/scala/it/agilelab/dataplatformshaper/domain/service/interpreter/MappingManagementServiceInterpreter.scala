@@ -7,25 +7,13 @@ import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
-import it.agilelab.dataplatformshaper.domain.model.NS.{L2, L3, ns}
+import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
 import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
-import it.agilelab.dataplatformshaper.domain.model.mapping.{
-  MappingDefinition,
-  MappingKey
-}
-import it.agilelab.dataplatformshaper.domain.model.schema.{
-  schemaToMapperSchema,
-  tupleToMappedTuple,
-  validateMappingTuple
-}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
+import it.agilelab.dataplatformshaper.domain.model.schema.{schemaToMapperSchema, tupleToMappedTuple, validateMappingTuple}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{
-  InstanceManagementService,
-  ManagementServiceError,
-  MappingManagementService,
-  TypeManagementService
-}
+import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, MappingManagementService, TypeManagementService}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
@@ -467,9 +455,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               mapperIri
             )
             val initialStatements = List(
-              statement(mappedToTriple1, L3),
-              statement(mappedToTriple2, L3),
-              statement(mappedToTriple3, L3)
+              statement(mappedToTriple1, L2),
+              statement(mappedToTriple2, L2),
+              statement(mappedToTriple3, L2)
             )
             summon[Functor[F]].map(
               tuple
@@ -735,7 +723,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               iri(filteredInstance(0)),
               iri(filteredInstance(1)),
               iri(filteredInstance(2)),
-              L3
+              L2
             )
           )
           _ <- EitherT.liftF(

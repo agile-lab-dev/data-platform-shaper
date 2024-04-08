@@ -7,31 +7,18 @@ import io.circe.Json
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS
-import it.agilelab.dataplatformshaper.domain.model.NS.{L2, L3, ns}
+import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
 import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.l1.Relationship.mappedTo
 import it.agilelab.dataplatformshaper.domain.model.l1.given_Conversion_Relationship_String
-import it.agilelab.dataplatformshaper.domain.model.mapping.{
-  MappingDefinition,
-  MappingKey
-}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
-import it.agilelab.dataplatformshaper.domain.model.schema.{
-  DataType,
-  Schema,
-  cueValidate,
-  schemaToMapperSchema,
-  unfoldTuple
-}
+import it.agilelab.dataplatformshaper.domain.model.schema.{DataType, Schema, cueValidate, schemaToMapperSchema, unfoldTuple}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{
-  InstanceManagementService,
-  ManagementServiceError,
-  TypeManagementService
-}
+import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, TypeManagementService}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
@@ -106,15 +93,15 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       instanceTypeName: String,
       tuple: Tuple,
       schema: Schema,
-      ontologyLevel: IRI = L3
+      ontologyLevel: IRI = L2
   ): Either[ManagementServiceError, List[Statement]] =
 
     val entity = iri(ns, entityId)
     var statements = statement(
       triple(entity, NS.ISCLASSIFIEDBY, iri(ns, instanceTypeName)),
-      L3
+      L2
     ) ::
-      statement(triple(entity, RDF.TYPE, NS.ENTITY), L3) :: Nil
+      statement(triple(entity, RDF.TYPE, NS.ENTITY), L2) :: Nil
     val previousEntityIriStack = mutable.Stack(entity)
     var currentEntityIri = entity
 
@@ -618,7 +605,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                     List(
                       statement(
                         triple(s, p, ob.getValue.asInstanceOf[Literal]),
-                        L3
+                        L2
                       )
                     )
                   )
@@ -628,14 +615,14 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                       List(
                         statement(
                           triple(s, p, iri(ob.getValue.stringValue)),
-                          L3
+                          L2
                         )
                       )
                     )
                   else
                     val stmt = statement(
                       triple(s, p, iri(ob.getValue.stringValue)),
-                      L3
+                      L2
                     )
                     fetchStatementsForInstance(
                       repository,
@@ -987,11 +974,11 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     val initialStatementsL3 = List(
       statement(
         mappedToTriple2,
-        L3
+        L2
       ),
       statement(
         mappedToTriple3,
-        L3
+        L2
       )
     )
 

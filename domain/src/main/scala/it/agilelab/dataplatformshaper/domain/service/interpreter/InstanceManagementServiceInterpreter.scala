@@ -392,7 +392,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           iri(linkType.getNamespace, linkType),
           iri(ns, instanceId2)
         ),
-        L3
+        L2
       )
     )
     (for {
@@ -472,7 +472,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           iri(linkType.getNamespace, linkType),
           iri(ns, instanceId2)
         ),
-        L3
+        L2
       )
     )
     (for {
