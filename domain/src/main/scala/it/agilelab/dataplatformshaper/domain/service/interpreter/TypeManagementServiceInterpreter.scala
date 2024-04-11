@@ -901,4 +901,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     })
   end exist
 
+  override def list(): F[Either[ManagementServiceError, List[EntityType]]] = 
+    ???
+  end list 
 end TypeManagementServiceInterpreter

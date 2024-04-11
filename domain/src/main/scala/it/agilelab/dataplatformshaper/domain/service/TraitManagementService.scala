@@ -18,6 +18,8 @@ trait TraitManagementService[F[_]]:
       traitName: String
   ): F[Either[ManagementServiceError, Boolean]]
 
+  def list(): F[Either[ManagementServiceError, List[String]]]
+  
   def exist(
       traitNames: Set[String]
   ): F[Either[ManagementServiceError, Set[(String, Boolean)]]]

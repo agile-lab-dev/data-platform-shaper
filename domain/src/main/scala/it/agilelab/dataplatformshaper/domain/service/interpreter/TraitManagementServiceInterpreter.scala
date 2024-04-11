@@ -516,4 +516,8 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end linked
 
+  override def list(): F[Either[ManagementServiceError, List[String]]] = 
+    ???
+  end list
+  
 end TraitManagementServiceInterpreter
