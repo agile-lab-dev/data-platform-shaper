@@ -395,7 +395,7 @@ private def unfoldStruct(
               Left[String, Unit](s"$value is not a conform tuple")
             case Success(tuples) =>
               var currentRes: Either[String, Unit] = Right[String, Unit](())
-              tuples.takeWhile(tuple =>
+              val _ = tuples.takeWhile(tuple =>
                 currentRes = unfoldStruct(
                   name,
                   tuple,

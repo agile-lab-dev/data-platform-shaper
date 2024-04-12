@@ -505,7 +505,7 @@ class ValidatingSpec extends CommonSpec:
           )
         } yield read).value
       } asserting (entity => {
-        entity should matchPattern {
+        val _ = entity should matchPattern {
           case Right(Entity(_, "ValidationDataCollectionType", _)) =>
         }
         entity match {

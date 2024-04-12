@@ -137,7 +137,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       )
     )
 
-    (for {
+    val _ = (for {
       t1 <- tuple.replace(
         "nested/furtherNested/0/nest3",
         "pippo3",
@@ -319,7 +319,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
       .flatMap(json => jsonToTuple(json, schema))
       .flatMap(tuple => parseTuple(tuple, schema))
 
-    result1 should matchPattern({ case Right(_) =>
+    val _ = result1 should matchPattern({ case Right(_) =>
     })
 
     val wrongRawJson: String =
@@ -390,7 +390,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
     )
 
     val res = unfoldTuple(tuple, schema, (_, _, _, _) => ())
-    res should matchPattern { case Right(()) => }
+    val _ = res should matchPattern { case Right(()) => }
 
     val json = tupleToJsonChecked(tuple, schema)
 

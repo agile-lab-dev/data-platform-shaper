@@ -358,8 +358,8 @@ class OntologyL0SearchSpec extends CommonSpec:
           service.read("FileBasedDataCollectionType")
       } asserting (ret =>
         inside(ret) { case Right(entity) =>
-          entity.name shouldBe "FileBasedDataCollectionType"
-          entity.traits shouldBe Set("DataCollection")
+          val _ = entity.name shouldBe "FileBasedDataCollectionType"
+          val _ = entity.traits shouldBe Set("DataCollection")
           entity.baseSchema === fileBasedDataCollectionTypeSchema shouldBe true
         }
       )
@@ -431,7 +431,7 @@ class OntologyL0SearchSpec extends CommonSpec:
 
       } asserting (resp =>
         inside(resp) { case (Right(list1), Right(list2)) =>
-          assert(list1.size === 1)
+          val _ = assert(list1.size === 1)
           assert(list2.size === 0)
         }
       )

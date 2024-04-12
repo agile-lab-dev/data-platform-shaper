@@ -96,7 +96,7 @@ end evalRepeatedField
     onlyValidation: Boolean
 ): Option[Any] =
   if onlyValidation then
-    fieldExpr.fold(None)(expr =>
+    val _ = fieldExpr.fold(None)(expr =>
       ef.createValueExpression(
         elp.getELManager.getELContext,
         bracket(expr),

@@ -714,7 +714,9 @@ class ApiSpec
       resp
         .use { case (linkResponse, linkedTraitsResponse) =>
           IO {
-            linkResponse should matchPattern { case LinkTraitResponse.Ok(_) => }
+            val _ = linkResponse should matchPattern {
+              case LinkTraitResponse.Ok(_) =>
+            }
             linkedTraitsResponse should matchPattern {
               case LinkedTraitsResponse.Ok(traits) if traits.contains(trait2) =>
             }
@@ -751,7 +753,7 @@ class ApiSpec
       resp
         .use { case (unlinkResponse, linkedTraitsResponse) =>
           IO {
-            unlinkResponse should matchPattern {
+            val _ = unlinkResponse should matchPattern {
               case UnlinkTraitResponse.Ok(_) =>
             }
             linkedTraitsResponse should matchPattern {
@@ -837,7 +839,7 @@ class ApiSpec
         .use {
           case Right((linkResponse, linkedEntitiesResponse, instanceId2)) =>
             IO {
-              linkResponse should matchPattern {
+              val _ = linkResponse should matchPattern {
                 case LinkEntityResponse.Ok(_) =>
               }
               linkedEntitiesResponse should matchPattern {
@@ -926,7 +928,7 @@ class ApiSpec
         .use {
           case Right((unlinkResponse, linkedEntitiesResponse, instanceId2)) =>
             IO {
-              unlinkResponse should matchPattern {
+              val _ = unlinkResponse should matchPattern {
                 case UnlinkEntityResponse.Ok(_) =>
               }
               linkedEntitiesResponse should matchPattern {

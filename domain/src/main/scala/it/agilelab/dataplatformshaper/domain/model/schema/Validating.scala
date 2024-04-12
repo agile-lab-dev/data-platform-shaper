@@ -49,7 +49,7 @@ def generateCueModel(schema: Schema): String =
 
     schema.records.foreach(rec =>
       given n: Int = currentIndentation
-      rec match
+      val _ = rec match
         case (attributeName, StringType(mode, constraints)) =>
           genCueConstraintsForAttribute(
             attributeName,
@@ -133,7 +133,6 @@ def generateCueModel(schema: Schema): String =
                   )}}) //GEN"""
               )
           end match
-      end match
       stringBuilder.append('\n')
     )
     stringBuilder.result()
@@ -160,7 +159,7 @@ def cueValidateModel(
     pw1.flush()
     pw1.close()
     val errorsBuffer = List.newBuilder[String]
-    s"cue eval ${cueFile.getAbsolutePath}" ! ProcessLogger(
+    val _ = s"cue eval ${cueFile.getAbsolutePath}" ! ProcessLogger(
       _ => (),
       errorsBuffer += _
     )
@@ -199,7 +198,7 @@ def cueValidate(schema: Schema, values: Tuple): Either[List[String], Unit] =
     pw2.flush()
     pw2.close()
     val errorsBuffer = List.newBuilder[String]
-    s"cue eval ${yamlFile.getAbsolutePath} ${cueFile.getAbsolutePath} -c" ! ProcessLogger(
+    val _ = s"cue eval ${yamlFile.getAbsolutePath} ${cueFile.getAbsolutePath} -c" ! ProcessLogger(
       _ => (),
       errorsBuffer += _
     )

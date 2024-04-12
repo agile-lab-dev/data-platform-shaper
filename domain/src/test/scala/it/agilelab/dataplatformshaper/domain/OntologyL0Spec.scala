@@ -1073,7 +1073,7 @@ class OntologyL0Spec extends CommonSpec:
         "repo1",
         false
       )
-      session.use { session =>
+      val _ = session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
@@ -1171,7 +1171,7 @@ class OntologyL0Spec extends CommonSpec:
           )
         } yield read).value
       } asserting (entity => {
-        entity should matchPattern {
+        val _ = entity should matchPattern {
           case Right(Entity(_, "FileBasedDataCollectionType", _)) =>
         }
         entity match {
