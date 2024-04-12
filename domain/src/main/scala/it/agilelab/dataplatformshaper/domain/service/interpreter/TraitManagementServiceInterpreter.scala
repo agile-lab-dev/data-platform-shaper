@@ -526,6 +526,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
          |SELECT DISTINCT ?traitName WHERE {
          |  ?traitName ?predicate ?object .
          |  ?traitName rdf:type ns:Trait
+         |  FILTER(?traitName != ns:MappingSource && ?traitName != ns:MappingTarget)
          | }
          |""".stripMargin
     for
