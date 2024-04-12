@@ -75,10 +75,37 @@ paths:
     get:
       tags:
         - OntologyManager
+      summary: Get all user-defined types
+      operationId: listTypes
+      responses:
+        200:
+          description: If successful, returns a list of entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EntityType'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+  /ontology/entity-type/{name}:
+    get:
+      tags:
+        - OntologyManager
       summary: Get a user-defined type
       operationId: readType
       parameters:
-        - in: query
+        - in: path
           name: name
           required: true
           schema:
@@ -722,6 +749,32 @@ paths:
                 $ref: '#/components/schemas/ValidationError'
         500:
           description: System problem, details of the error are provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+    get:
+      tags:
+        - OntologyManager
+      summary: Get all the traits
+      operationId: listTraits
+      responses:
+        200:
+          description: If successful, returns a list of traits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
           content:
             application/json:
               schema:

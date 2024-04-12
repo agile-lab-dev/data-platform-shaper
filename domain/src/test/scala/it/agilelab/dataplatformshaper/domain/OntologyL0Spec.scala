@@ -468,6 +468,73 @@ class OntologyL0Spec extends CommonSpec:
     "externalStruct" -> Tuple1("inner-field" -> "StructExample")
   )
 
+  "Listing all existing EntityTypes" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val listEntityTypes1 = EntityType(
+        "ListEntityTypes1",
+        Set(),
+        StructType(
+          List(
+            "field1" -> StringType(),
+            "field2" -> StringType()
+          )
+        ): Schema
+      )
+
+      val listEntityTypes2 = EntityType(
+        "ListEntityTypes2",
+        Set(),
+        StructType(
+          List(
+            "field1" -> StringType(),
+            "field2" -> StringType()
+          )
+        ): Schema
+      )
+
+      val testResult: IO[Either[
+        ManagementServiceError,
+        List[EntityType]
+      ]] =
+        session.use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val service = TypeManagementServiceInterpreter[IO](trservice)
+
+          (for {
+            _ <- EitherT.liftF(service.create(listEntityTypes1))
+            _ <- EitherT.liftF(service.create(listEntityTypes2))
+            finalList <- EitherT(service.list())
+          } yield finalList).value
+        }
+
+      testResult asserting {
+        case Right(list) =>
+          val filteredList = list.filter(e =>
+            e.name.equals(listEntityTypes1.name) || e.name.equals(
+              listEntityTypes2.name
+            )
+          )
+          if (filteredList.size.equals(2)) succeed
+          else fail("Expected exactly two entities but found different")
+
+        case Left(ManagementServiceError(_)) =>
+          fail("Management service error occurred")
+      }
+    }
+  }
+
   "Creating an EntityType instance" - {
     "works" in {
       val session = Session[IO](

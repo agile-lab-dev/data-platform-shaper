@@ -76,6 +76,34 @@ class OntologyL1Spec extends CommonSpec:
     }
   }
 
+  "Listing all traits" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        (for {
+          _ <- EitherT(trms.create("ListTrait1", None))
+          _ <- EitherT(trms.create("ListTrait2", Some("ListTrait1")))
+          res <- EitherT(trms.list())
+        } yield res).value
+      } asserting {
+        case Right(list) =>
+          list should contain allElementsOf List("ListTrait1", "ListTrait2")
+        case Left(error) =>
+          fail(s"Expected a list of traits but got an error: $error")
+      }
+    }
+  }
+
   "Deleting a trait" - {
     "works" in {
       val session = Session[IO](

@@ -32,7 +32,9 @@ import it.agilelab.dataplatformshaper.domain.service.{
 import it.agilelab.dataplatformshaper.uservice.Resource.{
   CreateTypeResponse,
   ListEntitiesResponse,
-  UpdateTypeConstraintsResponse
+  ListTypesResponse,
+  UpdateTypeConstraintsResponse,
+  ListTraitsResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   MappedInstancesItem,
@@ -871,6 +873,51 @@ class OntologyManagerHandler[F[_]: Async](
         }
       )
   end listEntities
+
+  override def listTypes(
+      respond: Resource.ListTypesResponse.type
+  )(): F[Resource.ListTypesResponse] =
+    val result = for
+      entityTypes <- EitherT(tms.list())
+      transformedTypes = entityTypes.map { entityType =>
+        val traitOptions =
+          if entityType.traits.nonEmpty then Some(entityType.traits.toVector)
+          else None
+        OpenApiEntityType(
+          entityType.name,
+          traitOptions,
+          entityType.schema,
+          entityType.fatherName
+        )
+      }
+    yield transformedTypes.toVector
+
+    result.value.flatMap {
+      case Right(entityTypes) =>
+        summon[Applicative[F]].pure(respond.Ok(entityTypes))
+      case Left(error) =>
+        summon[Applicative[F]].pure(
+          respond.BadRequest(ValidationError(error.errors.toVector))
+        )
+    }
+  end listTypes
+
+  override def listTraits(
+      respond: Resource.ListTraitsResponse.type
+  )(): F[Resource.ListTraitsResponse] =
+    val result =
+      for traitNames <- EitherT(trms.list())
+      yield traitNames.toVector
+
+    result.value.flatMap {
+      case Right(traitNames) =>
+        summon[Applicative[F]].pure(respond.Ok(traitNames))
+      case Left(error) =>
+        summon[Applicative[F]].pure(
+          respond.BadRequest(ValidationError(error.errors.toVector))
+        )
+    }
+  end listTraits
 
   @SuppressWarnings(
     Array(

@@ -516,4 +516,28 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end linked
 
+  override def list(): F[Either[ManagementServiceError, List[String]]] =
+    val query: String =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT DISTINCT ?traitName WHERE {
+         |  ?traitName ?predicate ?object .
+         |  ?traitName rdf:type ns:Trait
+         | }
+         |""".stripMargin
+    for
+      queryResults <- repository.evaluateQuery(query)
+      traitNames = Right(
+        queryResults
+          .map(bs =>
+            iri(bs.getBinding("traitName").getValue.stringValue()).getLocalName
+          )
+          .toList
+      )
+    yield traitNames
+  end list
+
 end TraitManagementServiceInterpreter
