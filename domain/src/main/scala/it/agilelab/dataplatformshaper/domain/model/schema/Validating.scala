@@ -198,10 +198,11 @@ def cueValidate(schema: Schema, values: Tuple): Either[List[String], Unit] =
     pw2.flush()
     pw2.close()
     val errorsBuffer = List.newBuilder[String]
-    val _ = s"cue eval ${yamlFile.getAbsolutePath} ${cueFile.getAbsolutePath} -c" ! ProcessLogger(
-      _ => (),
-      errorsBuffer += _
-    )
+    val _ =
+      s"cue eval ${yamlFile.getAbsolutePath} ${cueFile.getAbsolutePath} -c" ! ProcessLogger(
+        _ => (),
+        errorsBuffer += _
+      )
     val errors = errorsBuffer
       .result()
       .filter(error => !error.contains("test"))
