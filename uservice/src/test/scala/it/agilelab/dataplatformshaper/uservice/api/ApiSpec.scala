@@ -33,7 +33,8 @@ import it.agilelab.dataplatformshaper.uservice.{
   UnlinkTraitResponse,
   UpdateEntityByYamlResponse,
   UpdateEntityResponse,
-  UpdateTypeConstraintsResponse
+  UpdateTypeConstraintsResponse,
+  ListTraitsResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
@@ -300,7 +301,6 @@ class ApiSpec
           .default[IO]
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
-        _ <- Resource.liftK(client.listTypes())
         _ <- Resource.liftK(client.createType(entityType1))
         _ <- Resource.liftK(client.createType(entityType2))
         finalTypes <- Resource.liftK(client.listTypes())
@@ -319,6 +319,36 @@ class ApiSpec
           case _ =>
             fail(
               "Expected Ok response with entity types, but received error response"
+            )
+        }
+    }
+  }
+
+  "Listing all the traits" - {
+    "works" in {
+      val trait1 = "listTrait1"
+      val trait2 = "listTrait2"
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait(trait1)))
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait(trait2)))
+        finalTraits <- Resource.liftK(client.listTraits())
+      } yield finalTraits
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting {
+          case ListTraitsResponse.Ok(traits) =>
+            assert(
+              traits.contains(trait1) && traits.contains(trait2),
+              s"Expected traits not found. Found: ${traits.mkString(", ")}"
+            )
+          case _ =>
+            fail(
+              "Expected Ok response with trait list, but received error response"
             )
         }
     }

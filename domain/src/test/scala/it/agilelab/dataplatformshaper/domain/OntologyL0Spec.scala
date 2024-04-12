@@ -513,7 +513,6 @@ class OntologyL0Spec extends CommonSpec:
           val service = TypeManagementServiceInterpreter[IO](trservice)
 
           (for {
-            _ <- EitherT(service.list())
             _ <- EitherT.liftF(service.create(listEntityTypes1))
             _ <- EitherT.liftF(service.create(listEntityTypes2))
             finalList <- EitherT(service.list())
