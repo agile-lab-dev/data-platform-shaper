@@ -84,7 +84,7 @@ object Dependencies {
 
     lazy val overrides: Seq[ModuleID] = Seq(
       "org.slf4j" % "jcl-over-slf4j" % "2.0.9",
-      "org.slf4j" % "slf4j-api" % "2.0.9"
+      "org.slf4j" % "slf4j-api" % "2.0.13"
     )
 
     lazy val domain: Seq[ModuleID] = Seq(
