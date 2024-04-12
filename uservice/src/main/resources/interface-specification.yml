@@ -76,9 +76,36 @@ paths:
       tags:
         - OntologyManager
       summary: Get a user-defined type
+      operationId: listTypes
+      responses:
+        200:
+          description: If successful, returns a list of entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EntityType'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+  /ontology/entity-type/{name}:
+    get:
+      tags:
+        - OntologyManager
+      summary: Get a user-defined type
       operationId: readType
       parameters:
-        - in: query
+        - in: path
           name: name
           required: true
           schema:

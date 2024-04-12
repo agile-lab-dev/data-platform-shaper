@@ -901,7 +901,37 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     })
   end exist
 
-  override def list(): F[Either[ManagementServiceError, List[EntityType]]] = 
-    ???
-  end list 
+  def list(): F[Either[ManagementServiceError, List[EntityType]]] =
+    val query: String =
+      s"""
+        |PREFIX ns:   <${ns.getName}>
+        |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+        |SELECT DISTINCT ?entityTypeName WHERE {
+        |  ?entityType ?predicate ?entityTypeName .
+        |  ?entityType rdf:type ns:EntityType .
+        |  FILTER(?predicate = ns:typeName)
+        | }
+        |""".stripMargin
+
+    for
+      queryResults <- repository.evaluateQuery(query)
+      entityTypeNames <- summon[Applicative[F]].pure(
+        queryResults
+          .map(_.getBinding("entityTypeName").getValue.stringValue())
+          .toList
+      )
+      entities <- entityTypeNames.traverse { entityName =>
+        val result = for
+          traits <- EitherT(getTraitsFromEntityType(entityName))
+          father <- EitherT(getFatherFromEntityType(entityName))
+          schema <- EitherT.liftF(getSchemaFromEntityType(entityName))
+        yield EntityType(entityName, traits, schema, father)
+
+        result.value
+      }
+    yield entities.sequence
+  end list
+
 end TypeManagementServiceInterpreter

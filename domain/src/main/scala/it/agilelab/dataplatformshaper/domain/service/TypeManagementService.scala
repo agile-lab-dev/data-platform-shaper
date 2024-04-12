@@ -27,7 +27,7 @@ trait TypeManagementService[F[_]]:
   def exist(
       instanceTypeName: String
   ): F[Either[ManagementServiceError, Boolean]]
-  
+
   def list(): F[Either[ManagementServiceError, List[EntityType]]]
 
 end TypeManagementService

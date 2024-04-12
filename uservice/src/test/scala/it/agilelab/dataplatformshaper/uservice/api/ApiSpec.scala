@@ -19,20 +19,21 @@ import it.agilelab.dataplatformshaper.uservice.{
   Client,
   CreateEntityByYamlResponse,
   CreateEntityResponse,
+  DeleteTraitResponse,
   LinkEntityResponse,
   LinkTraitResponse,
   LinkedEntitiesResponse,
   LinkedTraitsResponse,
   ListEntitiesByIdsResponse,
   ListEntitiesResponse,
+  ListTypesResponse,
   ReadEntityResponse,
   ReadTypeResponse,
   UnlinkEntityResponse,
   UnlinkTraitResponse,
   UpdateEntityByYamlResponse,
   UpdateEntityResponse,
-  UpdateTypeConstraintsResponse,
-  DeleteTraitResponse
+  UpdateTypeConstraintsResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
@@ -271,6 +272,55 @@ class ApiSpec
             )
           )
         )
+    }
+  }
+
+  "Listing all the user defined types" - {
+    "works" in {
+      val entityType1 = OpenApiEntityType(
+        "listEntities1",
+        Some(Vector()),
+        Vector(
+          OpenApiAttributeType("id", AttributeTypeName.Integer, None, None)
+        ),
+        None
+      )
+
+      val entityType2 = OpenApiEntityType(
+        "listEntities2",
+        Some(Vector()),
+        Vector(
+          OpenApiAttributeType("id", AttributeTypeName.Integer, None, None)
+        ),
+        None
+      )
+
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.listTypes())
+        _ <- Resource.liftK(client.createType(entityType1))
+        _ <- Resource.liftK(client.createType(entityType2))
+        finalTypes <- Resource.liftK(client.listTypes())
+      } yield finalTypes
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting {
+          case ListTypesResponse.Ok(types) =>
+            val names = types.map(_.name)
+            assert(
+              names.contains(entityType1.name) && names
+                .contains(entityType2.name),
+              s"Expected entity types not found. Found: ${names.mkString(", ")}"
+            )
+          case _ =>
+            fail(
+              "Expected Ok response with entity types, but received error response"
+            )
+        }
     }
   }
 
