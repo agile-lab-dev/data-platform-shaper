@@ -422,7 +422,7 @@ println(json.asYaml.spaces2)
 ```
 ##How to use the services
 ###Trait management service
-Below is the exposed interface:
+Below we have the exposed interface:
 
 ```scala
 trait TraitManagementService[F[_]]:
@@ -681,3 +681,169 @@ The meaning of the methods should be pretty straightforward. The *create* method
 The list methods provide ways to retrieve a list of entities as a list of IDs or the actual entity instances.
 
 The link, unlink, and linked methods have similar semantics to the trait counterparts.
+
+###Mapping management service
+Below is the exposed interface:
+
+```scala
+trait MappingManagementService[F[_]]:
+
+  val repository: KnowledgeGraph[F]
+
+  def create(
+      mappingDefinition: MappingDefinition
+  ): F[Either[ManagementServiceError, Unit]]
+
+  def read(
+      mappingKey: MappingKey
+  ): F[Either[ManagementServiceError, MappingDefinition]]
+
+  def update(
+      mappingKey: MappingKey,
+      mapper: Tuple
+  ): F[Either[ManagementServiceError, Unit]]
+
+  def delete(
+      mappingKey: MappingKey
+  ): F[Either[ManagementServiceError, Unit]]
+
+  def exist(mapperKey: MappingKey): F[Either[ManagementServiceError, Boolean]]
+
+  def createMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, Unit]]
+
+  def readMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, List[
+    ((EntityType, Entity), String, (EntityType, Entity))
+  ]]]
+
+  def updateMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, Unit]]
+
+  def deleteMappedInstances(
+      sourceInstanceId: String
+  ): F[Either[ManagementServiceError, Unit]]
+
+end MappingManagementService
+```
+
+#### MappingKey and MappingDefinition
+The following are the definitions of the case classes MappingKey and MappingDefinition:
+
+```scala
+case class MappingKey(
+    mappingName: String,
+    sourceEntityTypeName: String,
+    targetEntityTypeName: String
+)
+```
+Where the MappingKey allows to represent the EntityTypes included in the mapping (the Source and the Target) and the name of the mapping, whereas the MappingDefinition:
+
+```scala
+case class MappingDefinition(
+    mappingKey: MappingKey,
+    mapper: Tuple
+)
+```
+Which includes the MappingKey and a tuple describing the mapping relationship.
+
+####Create a mapping
+Before creating the mapping we need to specify how the SourceType fields will be mapped, in our example we will use:
+
+```scala
+val mapperTuple = (
+"field1" -> "instance.get('field1')",
+"field2" -> "instance.get('field2')"
+)
+```
+After that, we create a mapping with name "exampleMapping" between the source type called "SourceType" and the target type called "TargetType: 
+
+```scala
+mservice.create(
+              MappingDefinition(
+                MappingKey(
+                  "exampleMapping",
+                  "SourceType",
+                  "TargetType"
+                ),
+                mapperTuple
+              )
+            )
+```
+The previous mapping can be read using:
+
+```scala
+mservice.read(MappingKey("exampleMapping", "SourceType", "TargetType"))
+```
+
+The read will return the whole MappingDefinition.
+
+#### Update a mapping
+To update an existing mapping, one can use:
+
+```scala
+mservice.update(exampleMappingKey, updatedMapperTuple)
+```
+Where:
+
+```scala
+val exampleMappingKey = MappingKey("exampleMapping","SourceType","TargetType")
+```
+is used to identify the mapping to update and
+
+```scala
+val updatedMapperTuple = (
+    "field1" -> "instance.get('field2')",
+    "field2" -> "instance.get('field1')"
+  )
+```
+is the updated tuple used for the mapping.
+
+#### Delete or check existence of a mapping
+The operations delete and exist are called in the same way, in particular for the deletion we have:
+
+```scala
+mservice.delete(MappingKey("exampleMapping","SourceType","TargetType"))
+```
+and for the exist:
+
+```scala
+mservice.update(MappingKey("exampleMapping","SourceType","TargetType"))
+```
+#### Operations on mapped instances
+By using:
+
+```scala
+for {
+	sourceInstanceId <- EitherT(
+	            iservice.create(
+	              "SourceType",
+	              (
+	                "field1" -> "value1",
+	                "field2" -> "value2"
+	              )
+	            )
+	          )
+  	_ <- EitherT(mservice.createMappedInstances(sourceInstanceId))
+}
+```
+we can create instances for the EntityTypes that are the targets of the mapping.
+
+These instances can be read using:
+
+```scala 
+mservice.readMappedInstances(sourceInstanceId)
+```
+They can be deleted using:
+
+```scala 
+mservice.deleteMappedInstances(sourceInstanceId)
+``` 
+And can be updated via:
+
+```scala
+mservice.updateMappedInstances(sourceInstanceId)
+```
