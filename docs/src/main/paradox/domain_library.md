@@ -422,7 +422,7 @@ println(json.asYaml.spaces2)
 ```
 ##How to use the services
 ###Trait management service
-Below we have the exposed interface:
+Below is the exposed interface:
 
 ```scala
 trait TraitManagementService[F[_]]:
