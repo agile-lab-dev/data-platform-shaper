@@ -946,6 +946,45 @@ class OntologyManagerHandler[F[_]: Async](
           }: Vector[String])
       })
 
+  override def updateMapping(respond: Resource.UpdateMappingResponse.type)(
+      body: OpenApiMappingDefinition
+  ): F[Resource.UpdateMappingResponse] =
+    val res = (for {
+      schema <- EitherT(
+        tms
+          .read(body.mappingKey.targetEntityTypeName)
+          .map(_.map(_.schema))
+          .map(_.leftMap(l => Vector(l.errors.head)))
+      )
+      tuple <- EitherT(
+        summon[Applicative[F]]
+          .pure(
+            jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
+              Vector(l.getMessage)
+            )
+          )
+      )
+      _ <- EitherT.liftF(
+        mms.update(
+          MappingKey(
+            body.mappingKey.mappingName,
+            body.mappingKey.sourceEntityTypeName,
+            body.mappingKey.targetEntityTypeName
+          ),
+          tuple
+        )
+      )
+    } yield ()).value
+    res
+      .map {
+        case Left(errors) => respond.BadRequest(ValidationError(errors))
+        case Right(())    => respond.Ok("Mapping updated successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end updateMapping
+
   override def createMapping(respond: Resource.CreateMappingResponse.type)(
       body: OpenApiMappingDefinition
   ): F[Resource.CreateMappingResponse] =

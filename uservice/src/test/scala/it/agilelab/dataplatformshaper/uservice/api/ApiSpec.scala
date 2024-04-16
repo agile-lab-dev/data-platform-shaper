@@ -26,6 +26,7 @@ import it.agilelab.dataplatformshaper.uservice.{
   LinkedTraitsResponse,
   ListEntitiesByIdsResponse,
   ListEntitiesResponse,
+  ListTraitsResponse,
   ListTypesResponse,
   ReadEntityResponse,
   ReadTypeResponse,
@@ -34,10 +35,12 @@ import it.agilelab.dataplatformshaper.uservice.{
   UpdateEntityByYamlResponse,
   UpdateEntityResponse,
   UpdateTypeConstraintsResponse,
-  ListTraitsResponse
+  UpdateMappingResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
+  MappingDefinition,
+  MappingKey,
   ValidationError,
   AttributeType as OpenApiAttributeType,
   Entity as OpenApiEntity,
@@ -238,6 +241,84 @@ class ApiSpec
             )
           )
         )
+    }
+  }
+
+  "Updating a mapping" - {
+    "works" in {
+      val updateSourceEntityType = OpenApiEntityType(
+        "UpdateSourceEntityType",
+        Some(Vector("MappingSource")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+      val updateTargetEntityType = OpenApiEntityType(
+        "UpdateTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+
+      val mapperTuple: String =
+        """
+        {
+          "field1": "instance.get('field1')",
+          "field2": "instance.get('field2')"
+        }
+        """
+      val updatedMapperTuple: String =
+        """
+        {
+          "field1": "instance.get('field2')",
+          "field2": "instance.get('field1')"
+        }
+        """
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(updateSourceEntityType))
+        _ <- Resource.liftK(client.createType(updateTargetEntityType))
+        jsonMapperTuple <- Resource.eval(IO.fromEither(parse(mapperTuple)))
+        jsonUpdatedMapperTuple <- Resource.eval(IO.fromEither(parse(updatedMapperTuple)))
+        initialMappingDefinition = MappingDefinition(
+          MappingKey(
+            "updateMapping",
+            updateSourceEntityType.name,
+            updateTargetEntityType.name
+          ),
+          jsonMapperTuple
+        )
+        updatedMappingDefinition = MappingDefinition(
+          MappingKey(
+            "updateMapping",
+            updateSourceEntityType.name,
+            updateTargetEntityType.name
+          ),
+          jsonUpdatedMapperTuple
+        )
+        _ <- Resource.liftK(
+          client.createMapping(
+            initialMappingDefinition
+          )
+        )
+        resp <- Resource.liftK(client.updateMapping(updatedMappingDefinition))
+      } yield resp
+
+      //TODO: Aggiungi controllo esplicito sulla lettura del mapping
+      resp.use { response =>
+        IO.pure(response)
+      }.asserting {
+        case UpdateMappingResponse.Ok(_) => succeed
+        case _ => fail("Update not successful")
+      }
     }
   }
 

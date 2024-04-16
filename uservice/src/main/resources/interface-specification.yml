@@ -971,6 +971,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+    put:
+      tags:
+        - OntologyManager
+      summary: Update a mapping
+      operationId: updateMapping
+      requestBody:
+        description: A Mapping spec
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MappingDefinition'
+        required: true
+      responses:
+        200:
+          description: If successful returns "OK"
+          content:
+            application/text:
+              schema:
+                type: string
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/mapping/yaml:
     post:
       tags:
