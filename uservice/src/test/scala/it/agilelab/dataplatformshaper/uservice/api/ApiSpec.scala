@@ -336,6 +336,82 @@ class ApiSpec
     }
   }
 
+  "Deleting a mapping" - {
+    "works" in {
+      val deleteSourceEntityType = OpenApiEntityType(
+        "DeleteSourceEntityType",
+        Some(Vector("MappingSource")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+      val deleteTargetEntityType = OpenApiEntityType(
+        "DeleteTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+
+      val mapperTuple: String =
+        """
+          {
+            "field1": "instance.get('field1')",
+            "field2": "instance.get('field2')"
+          }
+          """
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(deleteSourceEntityType))
+        _ <- Resource.liftK(client.createType(deleteTargetEntityType))
+        jsonMapperTuple <- Resource.eval(IO.fromEither(parse(mapperTuple)))
+        mappingDefinition = MappingDefinition(
+          MappingKey(
+            "deleteMapping",
+            deleteSourceEntityType.name,
+            deleteTargetEntityType.name
+          ),
+          jsonMapperTuple
+        )
+        _ <- Resource.liftK(
+          client.createMapping(
+            mappingDefinition
+          )
+        )
+        _ <- Resource.liftK(
+          client.deleteMapping(
+            mappingDefinition.mappingKey.mappingName,
+            mappingDefinition.mappingKey.sourceEntityTypeName,
+            mappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+        resp <- Resource.liftK(
+          client.readMapping(
+            mappingDefinition.mappingKey.mappingName,
+            mappingDefinition.mappingKey.sourceEntityTypeName,
+            mappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+      } yield resp
+
+      resp
+        .use { response =>
+          IO.pure(response)
+        }
+        .asserting {
+          case ReadMappingResponse.BadRequest(_) => succeed
+          case _ => fail("Update not successful")
+        }
+    }
+  }
+
   "Deleting a user defined type" - {
     "works" in {
 

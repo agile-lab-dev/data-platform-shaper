@@ -36,7 +36,8 @@ import it.agilelab.dataplatformshaper.uservice.Resource.{
   ListEntitiesResponse,
   ListTypesResponse,
   UpdateTypeConstraintsResponse,
-  ListTraitsResponse
+  ListTraitsResponse,
+  DeleteMappingResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   MappedInstancesItem,
@@ -981,6 +982,24 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end readMapping
 
+  override def deleteMapping(respond: Resource.DeleteMappingResponse.type)(
+      mappingName: String,
+      sourceTypeName: String,
+      targetTypeName: String
+  ): F[Resource.DeleteMappingResponse] =
+    val res =
+      mms.delete(MappingKey(mappingName, sourceTypeName, targetTypeName))
+    res
+      .map {
+        case Left(error) =>
+          respond.BadRequest(ValidationError(error.errors.toVector))
+        case Right(()) => respond.Ok("Mapping deleted successfully")
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end deleteMapping
+
   override def updateMapping(respond: Resource.UpdateMappingResponse.type)(
       body: OpenApiMappingDefinition
   ): F[Resource.UpdateMappingResponse] =
@@ -1165,7 +1184,7 @@ class OntologyManagerHandler[F[_]: Async](
     res
       .map {
         case Left(errors) => respond.BadRequest(ValidationError(errors))
-        case Right(())    => respond.Ok("Mapping created successfully")
+        case Right(())    => respond.Ok("Mapping deleted successfully")
       }
       .onError(t =>
         summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
