@@ -412,3 +412,101 @@ curl -X 'POST' \
 
 We showed a more complex example where a specification that describes a complex data platform asset can be decomposed into different traits and types linked with a "compose" relationship.
 
+### Creating mappings
+To illustrate the process of creating a mapping, two example EntityTypes called ```SourceType``` and ```TargetType``` will be created as follows:
+
+**SourceType**
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "SourceType",
+  "traits": ["MappingSource"],
+  "schema": [
+    {
+      "name": "field1",
+      "typeName": "String",
+      "mode": "Required"
+    },
+    {
+      "name": "field2",
+      "typeName": "String",
+      "mode": "Required"
+    }
+  ]
+}'
+```
+
+**TargetType**
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "TargetType",
+  "traits": ["MappingTarget"],
+  "schema": [
+    {
+      "name": "field1",
+      "typeName": "String",
+      "mode": "Required"
+    },
+    {
+      "name": "field2",
+      "typeName": "String",
+      "mode": "Required"
+    }
+  ]
+}'
+```
+Finally, we create the mapping where ```SourceType``` is used as the source and ```TargetType``` is used as the target:
+
+```
+curl -X 'POST' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "mappingKey": {
+    "mappingName": "exampleMapping",
+    "sourceEntityTypeName": "SourceType",
+    "targetEntityTypeName": "TargetType"
+  },
+  "mapper": {"field1": "instance.get('\''field1'\'')", "field2": "instance.get('\''field2'\'')"}
+}'
+```
+Where the mapping relationship that is defined simply consists of passing field1 to the target.
+
+
+### Updating mappings
+Suppose we want to swap the mapping of field1 with the one of field2, to do this we can update the mapping via:
+
+```
+curl -X 'PUT' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping' \
+  -H 'accept: application/text' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "mappingKey": {
+    "mappingName": "exampleMapping",
+    "sourceEntityTypeName": "SourceType",
+    "targetEntityTypeName": "TargetType"
+  },
+  "mapper": {"field1": "instance.get('\''field2'\'')", "field2": "instance.get('\''field1'\'')"}
+}'
+```
+
+### Deleting mappings
+Deleting a mapping is possible via:
+
+```
+curl -X 'DELETE' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping/exampleMapping/SourceType/TargetType' \
+  -H 'accept: application/text'
+```
+
