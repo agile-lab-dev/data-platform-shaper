@@ -35,7 +35,7 @@ import it.agilelab.dataplatformshaper.uservice.{
   UpdateEntityByYamlResponse,
   UpdateEntityResponse,
   UpdateTypeConstraintsResponse,
-  UpdateMappingResponse
+  ReadMappingResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
@@ -287,7 +287,9 @@ class ApiSpec
         _ <- Resource.liftK(client.createType(updateSourceEntityType))
         _ <- Resource.liftK(client.createType(updateTargetEntityType))
         jsonMapperTuple <- Resource.eval(IO.fromEither(parse(mapperTuple)))
-        jsonUpdatedMapperTuple <- Resource.eval(IO.fromEither(parse(updatedMapperTuple)))
+        jsonUpdatedMapperTuple <- Resource.eval(
+          IO.fromEither(parse(updatedMapperTuple))
+        )
         initialMappingDefinition = MappingDefinition(
           MappingKey(
             "updateMapping",
@@ -309,16 +311,28 @@ class ApiSpec
             initialMappingDefinition
           )
         )
-        resp <- Resource.liftK(client.updateMapping(updatedMappingDefinition))
-      } yield resp
+        _ <- Resource.liftK(client.updateMapping(updatedMappingDefinition))
+        resp <- Resource.liftK(
+          client.readMapping(
+            updatedMappingDefinition.mappingKey.mappingName,
+            updatedMappingDefinition.mappingKey.sourceEntityTypeName,
+            updatedMappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+      } yield (resp, updatedMappingDefinition)
 
-      //TODO: Aggiungi controllo esplicito sulla lettura del mapping
-      resp.use { response =>
-        IO.pure(response)
-      }.asserting {
-        case UpdateMappingResponse.Ok(_) => succeed
-        case _ => fail("Update not successful")
-      }
+      resp
+        .use { response =>
+          IO.pure(response)
+        }
+        .asserting {
+          case (
+                ReadMappingResponse.Ok(mappingDefinition),
+                updatedMappingDefinition
+              ) =>
+            mappingDefinition shouldEqual updatedMappingDefinition
+          case _ => fail("Update not successful")
+        }
     }
   }
 

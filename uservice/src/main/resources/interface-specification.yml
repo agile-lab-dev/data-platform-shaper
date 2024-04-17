@@ -1002,6 +1002,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+
+  /ontology/mapping/{mappingName}/{sourceTypeName}/{targetTypeName}:
+    get:
+      tags:
+        - OntologyManager
+      summary: Read a mapping
+      operationId: readMapping
+      parameters:
+        - in: path
+          name: mappingName
+          description: "The name of the mapping"
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: sourceTypeName
+          description: "The name of the source EntityType"
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: targetTypeName
+          description: "The name of the target EntityType"
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful returns the mapping definition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MappingDefinition'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/mapping/yaml:
     post:
       tags:

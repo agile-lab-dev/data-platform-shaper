@@ -9,6 +9,8 @@ import fs2.io.readInputStream
 import fs2.{Stream, text}
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
+import io.circe.Json
+import scala.Tuple._
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
 import it.agilelab.dataplatformshaper.domain.model.l1.{
@@ -42,7 +44,8 @@ import it.agilelab.dataplatformshaper.uservice.definitions.{
   ValidationError,
   Entity as OpenApiEntity,
   EntityType as OpenApiEntityType,
-  MappingDefinition as OpenApiMappingDefinition
+  MappingDefinition as OpenApiMappingDefinition,
+  MappingKey as OpenApiMappingKey
 }
 import it.agilelab.dataplatformshaper.uservice.{Handler, Resource}
 
@@ -945,6 +948,38 @@ class OntologyManagerHandler[F[_]: Async](
             case _           => throw new Exception("Unexpected entity type")
           }: Vector[String])
       })
+
+  private def mapperTupleToMapperJson(t: Tuple): Json =
+    Json.obj(t.productIterator.toList.collect {
+      case (key: String, value: String) => (key, Json.fromString(value))
+    }: _*)
+  override def readMapping(respond: Resource.ReadMappingResponse.type)(
+      mappingName: String,
+      sourceTypeName: String,
+      targetTypeName: String
+  ): F[Resource.ReadMappingResponse] =
+    val mappingDefinition =
+      mms.read(MappingKey(mappingName, sourceTypeName, targetTypeName))
+    mappingDefinition
+      .map {
+        case Left(error) =>
+          respond.BadRequest(ValidationError(error.errors.toVector))
+        case Right(mappingDefinition) =>
+          respond.Ok(
+            OpenApiMappingDefinition(
+              OpenApiMappingKey(
+                mappingDefinition.mappingKey.mappingName,
+                mappingDefinition.mappingKey.sourceEntityTypeName,
+                mappingDefinition.mappingKey.targetEntityTypeName
+              ),
+              mapperTupleToMapperJson(mappingDefinition.mapper)
+            )
+          )
+      }
+      .onError(t =>
+        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+      )
+  end readMapping
 
   override def updateMapping(respond: Resource.UpdateMappingResponse.type)(
       body: OpenApiMappingDefinition
