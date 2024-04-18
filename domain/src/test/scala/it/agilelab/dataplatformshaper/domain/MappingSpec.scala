@@ -298,6 +298,17 @@ class MappingSpec extends CommonSpec:
     ): Schema
   )
 
+  private val createDirectlyTargetType = EntityType(
+    "CreateDirectlyTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
   private val mapperTuple = (
     "field1" -> "instance.get('field1')",
     "field2" -> "instance.get('field2')"
@@ -947,6 +958,49 @@ class MappingSpec extends CommonSpec:
               if error.contains("is also a MappingTarget") =>
         }
       }
+    }
+  }
+
+  "Creating an instance for an EntityType which is a MappingTarget" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+
+          (for {
+            _ <- EitherT(tservice.create(createDirectlyTargetType))
+            res <- EitherT(
+              iservice.create(
+                createDirectlyTargetType.name,
+                (
+                  "field1" -> "value10",
+                  "field2" -> "value12"
+                )
+              )
+            )
+          } yield res).value
+        }
+        .asserting {
+          case Left(error) => succeed
+          case _ =>
+            fail(
+              s"Expected an error during the creation of the instance"
+            )
+        }
     }
   }
 
