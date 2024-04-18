@@ -7,50 +7,22 @@ import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
 import fs2.io.readInputStream
 import fs2.{Stream, text}
+import io.circe.Json
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
-import io.circe.Json
-import scala.Tuple._
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
-import it.agilelab.dataplatformshaper.domain.model.l1.{
-  Relationship,
-  given_Conversion_String_Relationship
-}
-import it.agilelab.dataplatformshaper.domain.model.mapping.{
-  MappingDefinition,
-  MappingKey
-}
+import it.agilelab.dataplatformshaper.domain.model.l1.{Relationship, given_Conversion_String_Relationship}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{
-  InstanceManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
-import it.agilelab.dataplatformshaper.domain.service.{
-  ManagementServiceError,
-  MappingManagementService
-}
-import it.agilelab.dataplatformshaper.uservice.Resource.{
-  CreateTypeResponse,
-  ListEntitiesResponse,
-  ListTypesResponse,
-  UpdateTypeConstraintsResponse,
-  ListTraitsResponse,
-  DeleteMappingResponse
-}
-import it.agilelab.dataplatformshaper.uservice.definitions.{
-  MappedInstancesItem,
-  Trait,
-  ValidationError,
-  Entity as OpenApiEntity,
-  EntityType as OpenApiEntityType,
-  MappingDefinition as OpenApiMappingDefinition,
-  MappingKey as OpenApiMappingKey
-}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{InstanceManagementServiceInterpreter, TraitManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, MappingManagementService}
+import it.agilelab.dataplatformshaper.uservice.Resource.*
+import it.agilelab.dataplatformshaper.uservice.definitions.{MappedInstancesItem, Trait, ValidationError, Entity as OpenApiEntity, EntityType as OpenApiEntityType, MappingDefinition as OpenApiMappingDefinition, MappingKey as OpenApiMappingKey}
 import it.agilelab.dataplatformshaper.uservice.{Handler, Resource}
 
 import java.io.ByteArrayInputStream
+import scala.Tuple.*
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -950,37 +922,90 @@ class OntologyManagerHandler[F[_]: Async](
           }: Vector[String])
       })
 
-  private def mapperTupleToMapperJson(t: Tuple): Json =
-    Json.obj(t.productIterator.toList.collect {
-      case (key: String, value: String) => (key, Json.fromString(value))
-    }: _*)
   override def readMapping(respond: Resource.ReadMappingResponse.type)(
       mappingName: String,
       sourceTypeName: String,
       targetTypeName: String
   ): F[Resource.ReadMappingResponse] =
-    val mappingDefinition =
-      mms.read(MappingKey(mappingName, sourceTypeName, targetTypeName))
-    mappingDefinition
-      .map {
-        case Left(error) =>
-          respond.BadRequest(ValidationError(error.errors.toVector))
-        case Right(mappingDefinition) =>
-          respond.Ok(
+
+    (for {
+      mappingDefinition <- EitherT(mms.read(MappingKey(mappingName, sourceTypeName, targetTypeName)))
+      mapperSchema <- EitherT(tms.read(mappingDefinition.mappingKey.targetEntityTypeName).map(_.map(t => schemaToMapperSchema(t.schema))))
+      res <- EitherT(
+        summon[Applicative[F]].pure(
+          tupleToJson(mappingDefinition.mapper, mapperSchema).
+            leftMap(e => ManagementServiceError(e.getMessage)).
+          map(
             OpenApiMappingDefinition(
               OpenApiMappingKey(
                 mappingDefinition.mappingKey.mappingName,
                 mappingDefinition.mappingKey.sourceEntityTypeName,
                 mappingDefinition.mappingKey.targetEntityTypeName
               ),
-              mapperTupleToMapperJson(mappingDefinition.mapper)
+              _
+            ))
+        )
+      )
+    } yield res).value.map {
+      case Left(error) =>
+        logger.error(
+          s"Error in retrieving the mapping: ${error.errors.head}"
+        )
+        respond.BadRequest(ValidationError(error.errors.toVector))
+      case Right(md) =>
+        respond.Ok(md)
+    }
+  end readMapping
+
+  override def readMappingAsYaml(respond: Resource.ReadMappingAsYamlResponse.type)(mappingName: String, sourceTypeName: String, targetTypeName: String): F[Resource.ReadMappingAsYamlResponse[F]] =
+    (for {
+      mappingDefinition <- EitherT(mms.read(MappingKey(mappingName, sourceTypeName, targetTypeName)))
+      mapperSchema <- EitherT(tms.read(mappingDefinition.mappingKey.targetEntityTypeName).map(_.map(t => schemaToMapperSchema(t.schema))))
+      openApiMappingDefinition <- EitherT(
+        summon[Applicative[F]].pure(
+          tupleToJson(mappingDefinition.mapper, mapperSchema).
+            leftMap(e => ManagementServiceError(e.getMessage)).
+          map(
+            OpenApiMappingDefinition(
+              OpenApiMappingKey(
+                mappingDefinition.mappingKey.mappingName,
+                mappingDefinition.mappingKey.sourceEntityTypeName,
+                mappingDefinition.mappingKey.targetEntityTypeName
+              ),
+              _
+            ))
+        )
+      )
+      res <- EitherT(
+        summon[Applicative[F]].pure(
+          Right(
+            readInputStream(
+              summon[Applicative[F]].pure(
+                ByteArrayInputStream(
+                  OpenApiMappingDefinition
+                    .encodeMappingDefinition(
+                      openApiMappingDefinition
+                    )
+                    .asYaml
+                    .spaces2
+                    .getBytes("UTF8")
+                )
+              ),
+              128
             )
           )
-      }
-      .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        )
       )
-  end readMapping
+    } yield res).value map {
+      case Left(error) =>
+        logger.error(
+          s"Error in retrieving the mapping: ${error.errors.head}"
+        )
+        respond.BadRequest(ValidationError(error.errors.toVector))
+      case Right(stream) =>
+        respond.Ok(stream)
+    }
+  end readMappingAsYaml
 
   override def deleteMapping(respond: Resource.DeleteMappingResponse.type)(
       mappingName: String,
@@ -1261,4 +1286,5 @@ class OntologyManagerHandler[F[_]: Async](
         }
       )
   end readMappedInstances
+
 end OntologyManagerHandler

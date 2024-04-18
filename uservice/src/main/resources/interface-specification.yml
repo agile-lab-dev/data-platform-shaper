@@ -487,7 +487,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-  /ontology/entity/yaml/{updateId}:
+  /ontology/entity/{updateId}/yaml:
     put:
       tags:
         - OntologyManager
@@ -531,7 +531,7 @@ paths:
     post:
       tags:
         - OntologyManager
-      summary: Create a user-defined type instance
+      summary: Create a user-defined type instance using a YAML file
       operationId: createEntityByYaml
       requestBody:
         description: A YAML file containing an Entity spec
@@ -1002,7 +1002,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
-
+  /ontology/mapping/{mappingName}/{sourceTypeName}/{targetTypeName}/yaml:
+    get:
+      tags:
+        - OntologyManager
+      summary: Read a mapping as a YAML file
+      operationId: readMappingAsYaml
+      parameters:
+        - in: path
+          name: mappingName
+          description: "The name of the mapping"
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: sourceTypeName
+          description: "The name of the source EntityType"
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: targetTypeName
+          description: "The name of the target EntityType"
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: If successful, return an mapping definition as a YAML file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/mapping/{mappingName}/{sourceTypeName}/{targetTypeName}:
     get:
       tags:
@@ -1094,7 +1138,7 @@ paths:
     post:
       tags:
         - OntologyManager
-      summary: Create a mapping
+      summary: Create a mapping using a YAML file
       operationId: createMappingByYaml
       requestBody:
         description: A YAML file containing a Mapping spec
