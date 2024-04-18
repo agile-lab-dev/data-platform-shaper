@@ -12,13 +12,34 @@ import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
-import it.agilelab.dataplatformshaper.domain.model.l1.{Relationship, given_Conversion_String_Relationship}
-import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
+import it.agilelab.dataplatformshaper.domain.model.l1.{
+  Relationship,
+  given_Conversion_String_Relationship
+}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{InstanceManagementServiceInterpreter, TraitManagementServiceInterpreter, TypeManagementServiceInterpreter}
-import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, MappingManagementService}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+  InstanceManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
+import it.agilelab.dataplatformshaper.domain.service.{
+  ManagementServiceError,
+  MappingManagementService
+}
 import it.agilelab.dataplatformshaper.uservice.Resource.*
-import it.agilelab.dataplatformshaper.uservice.definitions.{MappedInstancesItem, Trait, ValidationError, Entity as OpenApiEntity, EntityType as OpenApiEntityType, MappingDefinition as OpenApiMappingDefinition, MappingKey as OpenApiMappingKey}
+import it.agilelab.dataplatformshaper.uservice.definitions.{
+  MappedInstancesItem,
+  Trait,
+  ValidationError,
+  Entity as OpenApiEntity,
+  EntityType as OpenApiEntityType,
+  MappingDefinition as OpenApiMappingDefinition,
+  MappingKey as OpenApiMappingKey
+}
 import it.agilelab.dataplatformshaper.uservice.{Handler, Resource}
 
 import java.io.ByteArrayInputStream
@@ -927,23 +948,29 @@ class OntologyManagerHandler[F[_]: Async](
       sourceTypeName: String,
       targetTypeName: String
   ): F[Resource.ReadMappingResponse] =
-
     (for {
-      mappingDefinition <- EitherT(mms.read(MappingKey(mappingName, sourceTypeName, targetTypeName)))
-      mapperSchema <- EitherT(tms.read(mappingDefinition.mappingKey.targetEntityTypeName).map(_.map(t => schemaToMapperSchema(t.schema))))
+      mappingDefinition <- EitherT(
+        mms.read(MappingKey(mappingName, sourceTypeName, targetTypeName))
+      )
+      mapperSchema <- EitherT(
+        tms
+          .read(mappingDefinition.mappingKey.targetEntityTypeName)
+          .map(_.map(t => schemaToMapperSchema(t.schema)))
+      )
       res <- EitherT(
         summon[Applicative[F]].pure(
-          tupleToJson(mappingDefinition.mapper, mapperSchema).
-            leftMap(e => ManagementServiceError(e.getMessage)).
-          map(
-            OpenApiMappingDefinition(
-              OpenApiMappingKey(
-                mappingDefinition.mappingKey.mappingName,
-                mappingDefinition.mappingKey.sourceEntityTypeName,
-                mappingDefinition.mappingKey.targetEntityTypeName
-              ),
-              _
-            ))
+          tupleToJson(mappingDefinition.mapper, mapperSchema)
+            .leftMap(e => ManagementServiceError(e.getMessage))
+            .map(
+              OpenApiMappingDefinition(
+                OpenApiMappingKey(
+                  mappingDefinition.mappingKey.mappingName,
+                  mappingDefinition.mappingKey.sourceEntityTypeName,
+                  mappingDefinition.mappingKey.targetEntityTypeName
+                ),
+                _
+              )
+            )
         )
       )
     } yield res).value.map {
@@ -957,23 +984,36 @@ class OntologyManagerHandler[F[_]: Async](
     }
   end readMapping
 
-  override def readMappingAsYaml(respond: Resource.ReadMappingAsYamlResponse.type)(mappingName: String, sourceTypeName: String, targetTypeName: String): F[Resource.ReadMappingAsYamlResponse[F]] =
+  override def readMappingAsYaml(
+      respond: Resource.ReadMappingAsYamlResponse.type
+  )(
+      mappingName: String,
+      sourceTypeName: String,
+      targetTypeName: String
+  ): F[Resource.ReadMappingAsYamlResponse[F]] =
     (for {
-      mappingDefinition <- EitherT(mms.read(MappingKey(mappingName, sourceTypeName, targetTypeName)))
-      mapperSchema <- EitherT(tms.read(mappingDefinition.mappingKey.targetEntityTypeName).map(_.map(t => schemaToMapperSchema(t.schema))))
+      mappingDefinition <- EitherT(
+        mms.read(MappingKey(mappingName, sourceTypeName, targetTypeName))
+      )
+      mapperSchema <- EitherT(
+        tms
+          .read(mappingDefinition.mappingKey.targetEntityTypeName)
+          .map(_.map(t => schemaToMapperSchema(t.schema)))
+      )
       openApiMappingDefinition <- EitherT(
         summon[Applicative[F]].pure(
-          tupleToJson(mappingDefinition.mapper, mapperSchema).
-            leftMap(e => ManagementServiceError(e.getMessage)).
-          map(
-            OpenApiMappingDefinition(
-              OpenApiMappingKey(
-                mappingDefinition.mappingKey.mappingName,
-                mappingDefinition.mappingKey.sourceEntityTypeName,
-                mappingDefinition.mappingKey.targetEntityTypeName
-              ),
-              _
-            ))
+          tupleToJson(mappingDefinition.mapper, mapperSchema)
+            .leftMap(e => ManagementServiceError(e.getMessage))
+            .map(
+              OpenApiMappingDefinition(
+                OpenApiMappingKey(
+                  mappingDefinition.mappingKey.mappingName,
+                  mappingDefinition.mappingKey.sourceEntityTypeName,
+                  mappingDefinition.mappingKey.targetEntityTypeName
+                ),
+                _
+              )
+            )
         )
       )
       res <- EitherT(
