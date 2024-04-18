@@ -26,6 +26,7 @@ import it.agilelab.dataplatformshaper.uservice.{
   LinkedTraitsResponse,
   ListEntitiesByIdsResponse,
   ListEntitiesResponse,
+  ListTraitsResponse,
   ListTypesResponse,
   ReadEntityResponse,
   ReadTypeResponse,
@@ -34,10 +35,12 @@ import it.agilelab.dataplatformshaper.uservice.{
   UpdateEntityByYamlResponse,
   UpdateEntityResponse,
   UpdateTypeConstraintsResponse,
-  ListTraitsResponse
+  ReadMappingResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
+  MappingDefinition,
+  MappingKey,
   ValidationError,
   AttributeType as OpenApiAttributeType,
   Entity as OpenApiEntity,
@@ -238,6 +241,247 @@ class ApiSpec
             )
           )
         )
+    }
+  }
+
+  "Creating a mapping" - {
+    "works" in {
+      val createSourceEntityType = OpenApiEntityType(
+        "CreateSourceEntityType",
+        Some(Vector("MappingSource")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+      val createTargetEntityType = OpenApiEntityType(
+        "CreateTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+
+      val mapperTuple: String =
+        """
+          {
+            "field1": "instance.get('field1')",
+            "field2": "instance.get('field2')"
+          }
+          """
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(createSourceEntityType))
+        _ <- Resource.liftK(client.createType(createTargetEntityType))
+        jsonMapperTuple <- Resource.eval(IO.fromEither(parse(mapperTuple)))
+        mappingDefinition = MappingDefinition(
+          MappingKey(
+            "createMapping",
+            createSourceEntityType.name,
+            createTargetEntityType.name
+          ),
+          jsonMapperTuple
+        )
+        _ <- Resource.liftK(
+          client.createMapping(
+            mappingDefinition
+          )
+        )
+        resp <- Resource.liftK(
+          client.readMapping(
+            mappingDefinition.mappingKey.mappingName,
+            mappingDefinition.mappingKey.sourceEntityTypeName,
+            mappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+      } yield (resp, mappingDefinition)
+
+      resp
+        .use { response =>
+          IO.pure(response)
+        }
+        .asserting {
+          case (
+                ReadMappingResponse.Ok(mappingDefinition),
+                createdMappingDefinition
+              ) =>
+            mappingDefinition shouldEqual createdMappingDefinition
+          case _ => fail("Update not successful")
+        }
+    }
+  }
+
+  "Updating a mapping" - {
+    "works" in {
+      val updateSourceEntityType = OpenApiEntityType(
+        "UpdateSourceEntityType",
+        Some(Vector("MappingSource")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+      val updateTargetEntityType = OpenApiEntityType(
+        "UpdateTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+
+      val mapperTuple: String =
+        """
+        {
+          "field1": "instance.get('field1')",
+          "field2": "instance.get('field2')"
+        }
+        """
+      val updatedMapperTuple: String =
+        """
+        {
+          "field1": "instance.get('field2')",
+          "field2": "instance.get('field1')"
+        }
+        """
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(updateSourceEntityType))
+        _ <- Resource.liftK(client.createType(updateTargetEntityType))
+        jsonMapperTuple <- Resource.eval(IO.fromEither(parse(mapperTuple)))
+        jsonUpdatedMapperTuple <- Resource.eval(
+          IO.fromEither(parse(updatedMapperTuple))
+        )
+        initialMappingDefinition = MappingDefinition(
+          MappingKey(
+            "updateMapping",
+            updateSourceEntityType.name,
+            updateTargetEntityType.name
+          ),
+          jsonMapperTuple
+        )
+        updatedMappingDefinition = MappingDefinition(
+          MappingKey(
+            "updateMapping",
+            updateSourceEntityType.name,
+            updateTargetEntityType.name
+          ),
+          jsonUpdatedMapperTuple
+        )
+        _ <- Resource.liftK(
+          client.createMapping(
+            initialMappingDefinition
+          )
+        )
+        _ <- Resource.liftK(client.updateMapping(updatedMappingDefinition))
+        resp <- Resource.liftK(
+          client.readMapping(
+            updatedMappingDefinition.mappingKey.mappingName,
+            updatedMappingDefinition.mappingKey.sourceEntityTypeName,
+            updatedMappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+      } yield (resp, updatedMappingDefinition)
+
+      resp
+        .use { response =>
+          IO.pure(response)
+        }
+        .asserting {
+          case (
+                ReadMappingResponse.Ok(mappingDefinition),
+                updatedMappingDefinition
+              ) =>
+            mappingDefinition shouldEqual updatedMappingDefinition
+          case _ => fail("Update not successful")
+        }
+    }
+  }
+
+  "Deleting a mapping" - {
+    "works" in {
+      val deleteSourceEntityType = OpenApiEntityType(
+        "DeleteSourceEntityType",
+        Some(Vector("MappingSource")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+      val deleteTargetEntityType = OpenApiEntityType(
+        "DeleteTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType("field1", AttributeTypeName.String, None, None),
+          OpenApiAttributeType("field2", AttributeTypeName.String, None, None)
+        ),
+        None
+      )
+
+      val mapperTuple: String =
+        """
+          {
+            "field1": "instance.get('field1')",
+            "field2": "instance.get('field2')"
+          }
+          """
+      val resp = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createType(deleteSourceEntityType))
+        _ <- Resource.liftK(client.createType(deleteTargetEntityType))
+        jsonMapperTuple <- Resource.eval(IO.fromEither(parse(mapperTuple)))
+        mappingDefinition = MappingDefinition(
+          MappingKey(
+            "deleteMapping",
+            deleteSourceEntityType.name,
+            deleteTargetEntityType.name
+          ),
+          jsonMapperTuple
+        )
+        _ <- Resource.liftK(
+          client.createMapping(
+            mappingDefinition
+          )
+        )
+        _ <- Resource.liftK(
+          client.deleteMapping(
+            mappingDefinition.mappingKey.mappingName,
+            mappingDefinition.mappingKey.sourceEntityTypeName,
+            mappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+        resp <- Resource.liftK(
+          client.readMapping(
+            mappingDefinition.mappingKey.mappingName,
+            mappingDefinition.mappingKey.sourceEntityTypeName,
+            mappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+      } yield resp
+
+      resp
+        .use { response =>
+          IO.pure(response)
+        }
+        .asserting {
+          case ReadMappingResponse.BadRequest(_) => succeed
+          case _ => fail("Update not successful")
+        }
     }
   }
 
