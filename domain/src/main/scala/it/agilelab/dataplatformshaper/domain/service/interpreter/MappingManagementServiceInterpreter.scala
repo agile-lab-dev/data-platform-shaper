@@ -421,7 +421,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   override def createMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
-
+    val completedOperations: scala.collection.mutable.Stack[Boolean] =
+      scala.collection.mutable.Stack.empty[Boolean]
     def createMappedInstancesNoCheck(
         sourceInstanceId: String
     ): F[Either[ManagementServiceError, Unit]] =
@@ -471,21 +472,48 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               statement(mappedToTriple2, L2),
               statement(mappedToTriple3, L2)
             )
-            summon[Functor[F]].map(
-              tuple
-                .map(
-                  createInstanceNoCheck(
-                    logger,
-                    typeManagementService,
-                    targetInstanceId,
-                    mapping(2).name,
-                    _,
-                    initialStatements,
-                    List.empty
+            (for {
+              existingIds <- EitherT(
+                instanceManagementService
+                  .list(mapping(2).name, None, false, None)
+              )
+              existingStringIds <- EitherT.liftF(
+                summon[Applicative[F]].pure(existingIds.collect {
+                  case s: String => s
+                })
+              )
+              result <-
+                if existingStringIds.nonEmpty
+                then
+                  completedOperations.push(false)
+                  EitherT.liftF(
+                    summon[Applicative[F]].pure(existingStringIds.head)
                   )
-                )
-                .sequence
-            )(_.flatten)
+                else
+                  for {
+                    _ <- EitherT.liftF(
+                      summon[Applicative[F]]
+                        .pure(completedOperations.push(true))
+                    )
+                    createdInstance <- EitherT(
+                      summon[Functor[F]].map(
+                        tuple
+                          .map(
+                            createInstanceNoCheck(
+                              logger,
+                              typeManagementService,
+                              targetInstanceId,
+                              mapping(2).name,
+                              _,
+                              initialStatements,
+                              List.empty
+                            )
+                          )
+                          .sequence
+                      )(_.flatten)
+                    )
+                  } yield createdInstance
+            } yield result).value
           )))(_.sequence)
         )
         _ <- EitherT(
@@ -501,24 +529,6 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       sourceInstance <- EitherT(
         instanceManagementService.read(sourceInstanceId)
       )
-      existingInstances <- EitherT(
-        queryMappedInstances(
-          logger,
-          repository,
-          Some(sourceInstance.entityTypeName),
-          None,
-          None
-        )
-      )
-      _ <-
-        if existingInstances.nonEmpty
-        then
-          EitherT.leftT[F, Unit](
-            ManagementServiceError(
-              s"The instances for this mapping have already been created"
-            )
-          )
-        else EitherT.rightT[F, ManagementServiceError](())
       isMappingSource <- EitherT(
         checkTraitForEntityType(
           logger,
@@ -545,6 +555,15 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           )
         else EitherT.rightT[F, ManagementServiceError](())
       res <- EitherT(createMappedInstancesNoCheck(sourceInstanceId))
+      _ <-
+        if completedOperations.contains(true)
+        then EitherT.rightT[F, ManagementServiceError](())
+        else
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"The instances for this mapping have already been created"
+            )
+          )
     } yield res).value
   end createMappedInstances
 

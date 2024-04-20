@@ -23,10 +23,14 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TypeManagementServiceInterpreter
 }
 import org.scalactic.Equality
+import org.eclipse.rdf4j.model.util.Statements.statement
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.*
+import it.agilelab.dataplatformshaper.domain.model.NS.{ISCLASSIFIEDBY, ns, L2}
+import org.eclipse.rdf4j.model.util.Values.{iri, triple}
+
 import scala.language.{dynamics, implicitConversions}
 
 @SuppressWarnings(
@@ -289,6 +293,39 @@ class MappingSpec extends CommonSpec:
 
   private val twoMappedInstancesTargetType = EntityType(
     "TwoMappedInstancesTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentCreationSourceType = EntityType(
+    "IdempotentCreationSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentCreationMiddleType = EntityType(
+    "IdempotentCreationMiddleType",
+    Set("MappingSource", "MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentCreationTargetType = EntityType(
+    "IdempotentCreationTargetType",
     Set("MappingTarget"),
     StructType(
       List(
@@ -1206,7 +1243,6 @@ class MappingSpec extends CommonSpec:
           val iservice = InstanceManagementServiceInterpreter[IO](tservice)
           val mservice =
             MappingManagementServiceInterpreter[IO](tservice, iservice)
-
           (for {
             _ <- EitherT(tservice.create(twoMappedInstancesSourceType))
             _ <- EitherT(tservice.create(twoMappedInstancesTargetType))
@@ -1229,6 +1265,82 @@ class MappingSpec extends CommonSpec:
             fail(
               "Expected a MappingNotFoundError but received a different error or result"
             )
+        }
+    }
+  }
+
+  "Checking if the creation of mapped instances is idempotent" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val firstMappingKey = MappingKey(
+        "idempotent_source_mid_mapping",
+        "IdempotentCreationSourceType",
+        "IdempotentCreationMiddleType"
+      )
+
+      val secondMappingKey = MappingKey(
+        "idempotent_mid_target_mapping",
+        "IdempotentCreationMiddleType",
+        "IdempotentCreationTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(tservice.create(idempotentCreationSourceType))
+            _ <- EitherT(tservice.create(idempotentCreationMiddleType))
+            _ <- EitherT(tservice.create(idempotentCreationTargetType))
+            _ <- EitherT(
+              mservice.create(MappingDefinition(firstMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(secondMappingKey, mapperTuple))
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "IdempotentCreationSourceType",
+                Tuple2(("field1", "Test"), ("field2", "Idempotent"))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            mappedInstance <- EitherT(
+              iservice.list("IdempotentCreationTargetType", None, true, None)
+            )
+            mappedEntity = mappedInstance.collect { case e: Entity =>
+              e
+            }
+            tripleToRemove = triple(
+              iri(ns, mappedEntity.head.entityId),
+              ISCLASSIFIEDBY,
+              iri(ns, mappedEntity.head.entityTypeName)
+            )
+            statementToRemove = statement(tripleToRemove, L2)
+            _ <- EitherT.liftF(
+              repository
+                .removeAndInsertStatements(List.empty, List(statementToRemove))
+            )
+            res <- EitherT(mservice.createMappedInstances(sourceId))
+          } yield res).value
+        }
+        .asserting {
+          case Right(()) => succeed
+          case _ =>
+            fail("Expected the creation of mapped instances to be idempotent")
         }
     }
   }
