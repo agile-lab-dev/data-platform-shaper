@@ -335,6 +335,39 @@ class MappingSpec extends CommonSpec:
     ): Schema
   )
 
+  private val idempotentDeletionSourceType = EntityType(
+    "IdempotentDeletionSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentDeletionMiddleType = EntityType(
+    "IdempotentDeletionMiddleType",
+    Set("MappingSource", "MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentDeletionTargetType = EntityType(
+    "IdempotentDeletionTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
   private val createDirectlyTargetType = EntityType(
     "CreateDirectlyTargetType",
     Set("MappingTarget"),
@@ -1334,11 +1367,105 @@ class MappingSpec extends CommonSpec:
               repository
                 .removeAndInsertStatements(List.empty, List(statementToRemove))
             )
-            res <- EitherT(mservice.createMappedInstances(sourceId))
-          } yield res).value
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            middleTypeElements <- EitherT(
+              iservice
+                .list(idempotentDeletionMiddleType.name, None, false, None)
+            )
+            targetTypeElements <- EitherT(
+              iservice.list("IdempotentDeletionMiddleType", None, false, None)
+            )
+            totalElements =
+              middleTypeElements.length + targetTypeElements.length
+          } yield totalElements).value
         }
         .asserting {
-          case Right(()) => succeed
+          case Right(numberOfElements) => numberOfElements shouldEqual 0
+          case _ =>
+            fail("Expected the creation of mapped instances to be idempotent")
+        }
+    }
+  }
+
+  "Checking if the deletion of mapped instances is idempotent" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val firstMappingKey = MappingKey(
+        "idempotent_delete_source_mid_mapping",
+        "IdempotentDeletionSourceType",
+        "IdempotentDeletionMiddleType"
+      )
+
+      val secondMappingKey = MappingKey(
+        "idempotent_delete_mid_target_mapping",
+        "IdempotentDeletionMiddleType",
+        "IdempotentDeletionTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(tservice.create(idempotentDeletionSourceType))
+            _ <- EitherT(tservice.create(idempotentDeletionMiddleType))
+            _ <- EitherT(tservice.create(idempotentDeletionTargetType))
+            _ <- EitherT(
+              mservice.create(MappingDefinition(firstMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(secondMappingKey, mapperTuple))
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "IdempotentDeletionSourceType",
+                Tuple2(("field1", "Test"), ("field2", "Idempotent"))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            mappedInstance <- EitherT(
+              iservice.list("IdempotentDeletionMiddleType", None, true, None)
+            )
+            mappedEntity = mappedInstance.collect { case e: Entity =>
+              e
+            }
+            tripleToRemove = triple(
+              iri(ns, mappedEntity.head.entityId),
+              ISCLASSIFIEDBY,
+              iri(ns, mappedEntity.head.entityTypeName)
+            )
+            statementToRemove = statement(tripleToRemove, L2)
+            _ <- EitherT.liftF(
+              repository
+                .removeAndInsertStatements(List.empty, List(statementToRemove))
+            )
+            _ <- EitherT(mservice.deleteMappedInstances(sourceId))
+            middleTypeElements <- EitherT(
+              iservice
+                .list(idempotentDeletionMiddleType.name, None, false, None)
+            )
+            targetTypeElements <- EitherT(
+              iservice.list("IdempotentDeletionMiddleType", None, false, None)
+            )
+            totalElements =
+              middleTypeElements.length + targetTypeElements.length
+          } yield totalElements).value
+        }
+        .asserting {
+          case Right(numberOfElements) => numberOfElements shouldEqual 0
           case _ =>
             fail("Expected the creation of mapped instances to be idempotent")
         }
