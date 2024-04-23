@@ -473,21 +473,13 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               statement(mappedToTriple3, L2)
             )
             (for {
-              existingIds <- EitherT(
-                instanceManagementService
-                  .list(mapping(2).name, None, false, None)
-              )
-              existingStringIds <- EitherT.liftF(
-                summon[Applicative[F]].pure(existingIds.collect {
-                  case s: String => s
-                })
-              )
+              targetInstanceOption <- EitherT(readTargetInstance(sourceInstanceId, mapping._1))
               result <-
-                if existingStringIds.nonEmpty
+                if targetInstanceOption.isDefined
                 then
                   completedOperations.push(false)
                   EitherT.liftF(
-                    summon[Applicative[F]].pure(existingStringIds.head)
+                    summon[Applicative[F]].pure(targetInstanceOption.get.entityId)
                   )
                 else
                   for {
@@ -830,5 +822,38 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       res <- EitherT(deleteMappedInstancesNoCheck(sourceInstanceId))
     } yield res).value
   end deleteMappedInstances
+
+  override def readTargetInstance(
+      sourceInstanceId: String,
+      mappingName: String
+  ): F[Either[ManagementServiceError, Option[Entity]]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT DISTINCT ?targetId WHERE {
+         |  ?sourceId ?mapping ?targetId .
+         |  ?sourceId rdf:type ns:Entity .
+         |  ?targetId rdf:type ns:Entity .
+         |  FILTER(STR(?sourceId) = "${ns.getName}$sourceInstanceId")
+         |  FILTER(STR(?mapping) = "${ns.getName}mappedTo#$mappingName")
+         |}
+         |""".stripMargin
+    val res = logger.trace(
+      s"Reading the target instance with source $sourceInstanceId linked by mapping $mappingName"
+    ) *> repository.evaluateQuery(query)
+    val response = res.flatMap {
+      case results if results.hasNext =>
+        val targetId = results.next().getValue("targetId").toString
+        instanceManagementService
+          .read(targetId)
+          .map(_.map(entity => Option(entity)))
+      case _ =>
+        summon[Applicative[F]].pure(Right(None))
+    }
+    response
+  end readTargetInstance
 
 end MappingManagementServiceInterpreter

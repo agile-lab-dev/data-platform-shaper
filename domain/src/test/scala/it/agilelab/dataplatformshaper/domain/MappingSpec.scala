@@ -4,31 +4,21 @@ import cats.data.EitherT
 import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.mapping.{
-  MappingDefinition,
-  MappingKey
-}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{
-  InstanceManagementServiceInterpreter,
-  MappingManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{InstanceManagementServiceInterpreter, MappingManagementServiceInterpreter, TraitManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.scalactic.Equality
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.*
-import it.agilelab.dataplatformshaper.domain.model.NS.{ISCLASSIFIEDBY, ns, L2}
+import it.agilelab.dataplatformshaper.domain.model.NS.{ENTITY, ISCLASSIFIEDBY, L2, ns}
 import org.eclipse.rdf4j.model.util.Values.{iri, triple}
 
 import scala.language.{dynamics, implicitConversions}
@@ -1352,7 +1342,7 @@ class MappingSpec extends CommonSpec:
             )
             _ <- EitherT(mservice.createMappedInstances(sourceId))
             mappedInstance <- EitherT(
-              iservice.list("IdempotentCreationTargetType", None, true, None)
+              iservice.list("IdempotentCreationMiddleType", None, true, None)
             )
             mappedEntity = mappedInstance.collect { case e: Entity =>
               e
@@ -1362,10 +1352,13 @@ class MappingSpec extends CommonSpec:
               ISCLASSIFIEDBY,
               iri(ns, mappedEntity.head.entityTypeName)
             )
+            secondTripleToRemove = triple(iri(ns, mappedEntity.head.entityId), RDF.TYPE, ENTITY)
             statementToRemove = statement(tripleToRemove, L2)
+            secondStatementToRemove = statement(secondTripleToRemove, L2)
+            statementList = List(statementToRemove, secondStatementToRemove)
             _ <- EitherT.liftF(
               repository
-                .removeAndInsertStatements(List.empty, List(statementToRemove))
+                .removeAndInsertStatements(List.empty, statementList)
             )
             _ <- EitherT(mservice.createMappedInstances(sourceId))
             middleTypeElements <- EitherT(
