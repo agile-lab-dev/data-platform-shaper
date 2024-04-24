@@ -473,13 +473,16 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               statement(mappedToTriple3, L2)
             )
             (for {
-              targetInstanceOption <- EitherT(readTargetInstance(sourceInstanceId, mapping._1))
+              targetInstanceOption <- EitherT(
+                readTargetInstance(sourceInstanceId, mapping._1)
+              )
               result <-
                 if targetInstanceOption.isDefined
                 then
                   completedOperations.push(false)
                   EitherT.liftF(
-                    summon[Applicative[F]].pure(targetInstanceOption.get.entityId)
+                    summon[Applicative[F]]
+                      .pure(targetInstanceOption.get.entityId)
                   )
                 else
                   for {
@@ -707,6 +710,78 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end updateMappedInstances
 
+  def getTargetEntityType(
+      sourceEntityTypeName: String
+  ): F[Either[ManagementServiceError, List[EntityType]]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT DISTINCT ?targetEntityType ?mappedTo WHERE {
+         |  ?sourceEntityType ?mappedTo ?targetEntityType .
+         |  ?sourceEntityType rdf:type ns:EntityType .
+         |  ?targetEntityType rdf:type ns:EntityType .
+         |  FILTER(STR(?sourceEntityType) = "${ns.getName}$sourceEntityTypeName")
+         |  FILTER(STRSTARTS(STR(?mappedTo), "${ns.getName}mappedTo#"))
+         |}
+         |""".stripMargin
+
+    repository
+      .evaluateQuery(query)
+      .flatMap { queryResults =>
+        queryResults.toList.traverse { bs =>
+          typeManagementService.read(
+            iri(bs.getValue("targetEntityType").stringValue()).getLocalName
+          )
+        }
+      }
+      .map(_.sequence)
+      .map(
+        _.leftMap(_ =>
+          ManagementServiceError("Error in reading getTargetEntityType")
+        )
+      )
+      .map(_.map(_.toList))
+
+  end getTargetEntityType
+
+  def deleteSingleMappedInstances(
+      initialEntity: String
+  ): F[Either[ManagementServiceError, Set[EntityType]]] =
+    def loop(
+        stack: mutable.Stack[String],
+        accumulated: Set[EntityType]
+    ): F[Either[ManagementServiceError, Set[EntityType]]] =
+      if stack.isEmpty then summon[Applicative[F]].pure(Right(accumulated))
+      else
+        val head = stack.pop()
+        getTargetEntityType(head).flatMap {
+          case Left(error) => summon[Applicative[F]].pure(Left(error))
+          case Right(entityTypes) =>
+            entityTypes
+              .traverse { entityType =>
+                if !accumulated.exists(_.name.equals(entityType.name)) then
+                  stack.push(entityType.name)
+                val res = for {
+                  ids <- EitherT(
+                    instanceManagementService
+                      .list(entityType.name, None, false, None)
+                  )
+                  stringIds = ids.collect { case s: String => s }
+                  _ <- stringIds.traverse_(id =>
+                    EitherT(instanceManagementService.delete(id))
+                  )
+                } yield ()
+                res.value
+              }
+              .flatMap(_ => loop(stack, accumulated ++ entityTypes))
+        }
+    end loop
+    loop(mutable.Stack(initialEntity), Set.empty)
+  end deleteSingleMappedInstances
+
   override def deleteMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
@@ -780,13 +855,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             statementsToRemove.toList
           )
         )
-        _ <- EitherT(
-          summon[Functor[F]].map(
-            stack.popAll.toList
-              .map(id => instanceManagementService.delete(id))
-              .sequence
-          )(_.sequence)
-        )
+        entity <- EitherT(instanceManagementService.read(sourceInstanceId))
+        _ <- EitherT(deleteSingleMappedInstances(entity.entityTypeName))
       } yield ()).value
     end deleteMappedInstancesNoCheck
 

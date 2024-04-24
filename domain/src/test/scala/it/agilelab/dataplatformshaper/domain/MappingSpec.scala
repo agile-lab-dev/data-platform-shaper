@@ -4,13 +4,24 @@ import cats.data.EitherT
 import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{Rdf4jKnowledgeGraph, Session}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
+  Rdf4jKnowledgeGraph,
+  Session
+}
 import it.agilelab.dataplatformshaper.domain.model.l0
 import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{InstanceManagementServiceInterpreter, MappingManagementServiceInterpreter, TraitManagementServiceInterpreter, TypeManagementServiceInterpreter}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+  InstanceManagementServiceInterpreter,
+  MappingManagementServiceInterpreter,
+  TraitManagementServiceInterpreter,
+  TypeManagementServiceInterpreter
+}
 import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.scalactic.Equality
 import org.eclipse.rdf4j.model.util.Statements.statement
@@ -18,7 +29,12 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.*
-import it.agilelab.dataplatformshaper.domain.model.NS.{ENTITY, ISCLASSIFIEDBY, L2, ns}
+import it.agilelab.dataplatformshaper.domain.model.NS.{
+  ENTITY,
+  ISCLASSIFIEDBY,
+  L2,
+  ns
+}
 import org.eclipse.rdf4j.model.util.Values.{iri, triple}
 
 import scala.language.{dynamics, implicitConversions}
@@ -1352,7 +1368,11 @@ class MappingSpec extends CommonSpec:
               ISCLASSIFIEDBY,
               iri(ns, mappedEntity.head.entityTypeName)
             )
-            secondTripleToRemove = triple(iri(ns, mappedEntity.head.entityId), RDF.TYPE, ENTITY)
+            secondTripleToRemove = triple(
+              iri(ns, mappedEntity.head.entityId),
+              RDF.TYPE,
+              ENTITY
+            )
             statementToRemove = statement(tripleToRemove, L2)
             secondStatementToRemove = statement(secondTripleToRemove, L2)
             statementList = List(statementToRemove, secondStatementToRemove)
@@ -1429,21 +1449,37 @@ class MappingSpec extends CommonSpec:
               )
             )
             _ <- EitherT(mservice.createMappedInstances(sourceId))
-            mappedInstance <- EitherT(
+            firstMappedInstance <- EitherT(
               iservice.list("IdempotentDeletionMiddleType", None, true, None)
             )
-            mappedEntity = mappedInstance.collect { case e: Entity =>
+            firstMappedEntity = firstMappedInstance.collect { case e: Entity =>
               e
             }
+            secondMappedInstance <- EitherT(
+              iservice.list("IdempotentDeletionTargetType", None, true, None)
+            )
+            secondMappedEntity = secondMappedInstance.collect {
+              case e: Entity =>
+                e
+            }
             tripleToRemove = triple(
-              iri(ns, mappedEntity.head.entityId),
-              ISCLASSIFIEDBY,
-              iri(ns, mappedEntity.head.entityTypeName)
+              iri(ns, sourceId),
+              iri(ns, s"mappedTo#${firstMappingKey.mappingName}"),
+              iri(ns, firstMappedEntity.head.entityId)
+            )
+            secondTripleToRemove = triple(
+              iri(ns, firstMappedEntity.head.entityId),
+              iri(ns, s"mappedTo#${secondMappingKey.mappingName}"),
+              iri(ns, secondMappedEntity.head.entityId)
             )
             statementToRemove = statement(tripleToRemove, L2)
+            secondStatementToRemove = statement(secondTripleToRemove, L2)
             _ <- EitherT.liftF(
               repository
-                .removeAndInsertStatements(List.empty, List(statementToRemove))
+                .removeAndInsertStatements(
+                  List.empty,
+                  List(statementToRemove, secondStatementToRemove)
+                )
             )
             _ <- EitherT(mservice.deleteMappedInstances(sourceId))
             middleTypeElements <- EitherT(
@@ -1451,7 +1487,7 @@ class MappingSpec extends CommonSpec:
                 .list(idempotentDeletionMiddleType.name, None, false, None)
             )
             targetTypeElements <- EitherT(
-              iservice.list("IdempotentDeletionMiddleType", None, false, None)
+              iservice.list(idempotentDeletionTargetType.name, None, false, None)
             )
             totalElements =
               middleTypeElements.length + targetTypeElements.length
