@@ -710,7 +710,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end updateMappedInstances
 
-  def getTargetEntityType(
+  private def getTargetEntityType(
       sourceEntityTypeName: String
   ): F[Either[ManagementServiceError, List[EntityType]]] =
     val query =
@@ -747,7 +747,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
 
   end getTargetEntityType
 
-  def deleteSingleMappedInstances(
+  private def deleteOnlyMappedInstances(
       initialEntity: String
   ): F[Either[ManagementServiceError, Set[EntityType]]] =
     def loop(
@@ -780,7 +780,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         }
     end loop
     loop(mutable.Stack(initialEntity), Set.empty)
-  end deleteSingleMappedInstances
+  end deleteOnlyMappedInstances
 
   override def deleteMappedInstances(
       sourceInstanceId: String
@@ -856,7 +856,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           )
         )
         entity <- EitherT(instanceManagementService.read(sourceInstanceId))
-        _ <- EitherT(deleteSingleMappedInstances(entity.entityTypeName))
+        _ <- EitherT(deleteOnlyMappedInstances(entity.entityTypeName))
       } yield ()).value
     end deleteMappedInstancesNoCheck
 
