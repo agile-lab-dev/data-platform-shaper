@@ -22,11 +22,21 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
+import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.scalactic.Equality
+import org.eclipse.rdf4j.model.util.Statements.statement
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.*
+import it.agilelab.dataplatformshaper.domain.model.NS.{
+  ENTITY,
+  ISCLASSIFIEDBY,
+  L2,
+  ns
+}
+import org.eclipse.rdf4j.model.util.Values.{iri, triple}
+
 import scala.language.{dynamics, implicitConversions}
 
 @SuppressWarnings(
@@ -289,6 +299,83 @@ class MappingSpec extends CommonSpec:
 
   private val twoMappedInstancesTargetType = EntityType(
     "TwoMappedInstancesTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentCreationSourceType = EntityType(
+    "IdempotentCreationSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentCreationMiddleType = EntityType(
+    "IdempotentCreationMiddleType",
+    Set("MappingSource", "MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentCreationTargetType = EntityType(
+    "IdempotentCreationTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentDeletionSourceType = EntityType(
+    "IdempotentDeletionSourceType",
+    Set("MappingSource"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentDeletionMiddleType = EntityType(
+    "IdempotentDeletionMiddleType",
+    Set("MappingSource", "MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val idempotentDeletionTargetType = EntityType(
+    "IdempotentDeletionTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "field1" -> StringType(),
+        "field2" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val createDirectlyTargetType = EntityType(
+    "CreateDirectlyTargetType",
     Set("MappingTarget"),
     StructType(
       List(
@@ -950,6 +1037,49 @@ class MappingSpec extends CommonSpec:
     }
   }
 
+  "Creating an instance for an EntityType which is a MappingTarget" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+
+          (for {
+            _ <- EitherT(tservice.create(createDirectlyTargetType))
+            res <- EitherT(
+              iservice.create(
+                createDirectlyTargetType.name,
+                (
+                  "field1" -> "value10",
+                  "field2" -> "value12"
+                )
+              )
+            )
+          } yield res).value
+        }
+        .asserting {
+          case Left(error) => succeed
+          case _ =>
+            fail(
+              s"Expected an error during the creation of the instance"
+            )
+        }
+    }
+  }
+
   "Reading a mapping" - {
     "works" in {
       val session = Session[IO](
@@ -1152,7 +1282,6 @@ class MappingSpec extends CommonSpec:
           val iservice = InstanceManagementServiceInterpreter[IO](tservice)
           val mservice =
             MappingManagementServiceInterpreter[IO](tservice, iservice)
-
           (for {
             _ <- EitherT(tservice.create(twoMappedInstancesSourceType))
             _ <- EitherT(tservice.create(twoMappedInstancesTargetType))
@@ -1175,6 +1304,199 @@ class MappingSpec extends CommonSpec:
             fail(
               "Expected a MappingNotFoundError but received a different error or result"
             )
+        }
+    }
+  }
+
+  "Checking if the creation of mapped instances is idempotent" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val firstMappingKey = MappingKey(
+        "idempotent_source_mid_mapping",
+        "IdempotentCreationSourceType",
+        "IdempotentCreationMiddleType"
+      )
+
+      val secondMappingKey = MappingKey(
+        "idempotent_mid_target_mapping",
+        "IdempotentCreationMiddleType",
+        "IdempotentCreationTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(tservice.create(idempotentCreationSourceType))
+            _ <- EitherT(tservice.create(idempotentCreationMiddleType))
+            _ <- EitherT(tservice.create(idempotentCreationTargetType))
+            _ <- EitherT(
+              mservice.create(MappingDefinition(firstMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(secondMappingKey, mapperTuple))
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "IdempotentCreationSourceType",
+                Tuple2(("field1", "Test"), ("field2", "Idempotent"))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            mappedInstance <- EitherT(
+              iservice.list("IdempotentCreationMiddleType", None, true, None)
+            )
+            mappedEntity = mappedInstance.collect { case e: Entity =>
+              e
+            }
+            tripleToRemove = triple(
+              iri(ns, mappedEntity.head.entityId),
+              ISCLASSIFIEDBY,
+              iri(ns, mappedEntity.head.entityTypeName)
+            )
+            secondTripleToRemove = triple(
+              iri(ns, mappedEntity.head.entityId),
+              RDF.TYPE,
+              ENTITY
+            )
+            statementToRemove = statement(tripleToRemove, L2)
+            secondStatementToRemove = statement(secondTripleToRemove, L2)
+            statementList = List(statementToRemove, secondStatementToRemove)
+            _ <- EitherT.liftF(
+              repository
+                .removeAndInsertStatements(List.empty, statementList)
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            middleTypeElements <- EitherT(
+              iservice
+                .list(idempotentDeletionMiddleType.name, None, false, None)
+            )
+            targetTypeElements <- EitherT(
+              iservice.list("IdempotentDeletionMiddleType", None, false, None)
+            )
+            totalElements =
+              middleTypeElements.length + targetTypeElements.length
+          } yield totalElements).value
+        }
+        .asserting {
+          case Right(numberOfElements) => numberOfElements shouldEqual 0
+          case _ =>
+            fail("Expected the creation of mapped instances to be idempotent")
+        }
+    }
+  }
+
+  "Checking if the deletion of mapped instances is idempotent" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val firstMappingKey = MappingKey(
+        "idempotent_delete_source_mid_mapping",
+        "IdempotentDeletionSourceType",
+        "IdempotentDeletionMiddleType"
+      )
+
+      val secondMappingKey = MappingKey(
+        "idempotent_delete_mid_target_mapping",
+        "IdempotentDeletionMiddleType",
+        "IdempotentDeletionTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(tservice.create(idempotentDeletionSourceType))
+            _ <- EitherT(tservice.create(idempotentDeletionMiddleType))
+            _ <- EitherT(tservice.create(idempotentDeletionTargetType))
+            _ <- EitherT(
+              mservice.create(MappingDefinition(firstMappingKey, mapperTuple))
+            )
+            _ <- EitherT(
+              mservice.create(MappingDefinition(secondMappingKey, mapperTuple))
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "IdempotentDeletionSourceType",
+                Tuple2(("field1", "Test"), ("field2", "Idempotent"))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            firstMappedInstance <- EitherT(
+              iservice.list("IdempotentDeletionMiddleType", None, true, None)
+            )
+            firstMappedEntity = firstMappedInstance.collect { case e: Entity =>
+              e
+            }
+            secondMappedInstance <- EitherT(
+              iservice.list("IdempotentDeletionTargetType", None, true, None)
+            )
+            secondMappedEntity = secondMappedInstance.collect {
+              case e: Entity =>
+                e
+            }
+            tripleToRemove = triple(
+              iri(ns, sourceId),
+              iri(ns, s"mappedTo#${firstMappingKey.mappingName}"),
+              iri(ns, firstMappedEntity.head.entityId)
+            )
+            secondTripleToRemove = triple(
+              iri(ns, firstMappedEntity.head.entityId),
+              iri(ns, s"mappedTo#${secondMappingKey.mappingName}"),
+              iri(ns, secondMappedEntity.head.entityId)
+            )
+            statementToRemove = statement(tripleToRemove, L2)
+            secondStatementToRemove = statement(secondTripleToRemove, L2)
+            _ <- EitherT.liftF(
+              repository
+                .removeAndInsertStatements(
+                  List.empty,
+                  List(statementToRemove, secondStatementToRemove)
+                )
+            )
+            _ <- EitherT(mservice.deleteMappedInstances(sourceId))
+            middleTypeElements <- EitherT(
+              iservice
+                .list(idempotentDeletionMiddleType.name, None, false, None)
+            )
+            targetTypeElements <- EitherT(
+              iservice.list(idempotentDeletionTargetType.name, None, false, None)
+            )
+            totalElements =
+              middleTypeElements.length + targetTypeElements.length
+          } yield totalElements).value
+        }
+        .asserting {
+          case Right(numberOfElements) => numberOfElements shouldEqual 0
+          case _ =>
+            fail("Expected the creation of mapped instances to be idempotent")
         }
     }
   }

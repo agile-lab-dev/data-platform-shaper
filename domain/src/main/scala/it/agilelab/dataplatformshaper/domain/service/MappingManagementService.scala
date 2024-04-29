@@ -48,4 +48,9 @@ trait MappingManagementService[F[_]]:
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]]
 
+  def readTargetInstance(
+      sourceInstanceId: String,
+      mappingName: String
+  ): F[Either[ManagementServiceError, Option[Entity]]]
+
 end MappingManagementService

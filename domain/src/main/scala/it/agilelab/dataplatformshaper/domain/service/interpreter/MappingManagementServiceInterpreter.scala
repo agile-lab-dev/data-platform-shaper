@@ -421,7 +421,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   override def createMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
-
+    val completedOperations: scala.collection.mutable.Stack[Boolean] =
+      scala.collection.mutable.Stack.empty[Boolean]
     def createMappedInstancesNoCheck(
         sourceInstanceId: String
     ): F[Either[ManagementServiceError, Unit]] =
@@ -471,21 +472,43 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               statement(mappedToTriple2, L2),
               statement(mappedToTriple3, L2)
             )
-            summon[Functor[F]].map(
-              tuple
-                .map(
-                  createInstanceNoCheck(
-                    logger,
-                    typeManagementService,
-                    targetInstanceId,
-                    mapping(2).name,
-                    _,
-                    initialStatements,
-                    List.empty
+            (for {
+              targetInstanceOption <- EitherT(
+                readTargetInstance(sourceInstanceId, mapping._1)
+              )
+              result <-
+                if targetInstanceOption.isDefined
+                then
+                  completedOperations.push(false)
+                  EitherT.liftF(
+                    summon[Applicative[F]]
+                      .pure(targetInstanceOption.get.entityId)
                   )
-                )
-                .sequence
-            )(_.flatten)
+                else
+                  for {
+                    _ <- EitherT.liftF(
+                      summon[Applicative[F]]
+                        .pure(completedOperations.push(true))
+                    )
+                    createdInstance <- EitherT(
+                      summon[Functor[F]].map(
+                        tuple
+                          .map(
+                            createInstanceNoCheck(
+                              logger,
+                              typeManagementService,
+                              targetInstanceId,
+                              mapping(2).name,
+                              _,
+                              initialStatements,
+                              List.empty
+                            )
+                          )
+                          .sequence
+                      )(_.flatten)
+                    )
+                  } yield createdInstance
+            } yield result).value
           )))(_.sequence)
         )
         _ <- EitherT(
@@ -501,24 +524,6 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       sourceInstance <- EitherT(
         instanceManagementService.read(sourceInstanceId)
       )
-      existingInstances <- EitherT(
-        queryMappedInstances(
-          logger,
-          repository,
-          Some(sourceInstance.entityTypeName),
-          None,
-          None
-        )
-      )
-      _ <-
-        if existingInstances.nonEmpty
-        then
-          EitherT.leftT[F, Unit](
-            ManagementServiceError(
-              s"The instances for this mapping have already been created"
-            )
-          )
-        else EitherT.rightT[F, ManagementServiceError](())
       isMappingSource <- EitherT(
         checkTraitForEntityType(
           logger,
@@ -545,6 +550,15 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           )
         else EitherT.rightT[F, ManagementServiceError](())
       res <- EitherT(createMappedInstancesNoCheck(sourceInstanceId))
+      _ <-
+        if completedOperations.contains(true)
+        then EitherT.rightT[F, ManagementServiceError](())
+        else
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"The instances for this mapping have already been created"
+            )
+          )
     } yield res).value
   end createMappedInstances
 
@@ -696,6 +710,78 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end updateMappedInstances
 
+  private def getTargetEntityType(
+      sourceEntityTypeName: String
+  ): F[Either[ManagementServiceError, List[EntityType]]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT DISTINCT ?targetEntityType ?mappedTo WHERE {
+         |  ?sourceEntityType ?mappedTo ?targetEntityType .
+         |  ?sourceEntityType rdf:type ns:EntityType .
+         |  ?targetEntityType rdf:type ns:EntityType .
+         |  FILTER(STR(?sourceEntityType) = "${ns.getName}$sourceEntityTypeName")
+         |  FILTER(STRSTARTS(STR(?mappedTo), "${ns.getName}mappedTo#"))
+         |}
+         |""".stripMargin
+
+    repository
+      .evaluateQuery(query)
+      .flatMap { queryResults =>
+        queryResults.toList.traverse { bs =>
+          typeManagementService.read(
+            iri(bs.getValue("targetEntityType").stringValue()).getLocalName
+          )
+        }
+      }
+      .map(_.sequence)
+      .map(
+        _.leftMap(_ =>
+          ManagementServiceError("Error in reading getTargetEntityType")
+        )
+      )
+      .map(_.map(_.toList))
+
+  end getTargetEntityType
+
+  private def deleteOnlyMappedInstances(
+      initialEntity: String
+  ): F[Either[ManagementServiceError, Set[EntityType]]] =
+    def loop(
+        stack: mutable.Stack[String],
+        accumulated: Set[EntityType]
+    ): F[Either[ManagementServiceError, Set[EntityType]]] =
+      if stack.isEmpty then summon[Applicative[F]].pure(Right(accumulated))
+      else
+        val head = stack.pop()
+        getTargetEntityType(head).flatMap {
+          case Left(error) => summon[Applicative[F]].pure(Left(error))
+          case Right(entityTypes) =>
+            entityTypes
+              .traverse { entityType =>
+                if !accumulated.exists(_.name.equals(entityType.name)) then
+                  stack.push(entityType.name)
+                val res = for {
+                  ids <- EitherT(
+                    instanceManagementService
+                      .list(entityType.name, None, false, None)
+                  )
+                  stringIds = ids.collect { case s: String => s }
+                  _ <- stringIds.traverse_(id =>
+                    EitherT(instanceManagementService.delete(id))
+                  )
+                } yield ()
+                res.value
+              }
+              .flatMap(_ => loop(stack, accumulated ++ entityTypes))
+        }
+    end loop
+    loop(mutable.Stack(initialEntity), Set.empty)
+  end deleteOnlyMappedInstances
+
   override def deleteMappedInstances(
       sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
@@ -769,13 +855,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             statementsToRemove.toList
           )
         )
-        _ <- EitherT(
-          summon[Functor[F]].map(
-            stack.popAll.toList
-              .map(id => instanceManagementService.delete(id))
-              .sequence
-          )(_.sequence)
-        )
+        entity <- EitherT(instanceManagementService.read(sourceInstanceId))
+        _ <- EitherT(deleteOnlyMappedInstances(entity.entityTypeName))
       } yield ()).value
     end deleteMappedInstancesNoCheck
 
@@ -811,5 +892,38 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       res <- EitherT(deleteMappedInstancesNoCheck(sourceInstanceId))
     } yield res).value
   end deleteMappedInstances
+
+  override def readTargetInstance(
+      sourceInstanceId: String,
+      mappingName: String
+  ): F[Either[ManagementServiceError, Option[Entity]]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT DISTINCT ?targetId WHERE {
+         |  ?sourceId ?mapping ?targetId .
+         |  ?sourceId rdf:type ns:Entity .
+         |  ?targetId rdf:type ns:Entity .
+         |  FILTER(STR(?sourceId) = "${ns.getName}$sourceInstanceId")
+         |  FILTER(STR(?mapping) = "${ns.getName}mappedTo#$mappingName")
+         |}
+         |""".stripMargin
+    val res = logger.trace(
+      s"Reading the target instance with source $sourceInstanceId linked by mapping $mappingName"
+    ) *> repository.evaluateQuery(query)
+    val response = res.flatMap {
+      case results if results.hasNext =>
+        val targetId = results.next().getValue("targetId").toString
+        instanceManagementService
+          .read(targetId)
+          .map(_.map(entity => Option(entity)))
+      case _ =>
+        summon[Applicative[F]].pure(Right(None))
+    }
+    response
+  end readTargetInstance
 
 end MappingManagementServiceInterpreter

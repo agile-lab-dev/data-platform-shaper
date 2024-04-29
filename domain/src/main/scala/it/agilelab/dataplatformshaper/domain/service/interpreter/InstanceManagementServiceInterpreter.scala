@@ -42,6 +42,16 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     val entityId = UUID.randomUUID().toString
     (for {
       exist <- EitherT(typeManagementService.exist(instanceTypeName))
+      entityType <- EitherT(typeManagementService.read(instanceTypeName))
+      _ <-
+        if entityType.traits.contains("MappingTarget")
+        then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"Cannot directly create an instance of a MappingTarget"
+            )
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
       result <- EitherT {
         if exist
         then
