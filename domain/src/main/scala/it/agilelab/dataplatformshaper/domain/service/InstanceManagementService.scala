@@ -1,8 +1,7 @@
 package it.agilelab.dataplatformshaper.domain.service
 
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.l0.Entity
-import it.agilelab.dataplatformshaper.domain.model.l1.Relationship
+import it.agilelab.dataplatformshaper.domain.model.{Entity, Relationship}
 import it.agilelab.dataplatformshaper.domain.model.schema.SearchPredicate
 
 trait InstanceManagementService[F[_]]:

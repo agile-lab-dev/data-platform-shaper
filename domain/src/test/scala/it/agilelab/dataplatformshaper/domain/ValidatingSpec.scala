@@ -10,8 +10,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.*
+import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.JsonType
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
@@ -409,7 +408,7 @@ class ValidatingSpec extends CommonSpec:
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
-        val entityType = l0.EntityType(
+        val entityType = EntityType(
           "ValidationDataCollectionType",
           schema
         )
@@ -573,11 +572,11 @@ class ValidatingSpec extends CommonSpec:
         "repo1",
         false
       )
-      val entityType = l0.EntityType(
+      val entityType = EntityType(
         "UpdateDataCollectionType",
         schema
       )
-      val updatedEntityType = l0.EntityType(
+      val updatedEntityType = EntityType(
         "UpdateDataCollectionType",
         schemaAfterUpdate
       )
@@ -611,11 +610,11 @@ class ValidatingSpec extends CommonSpec:
         "repo1",
         false
       )
-      val entityType = l0.EntityType(
+      val entityType = EntityType(
         "UpdateDataCollectionType",
         schema
       )
-      val updatedEntityType = l0.EntityType(
+      val updatedEntityType = EntityType(
         "UpdateDataCollectionType",
         wrongSchemaAfterUpdate
       )
@@ -651,7 +650,7 @@ class ValidatingSpec extends CommonSpec:
         "repo1",
         false
       )
-      val entityType = l0.EntityType(
+      val entityType = EntityType(
         "TypeWithWrongConstraints",
         StructType(
           List(
@@ -688,7 +687,7 @@ class ValidatingSpec extends CommonSpec:
         "repo1",
         false
       )
-      val entityType = l0.EntityType(
+      val entityType = EntityType(
         "YetAnotherType",
         StructType(
           List(
@@ -697,7 +696,7 @@ class ValidatingSpec extends CommonSpec:
         )
       )
 
-      val wrongEntityType = l0.EntityType(
+      val wrongEntityType = EntityType(
         "YetAnotherType",
         StructType(
           List(

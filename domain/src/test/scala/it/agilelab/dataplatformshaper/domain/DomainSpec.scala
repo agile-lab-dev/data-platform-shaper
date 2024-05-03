@@ -10,9 +10,8 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.Relationship.hasPart
+import it.agilelab.dataplatformshaper.domain.model.*
+import it.agilelab.dataplatformshaper.domain.model.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -94,8 +93,8 @@ class DomainSpec extends CommonSpec:
   )
 
   private val mapperTuple = (
-    "field1" -> "instance.get('field1')",
-    "field2" -> "instance.get('field2')"
+    "field1" -> "source.get('field1')",
+    "field2" -> "source.get('field2')"
   )
 
   def countStatements(

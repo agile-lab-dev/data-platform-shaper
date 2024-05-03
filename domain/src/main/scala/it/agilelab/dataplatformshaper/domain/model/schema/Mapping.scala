@@ -42,7 +42,7 @@ def tupleToMappedTuple(
     _ <- validateMappingTuple(mappingTuple, mappedTupleSchema)
     _ <- {
       val pt = parseTuple(sourceTuple, sourceTupleSchema)
-      elProcesspr.defineBean("instance", sourceTuple: DynamicTuple)
+      elProcesspr.defineBean("source", sourceTuple: DynamicTuple)
       pt
     }
     mt <- Try(

@@ -1,10 +1,11 @@
 @prefix ns: <https://w3id.org/agile-dm/ontology/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix part: <http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @base <http://www.w3.org/2002/07/owl#> .
-@prefix part: <http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl#> .
 
 [ rdf:type owl:Ontology ;
    owl:imports <http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl>
@@ -13,6 +14,22 @@
 #################################################################
 #    Object Properties
 #################################################################
+
+###  https://w3id.org/agile-dm/ontology/dependencyOf
+ns:dependencyOf rdf:type owl:ObjectProperty ;
+                owl:inverseOf ns:dependsOn ;
+                rdf:type owl:TransitiveProperty .
+
+
+###  https://w3id.org/agile-dm/ontology/dependsOn
+ns:dependsOn rdf:type owl:ObjectProperty ;
+             owl:inverseOf ns:dependencyOf ;
+             rdf:type owl:TransitiveProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#subClassOf
+rdfs:subClassOf rdf:type owl:ObjectProperty .
+
 
 ###  https://w3id.org/agile-dm/ontology/classifies
 ns:classifies rdf:type owl:ObjectProperty ;
@@ -23,24 +40,27 @@ ns:classifies rdf:type owl:ObjectProperty ;
 
 ###  https://w3id.org/agile-dm/ontology/hasATrait
 ns:hasATrait rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf rdfs:subClassOf ;
              owl:inverseOf ns:isATraitFor ;
-             rdfs:domain ns:EntityType  ;
-             rdfs:range ns:Trait ;
-             rdfs:subPropertyOf rdfs:subClassOf .
+             rdfs:domain ns:EntityType ;
+             rdfs:range ns:Trait .
 
-ns:inheritsFrom rdf:type owl:ObjectProperty ;
-                owl:inverseOf ns:isInheritedBy ;
-                rdf:type owl:TransitiveProperty ;
-                rdfs:domain ns:EntityType ;
-                rdfs:range ns:EntityType ;
-                rdfs:subPropertyOf rdfs:subClassOf .
 
 ###  https://w3id.org/agile-dm/ontology/hasAttributeType
-ns:hasAttributeType rdf:type owl:ObjectProperty ;
-                    rdf:type owl:TransitiveProperty ;
+ns:hasAttributeType rdf:type owl:ObjectProperty ,
+                             owl:TransitiveProperty ;
                     rdfs:domain ns:EntityType ,
                                 ns:StructType ;
                     rdfs:range ns:AttributeType .
+
+
+###  https://w3id.org/agile-dm/ontology/inheritsFrom
+ns:inheritsFrom rdf:type owl:ObjectProperty ;
+                rdfs:subPropertyOf rdfs:subClassOf ;
+                owl:inverseOf ns:isInheritedBy ;
+                rdf:type owl:TransitiveProperty ;
+                rdfs:domain ns:EntityType ;
+                rdfs:range ns:EntityType .
 
 
 ###  https://w3id.org/agile-dm/ontology/isATraitFor
@@ -48,10 +68,6 @@ ns:isATraitFor rdf:type owl:ObjectProperty ;
                rdfs:domain ns:Trait ;
                rdfs:range ns:EntityType .
 
-ns:isInheritedBy rdf:type owl:ObjectProperty ;
-                 rdf:type owl:TransitiveProperty ;
-                 rdfs:domain ns:EntityType ;
-                 rdfs:range ns:EntityType .
 
 ###  https://w3id.org/agile-dm/ontology/isAttributeTypeOf
 ns:isAttributeTypeOf rdf:type owl:ObjectProperty ;
@@ -59,10 +75,24 @@ ns:isAttributeTypeOf rdf:type owl:ObjectProperty ;
                      rdfs:range ns:EntityType ,
                                 ns:StructType .
 
+
 ###  https://w3id.org/agile-dm/ontology/isClassifiedBy
 ns:isClassifiedBy rdf:type owl:ObjectProperty ;
                   rdfs:domain ns:Entity ;
                   rdfs:range ns:EntityType .
+
+
+###  https://w3id.org/agile-dm/ontology/isInheritedBy
+ns:isInheritedBy rdf:type owl:ObjectProperty ,
+                          owl:TransitiveProperty ;
+                 rdfs:domain ns:EntityType ;
+                 rdfs:range ns:EntityType .
+
+
+###  https://w3id.org/agile-dm/ontology/mappedTo
+ns:mappedTo rdf:type owl:ObjectProperty ;
+            rdfs:domain ns:MappingSource ;
+            rdfs:range ns:MappingTarget .
 
 
 ###  https://w3id.org/agile-dm/ontology/mode
@@ -70,19 +100,22 @@ ns:mode rdf:type owl:ObjectProperty ;
         rdfs:domain ns:AttributeType ;
         rdfs:range ns:Mode .
 
+
 #################################################################
 #    Data properties
 #################################################################
+
+###  https://w3id.org/agile-dm/ontology/constraints
+ns:constraints rdf:type owl:DatatypeProperty ;
+               rdfs:domain ns:AttributeType ;
+               rdfs:range xsd:string .
+
 
 ###  https://w3id.org/agile-dm/ontology/typeName
 ns:typeName rdf:type owl:DatatypeProperty ;
             rdfs:domain ns:EntityType ;
             rdfs:range xsd:string .
 
-###  https://w3id.org/agile-dm/ontology/constraints
-ns:constraints rdf:type owl:DatatypeProperty ;
-               rdfs:domain ns:AttributeType ;
-               rdfs:range xsd:string .
 
 #################################################################
 #    Classes
@@ -92,12 +125,56 @@ ns:constraints rdf:type owl:DatatypeProperty ;
 ns:AttributeType rdf:type owl:Class .
 
 
+###  https://w3id.org/agile-dm/ontology/BooleanAttributeType
+ns:BooleanAttributeType rdf:type owl:Class ;
+                        rdfs:subClassOf ns:AttributeType .
+
+
+###  https://w3id.org/agile-dm/ontology/DateAttributeType
+ns:DateAttributeType rdf:type owl:Class ;
+                     rdfs:subClassOf ns:AttributeType .
+
+
+###  https://w3id.org/agile-dm/ontology/DoubleAttributeType
+ns:DoubleAttributeType rdf:type owl:Class ;
+                       rdfs:subClassOf ns:AttributeType .
+
+
 ###  https://w3id.org/agile-dm/ontology/Entity
 ns:Entity rdf:type owl:Class .
 
 
 ###  https://w3id.org/agile-dm/ontology/EntityType
 ns:EntityType rdf:type owl:Class .
+
+
+###  https://w3id.org/agile-dm/ontology/FloatAttributeType
+ns:FloatAttributeType rdf:type owl:Class ;
+                      rdfs:subClassOf ns:AttributeType .
+
+
+###  https://w3id.org/agile-dm/ontology/IntAttributeType
+ns:IntAttributeType rdf:type owl:Class ;
+                    rdfs:subClassOf ns:AttributeType .
+
+
+###  https://w3id.org/agile-dm/ontology/JsonAttributeType
+ns:JsonAttributeType rdf:type owl:Class ;
+                     rdfs:subClassOf ns:AttributeType .
+
+
+###  https://w3id.org/agile-dm/ontology/LongAttributeType
+ns:LongAttributeType rdf:type owl:Class ;
+                     rdfs:subClassOf ns:AttributeType .
+
+
+###  https://w3id.org/agile-dm/ontology/MappingSource
+ns:MappingSource rdf:type owl:Class .
+
+
+###  https://w3id.org/agile-dm/ontology/MappingTarget
+ns:MappingTarget rdf:type owl:Class .
+
 
 ###  https://w3id.org/agile-dm/ontology/Mode
 ns:Mode rdf:type owl:Class ;
@@ -108,46 +185,16 @@ ns:Mode rdf:type owl:Class ;
                                         )
                             ] .
 
-###  https://w3id.org/agile-dm/ontology/IntAttributeType
-ns:IntAttributeType rdf:type owl:Class ;
-                    rdfs:subClassOf ns:AttributeType .
+
+###  https://w3id.org/agile-dm/ontology/SqlDecimalAttributeType
+ns:SqlDecimalAttributeType rdf:type owl:Class ;
+                           rdfs:subClassOf ns:AttributeType .
 
 
 ###  https://w3id.org/agile-dm/ontology/StringAttributeType
 ns:StringAttributeType rdf:type owl:Class ;
                        rdfs:subClassOf ns:AttributeType .
 
-###  https://w3id.org/agile-dm/ontology/LongAttributeType
-ns:LongAttributeType rdf:type owl:Class ;
-                       rdfs:subClassOf ns:AttributeType .
-
-###  https://w3id.org/agile-dm/ontology/FloatAttributeType
-ns:FloatAttributeType rdf:type owl:Class ;
-                       rdfs:subClassOf ns:AttributeType .
-
-###  https://w3id.org/agile-dm/ontology/DoubleAttributeType
-ns:DoubleAttributeType rdf:type owl:Class ;
-                       rdfs:subClassOf ns:AttributeType .
-
-###  https://w3id.org/agile-dm/ontology/SqlDecimalAttributeType
-ns:SqlDecimalAttributeType rdf:type owl:Class ;
-                       rdfs:subClassOf ns:AttributeType .
-
-###  https://w3id.org/agile-dm/ontology/BooleanAttributeType
-ns:BooleanAttributeType rdf:type owl:Class ;
-                       rdfs:subClassOf ns:AttributeType .
-
-###  https://w3id.org/agile-dm/ontology/DateAttributeType
-ns:DateAttributeType rdf:type owl:Class ;
-                       rdfs:subClassOf ns:AttributeType .
-
-###  https://w3id.org/agile-dm/ontology/TimestampAttributeType
-ns:TimestampAttributeType rdf:type owl:Class ;
-                       rdfs:subClassOf ns:AttributeType .
-
-###  https://w3id.org/agile-dm/ontology/JsonAttributeType
-ns:JsonAttributeType rdf:type owl:Class ;
-                       rdfs:subClassOf ns:AttributeType .
 
 ###  https://w3id.org/agile-dm/ontology/Struct
 ns:Struct rdf:type owl:Class .
@@ -158,6 +205,11 @@ ns:StructType rdf:type owl:Class ;
               rdfs:subClassOf ns:AttributeType .
 
 
+###  https://w3id.org/agile-dm/ontology/TimestampAttributeType
+ns:TimestampAttributeType rdf:type owl:Class ;
+                          rdfs:subClassOf ns:AttributeType .
+
+
 ###  https://w3id.org/agile-dm/ontology/Trait
 ns:Trait rdf:type owl:Class .
 
@@ -165,6 +217,16 @@ ns:Trait rdf:type owl:Class .
 #################################################################
 #    Individuals
 #################################################################
+
+###  https://w3id.org/agile-dm/ontology/MappingSource
+ns:MappingSource rdf:type owl:NamedIndividual ,
+                          ns:Trait .
+
+
+###  https://w3id.org/agile-dm/ontology/MappingTarget
+ns:MappingTarget rdf:type owl:NamedIndividual ,
+                          ns:Trait .
+
 
 ###  https://w3id.org/agile-dm/ontology/Nullable
 ns:Nullable rdf:type owl:NamedIndividual ,
@@ -176,19 +238,9 @@ ns:Repeated rdf:type owl:NamedIndividual ,
                      ns:Mode .
 
 
-###  https://w3id.org/agile-dm/ontology/l0/Required
+###  https://w3id.org/agile-dm/ontology/Required
 ns:Required rdf:type owl:NamedIndividual ,
                      ns:Mode .
 
-ns:MappingSource rdf:type ns:Trait ;
-                 rdf:type owl:NamedIndividual .
 
-ns:MappingTarget rdf:type ns:Trait ;
-                 rdf:type owl:NamedIndividual .
-
-###  https://w3id.org/agile-dm/ontology/mappedTo
-ns:mappedTo rdf:type owl:ObjectProperty ;
-              rdfs:domain ns:MappingSource  ;
-              rdfs:range ns:MappingTarget .
-
-###  Generated by the OWL API (version 4.5.25.2023-02-15T19:15:49Z) https://github.com/owlcs/owlapi
+###  Generated by the OWL API (version 4.5.26.2023-07-17T20:34:13Z) https://github.com/owlcs/owlapi

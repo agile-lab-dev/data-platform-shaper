@@ -6,11 +6,8 @@ import cats.implicits.*
 import io.circe.Json
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
-import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
-import it.agilelab.dataplatformshaper.domain.model.l1.Relationship.mappedTo
-import it.agilelab.dataplatformshaper.domain.model.l1.given_Conversion_Relationship_String
+import it.agilelab.dataplatformshaper.domain.model.Relationship.mappedTo
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -25,6 +22,12 @@ import it.agilelab.dataplatformshaper.domain.model.schema.{
   cueValidate,
   schemaToMapperSchema,
   unfoldTuple
+}
+import it.agilelab.dataplatformshaper.domain.model.{
+  Entity,
+  EntityType,
+  NS,
+  given
 }
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{

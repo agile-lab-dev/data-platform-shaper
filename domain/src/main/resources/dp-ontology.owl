@@ -41,6 +41,23 @@
     
 
 
+    <!-- https://w3id.org/agile-dm/ontology/dependencyOf -->
+
+    <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/dependencyOf">
+        <inverseOf rdf:resource="https://w3id.org/agile-dm/ontology/dependsOn"/>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    </ObjectProperty>
+    
+
+
+    <!-- https://w3id.org/agile-dm/ontology/dependsOn -->
+
+    <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/dependsOn">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    </ObjectProperty>
+    
+
+
     <!-- https://w3id.org/agile-dm/ontology/hasATrait -->
 
     <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/hasATrait">

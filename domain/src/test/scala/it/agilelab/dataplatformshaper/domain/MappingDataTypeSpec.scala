@@ -1,6 +1,6 @@
 package it.agilelab.dataplatformshaper.domain
 
-import it.agilelab.dataplatformshaper.domain.model.l0.Entity
+import it.agilelab.dataplatformshaper.domain.model.Entity
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.{
   Schema,
@@ -63,9 +63,9 @@ class MappingDataTypeSpec extends AnyFlatSpec with Matchers:
     val mappingTuple = (
       "bucketName" -> "'MyBucket'",
       "folderPath" -> s"""
-                         |instance.get('organization') += '/' += instance.get('sub-organization')
+                         |source.get('organization') += '/' += source.get('sub-organization')
                          |""".stripMargin,
-      "anInt" -> "instance.get('nested/nestedField1') + 10"
+      "anInt" -> "source.get('nested/nestedField1') + 10"
     )
 
     val mres = validateMappingTuple(mappingTuple, schema2)

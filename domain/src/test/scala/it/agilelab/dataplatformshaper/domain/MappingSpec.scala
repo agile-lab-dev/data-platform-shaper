@@ -8,8 +8,13 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.*
+import it.agilelab.dataplatformshaper.domain.model.*
+import it.agilelab.dataplatformshaper.domain.model.NS.{
+  ENTITY,
+  ISCLASSIFIEDBY,
+  L2,
+  ns
+}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -22,21 +27,14 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
+import org.eclipse.rdf4j.model.util.Statements.statement
+import org.eclipse.rdf4j.model.util.Values.{iri, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.scalactic.Equality
-import org.eclipse.rdf4j.model.util.Statements.statement
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.*
-import it.agilelab.dataplatformshaper.domain.model.NS.{
-  ENTITY,
-  ISCLASSIFIEDBY,
-  L2,
-  ns
-}
-import org.eclipse.rdf4j.model.util.Values.{iri, triple}
-
 import scala.language.{dynamics, implicitConversions}
 
 @SuppressWarnings(
@@ -386,13 +384,13 @@ class MappingSpec extends CommonSpec:
   )
 
   private val mapperTuple = (
-    "field1" -> "instance.get('field1')",
-    "field2" -> "instance.get('field2')"
+    "field1" -> "source.get('field1')",
+    "field2" -> "source.get('field2')"
   )
 
   private val updatedMapperTuple = (
-    "field1" -> "instance.get('field2')",
-    "field2" -> "instance.get('field1')"
+    "field1" -> "source.get('field2')",
+    "field2" -> "source.get('field1')"
   )
 
   "Creating mapping instances" - {
@@ -1487,7 +1485,8 @@ class MappingSpec extends CommonSpec:
                 .list(idempotentDeletionMiddleType.name, None, false, None)
             )
             targetTypeElements <- EitherT(
-              iservice.list(idempotentDeletionTargetType.name, None, false, None)
+              iservice
+                .list(idempotentDeletionTargetType.name, None, false, None)
             )
             totalElements =
               middleTypeElements.length + targetTypeElements.length

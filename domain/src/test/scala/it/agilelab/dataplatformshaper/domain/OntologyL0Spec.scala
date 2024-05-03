@@ -10,8 +10,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.*
+import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
@@ -675,7 +674,7 @@ class OntologyL0Spec extends CommonSpec:
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
-        val entityType = l0.EntityType(
+        val entityType = EntityType(
           "FileBasedDataCollectionType",
           Set("DataCollection"),
           fileBasedDataCollectionTypeSchema
@@ -705,7 +704,7 @@ class OntologyL0Spec extends CommonSpec:
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
-        val entityType = l0.EntityType(
+        val entityType = EntityType(
           "TraitExample",
           Set("NonExistingTrait"),
           fileBasedDataCollectionTypeSchema
@@ -1292,7 +1291,7 @@ class OntologyL0Spec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 
-        val commonEntityType = l0.EntityType(
+        val commonEntityType = EntityType(
           "CommonEntityType",
           commonSchema
         )
@@ -1316,10 +1315,10 @@ class OntologyL0Spec extends CommonSpec:
         } yield etype).value
       ) asserting (et =>
         et shouldBe Right(
-          l0.EntityType(
+          EntityType(
             "BaseEntityType",
             schema,
-            l0.EntityType("CommonEntityType", commonSchema)
+            EntityType("CommonEntityType", commonSchema)
           )
         )
       )
@@ -1361,9 +1360,9 @@ class OntologyL0Spec extends CommonSpec:
 
       val entityType0 = EntityType("EntityType0", schema0)
 
-      val entityType1 = l0.EntityType("EntityType1", schema1)
+      val entityType1 = EntityType("EntityType1", schema1)
 
-      val entityType2 = l0.EntityType("EntityType2", schema2)
+      val entityType2 = EntityType("EntityType2", schema2)
 
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)

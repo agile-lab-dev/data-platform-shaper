@@ -1,4 +1,4 @@
-package it.agilelab.dataplatformshaper.domain.model.l0
+package it.agilelab.dataplatformshaper.domain.model
 
 import it.agilelab.dataplatformshaper.domain.model.schema.Schema
 

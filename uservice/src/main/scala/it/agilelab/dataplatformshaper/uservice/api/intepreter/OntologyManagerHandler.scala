@@ -10,17 +10,17 @@ import fs2.{Stream, text}
 import io.circe.Json
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
-import it.agilelab.dataplatformshaper.domain.model.l1.{
-  Relationship,
-  given_Conversion_String_Relationship
-}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.model.{
+  Entity,
+  EntityType,
+  Relationship,
+  given_Conversion_String_Relationship
+}
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
@@ -78,7 +78,7 @@ class OntologyManagerHandler[F[_]: Async](
           .fold(
             tms
               .create(
-                l0.EntityType(
+                EntityType(
                   body.name,
                   ts,
                   schema,
@@ -88,7 +88,7 @@ class OntologyManagerHandler[F[_]: Async](
           )(fn =>
             tms
               .create(
-                l0.EntityType(
+                EntityType(
                   body.name,
                   ts,
                   schema,
@@ -137,8 +137,8 @@ class OntologyManagerHandler[F[_]: Async](
   )(body: OpenApiEntityType): F[UpdateTypeConstraintsResponse] =
 
     val schema: Schema = body.schema
-    val entityType: l0.EntityType =
-      l0.EntityType(body.name, Set(), schema, None)
+    val entityType: EntityType =
+      EntityType(body.name, Set(), schema, None)
 
     val res = for {
       res <- EitherT(
@@ -188,7 +188,7 @@ class OntologyManagerHandler[F[_]: Async](
           .fold(
             tms
               .create(
-                l0.EntityType(
+                EntityType(
                   entityType.name,
                   ts,
                   entityType.schema,
@@ -198,7 +198,7 @@ class OntologyManagerHandler[F[_]: Async](
           )(fn =>
             tms
               .create(
-                l0.EntityType(
+                EntityType(
                   entityType.name,
                   ts,
                   entityType.schema,
@@ -243,7 +243,7 @@ class OntologyManagerHandler[F[_]: Async](
       res <- EitherT(
         tms
           .updateConstraints(
-            l0.EntityType(
+            EntityType(
               entityType.name,
               ts,
               entityType.schema,
