@@ -63,11 +63,7 @@ import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.var"
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.var"))
 class ApiSpec
     extends AsyncFreeSpec
     with AsyncIOSpec
@@ -235,11 +231,7 @@ class ApiSpec
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          resp should be(
-            ReadTypeResponse.Ok(
-              childrenEntityType
-            )
-          )
+          resp should be(ReadTypeResponse.Ok(childrenEntityType))
         )
     }
   }
@@ -288,11 +280,7 @@ class ApiSpec
           ),
           jsonMapperTuple
         )
-        _ <- Resource.liftK(
-          client.createMapping(
-            mappingDefinition
-          )
-        )
+        _ <- Resource.liftK(client.createMapping(mappingDefinition))
         resp <- Resource.liftK(
           client.readMapping(
             mappingDefinition.mappingKey.mappingName,
@@ -379,11 +367,7 @@ class ApiSpec
           ),
           jsonUpdatedMapperTuple
         )
-        _ <- Resource.liftK(
-          client.createMapping(
-            initialMappingDefinition
-          )
-        )
+        _ <- Resource.liftK(client.createMapping(initialMappingDefinition))
         _ <- Resource.liftK(client.updateMapping(updatedMappingDefinition))
         resp <- Resource.liftK(
           client.readMapping(
@@ -453,11 +437,7 @@ class ApiSpec
           ),
           jsonMapperTuple
         )
-        _ <- Resource.liftK(
-          client.createMapping(
-            mappingDefinition
-          )
-        )
+        _ <- Resource.liftK(client.createMapping(mappingDefinition))
         _ <- Resource.liftK(
           client.deleteMapping(
             mappingDefinition.mappingKey.mappingName,
@@ -637,11 +617,7 @@ class ApiSpec
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          resp should be(
-            ReadTypeResponse.Ok(
-              entityTypeConstrained
-            )
-          )
+          resp should be(ReadTypeResponse.Ok(entityTypeConstrained))
         )
     }
   }
@@ -677,11 +653,7 @@ class ApiSpec
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          resp should be(
-            ReadTypeResponse.Ok(
-              childrenEntityType
-            )
-          )
+          resp should be(ReadTypeResponse.Ok(childrenEntityType))
         )
     }
   }
@@ -722,11 +694,7 @@ class ApiSpec
       resp
         .use(resp => IO.pure(resp))
         .asserting(resp =>
-          resp should be(
-            ReadTypeResponse.Ok(
-              constrainedEntityType
-            )
-          )
+          resp should be(ReadTypeResponse.Ok(constrainedEntityType))
         )
     }
   }
@@ -869,11 +837,7 @@ class ApiSpec
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
         ids <- Resource.liftK(
-          client.listEntitiesByIds(
-            "DataCollectionType",
-            "",
-            Some(1)
-          )
+          client.listEntitiesByIds("DataCollectionType", "", Some(1))
         )
       } yield ids
 
@@ -894,12 +858,7 @@ class ApiSpec
           .default[IO]
           .build
           .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
-        ids <- Resource.liftK(
-          client.listEntities(
-            "DataCollectionType",
-            ""
-          )
-        )
+        ids <- Resource.liftK(client.listEntities("DataCollectionType", ""))
       } yield ids
 
       resp
@@ -1225,12 +1184,10 @@ class ApiSpec
           createEntityResp <- Resource.liftK(client.createEntity(entity))
           finalResp <- createEntityResp match {
             case CreateEntityResponse.Ok(id) =>
-              Resource.liftK(
-                for {
-                  _ <- client.deleteEntity(id)
-                  readEntityResp <- client.readEntity(id)
-                } yield Right(readEntityResp)
-              )
+              Resource.liftK(for {
+                _ <- client.deleteEntity(id)
+                readEntityResp <- client.readEntity(id)
+              } yield Right(readEntityResp))
             case _ =>
               Resource
                 .pure[IO, Either[CreateEntityResponse, ReadEntityResponse]](
@@ -1300,12 +1257,10 @@ class ApiSpec
           createEntityResp <- Resource.liftK(client.createEntity(entity))
           finalResp <- createEntityResp match {
             case CreateEntityResponse.Ok(id) =>
-              Resource.liftK(
-                for {
-                  _ <- client.updateEntity(id, updatedEntity)
-                  readEntityResp <- client.readEntity(id)
-                } yield Right(readEntityResp)
-              )
+              Resource.liftK(for {
+                _ <- client.updateEntity(id, updatedEntity)
+                readEntityResp <- client.readEntity(id)
+              } yield Right(readEntityResp))
             case _ =>
               Resource
                 .pure[IO, Either[UpdateEntityResponse, ReadEntityResponse]](

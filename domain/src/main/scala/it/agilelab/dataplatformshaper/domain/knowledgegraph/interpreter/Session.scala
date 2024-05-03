@@ -40,13 +40,13 @@ end Session
 object Session:
 
   def getSession(
-      dbType: String,
-      host: String,
-      port: Int,
-      user: String,
-      pwd: String,
-      repositoryId: String,
-      tls: Boolean
+    dbType: String,
+    host: String,
+    port: Int,
+    user: String,
+    pwd: String,
+    repositoryId: String,
+    tls: Boolean
   ): Session =
     dbType match
       case "graphdb" =>
@@ -69,13 +69,13 @@ object Session:
   end getSession
 
   def apply[F[_]: Sync](
-      dbType: String,
-      host: String,
-      port: Int,
-      user: String,
-      pwd: String,
-      repositoryId: String,
-      tls: Boolean
+    dbType: String,
+    host: String,
+    port: Int,
+    user: String,
+    pwd: String,
+    repositoryId: String,
+    tls: Boolean
   ): Resource[F, Session] =
     given logger: Logger[F] = Slf4jLogger.getLogger[F]
     Resource

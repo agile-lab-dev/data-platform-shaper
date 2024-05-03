@@ -8,9 +8,7 @@ import scala.annotation.tailrec
 
 object ApplicationConfiguration:
 
-  val config: AtomicReference[Config] = AtomicReference(
-    ConfigFactory.load()
-  )
+  val config: AtomicReference[Config] = AtomicReference(ConfigFactory.load())
 
   def reloadConfig(): String = config.synchronized {
     @tailrec

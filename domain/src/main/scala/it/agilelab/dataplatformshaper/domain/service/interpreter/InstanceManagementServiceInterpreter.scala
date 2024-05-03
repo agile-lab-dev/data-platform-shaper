@@ -25,7 +25,7 @@ import java.util.UUID
 import scala.language.{implicitConversions, postfixOps}
 
 class InstanceManagementServiceInterpreter[F[_]: Sync](
-    typeManagementService: TypeManagementService[F]
+  typeManagementService: TypeManagementService[F]
 ) extends InstanceManagementService[F]
     with InstanceManagementServiceInterpreterCommonFunctions[F]:
 
@@ -34,8 +34,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   val repository: KnowledgeGraph[F] = typeManagementService.repository
 
   override def create(
-      instanceTypeName: String,
-      values: Tuple
+    instanceTypeName: String,
+    values: Tuple
   ): F[Either[ManagementServiceError, String]] =
     val entityId = UUID.randomUUID().toString
     (for {
@@ -80,7 +80,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end create
 
   override def read(
-      instanceId: String
+    instanceId: String
   ): F[Either[ManagementServiceError, Entity]] =
 
     val res = for {
@@ -92,9 +92,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       ](
         summon[Functor[F]].map(
           fetchEntityFieldsAndTypeName(logger, repository, instanceId)
-        )(
-          Right[ManagementServiceError, (String, List[(String, String)])]
-        )
+        )(Right[ManagementServiceError, (String, List[(String, String)])])
       )
       _ <- traceT(s"Retrieved fields and type name $fe")
       entityType: EntityType <- EitherT(typeManagementService.read(fe(0)))
@@ -102,9 +100,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       tuple <- EitherT[F, ManagementServiceError, Tuple](
         summon[Functor[F]].map(
           fieldsToTuple(logger, repository, fe(1), entityType.schema)
-        )(
-          Right[ManagementServiceError, Tuple]
-        )
+        )(Right[ManagementServiceError, Tuple])
       )
       _ <- traceT(s"Loaded the tuple $tuple")
       entity <- EitherT[F, ManagementServiceError, Entity](
@@ -135,13 +131,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end read
 
   override def update(
-      instanceId: String,
-      values: Tuple
+    instanceId: String,
+    values: Tuple
   ): F[Either[ManagementServiceError, String]] =
     val res: F[Either[ManagementServiceError, String]] = (for {
-      _ <- traceT(
-        s"About to remove the instance $instanceId"
-      )
+      _ <- traceT(s"About to remove the instance $instanceId")
       entity <- EitherT(read(instanceId))
       hasTrait <- EitherT(
         checkTraitForEntityType(
@@ -184,7 +178,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end update
 
   override def delete(
-      instanceId: String
+    instanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
     val res: F[Either[ManagementServiceError, Unit]] = (for {
       _ <- logger.trace(s"About to remove the instance $instanceId")
@@ -192,10 +186,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <- logger.trace(
         s"About to remove the statements \n${stmts.mkString("\n")}"
       )
-      _ <- repository.removeAndInsertStatements(
-        List.empty[Statement],
-        stmts
-      )
+      _ <- repository.removeAndInsertStatements(List.empty[Statement], stmts)
     } yield ()).map(_ => Right[ManagementServiceError, Unit](()))
 
     val checkLinkedInstancesQuery =
@@ -262,7 +253,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end delete
 
   override def exist(
-      instanceId: String
+    instanceId: String
   ): F[Either[ManagementServiceError, Boolean]] =
     val res = repository.evaluateQuery(s"""
          |PREFIX ns:  <${ns.getName}>
@@ -283,10 +274,10 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end exist
 
   override def list(
-      instanceTypeName: String,
-      predicate: Option[SearchPredicate],
-      returnEntities: Boolean,
-      limit: Option[Int]
+    instanceTypeName: String,
+    predicate: Option[SearchPredicate],
+    returnEntities: Boolean,
+    limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val limitClause = limit.map(l => s"LIMIT $l").getOrElse("")
 
@@ -342,10 +333,10 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end list
 
   override def list(
-      instanceTypeName: String,
-      query: String,
-      returnEntities: Boolean,
-      limit: Option[Int]
+    instanceTypeName: String,
+    query: String,
+    returnEntities: Boolean,
+    limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val predicate: F[Either[ManagementServiceError, Option[SearchPredicate]]] =
       summon[Applicative[F]].pure(
@@ -365,9 +356,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end list
 
   override def link(
-      instanceId1: String,
-      linkType: Relationship,
-      instanceId2: String
+    instanceId1: String,
+    linkType: Relationship,
+    instanceId2: String
   ): F[Either[ManagementServiceError, Unit]] =
     val query =
       s"""
@@ -481,9 +472,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end link
 
   override def unlink(
-      instanceId1: String,
-      linkType: Relationship,
-      instanceId2: String
+    instanceId1: String,
+    linkType: Relationship,
+    instanceId2: String
   ): F[Either[ManagementServiceError, Unit]] =
     val statements = statement(
       triple(
@@ -513,10 +504,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       res <- EitherT(
         if exist1 && exist2 then
           summon[Functor[F]].map(
-            repository.removeAndInsertStatements(
-              List.empty,
-              statements
-            )
+            repository.removeAndInsertStatements(List.empty, statements)
           )(_ => Right[ManagementServiceError, Unit](()))
         else
           if !exist1 then
@@ -551,8 +539,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end unlink
 
   override def linked(
-      instanceId: String,
-      linkType: Relationship
+    instanceId: String,
+    linkType: Relationship
   ): F[Either[ManagementServiceError, List[String]]] =
     val query =
       s"""

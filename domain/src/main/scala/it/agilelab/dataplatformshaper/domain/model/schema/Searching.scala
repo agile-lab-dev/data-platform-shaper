@@ -12,12 +12,8 @@ import scala.jdk.CollectionConverters.*
 trait SearchPredicateTerm
 
 given StringToSearchPredicateAttribute
-    : Conversion[String, SearchPredicateAttribute] with
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
+  : Conversion[String, SearchPredicateAttribute] with
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   override def apply(string: String): SearchPredicateAttribute =
     if string.contains('/') then
       throw IllegalArgumentException(s"$string should not contain any '/'")
@@ -27,21 +23,17 @@ given StringToSearchPredicateAttribute
 case class SearchPredicateValue[T](value: T) extends SearchPredicateTerm
 
 given StringToSearchPredicateValue
-    : Conversion[String, SearchPredicateValue[String]] with
+  : Conversion[String, SearchPredicateValue[String]] with
   override def apply(string: String): SearchPredicateValue[String] =
     SearchPredicateValue(string)
 
 given AnyValToSearchPredicateValue
-    : Conversion[AnyVal, SearchPredicateValue[AnyVal]] with
+  : Conversion[AnyVal, SearchPredicateValue[AnyVal]] with
   override def apply(anyVal: AnyVal): SearchPredicateValue[AnyVal] =
     SearchPredicateValue(anyVal)
 
 extension (namedAttribute: SearchPredicateAttribute)
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   def /(subPath: String): SearchPredicateAttribute =
     if subPath.contains('/') then
       throw IllegalArgumentException(s"$subPath should not contain any '/'")
@@ -59,8 +51,8 @@ case class SearchPredicateAttribute(attributePath: List[String])
   end /
 
   def generateAttributeClauses(
-      i: String,
-      filter: Option[String => String]
+    i: String,
+    filter: Option[String => String]
   ): String =
     val attributeRels = attributePath.reverse.inits.toList
       .filter(_.nonEmpty)
@@ -69,10 +61,10 @@ case class SearchPredicateAttribute(attributePath: List[String])
 
     @tailrec
     def loopOnAttributeRels(
-        i: String,
-        o: String,
-        filter: Option[String => String],
-        attributeRels: List[String]
+      i: String,
+      o: String,
+      filter: Option[String => String],
+      attributeRels: List[String]
     ): Unit =
       attributeRels match
         case head1 :: head2 :: tail =>
@@ -97,102 +89,90 @@ case class SearchPredicateAttribute(attributePath: List[String])
 
   def =:=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
     (i: String) ?=>
-      SearchPredicate(
-        {
-          s"""
+      SearchPredicate({
+        s"""
          |{
          |  ${generateAttributeClauses(
-              i,
-              Some(v => s"FILTER (?$v = ${value.value.toString} ) .")
-            )}
+            i,
+            Some(v => s"FILTER (?$v = ${value.value.toString} ) .")
+          )}
          |}
          |""".stripMargin
-        }
-      )
+      })
   end =:=
 
   def =!=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
     (i: String) ?=>
-      SearchPredicate(
-        {
-          s"""
+      SearchPredicate({
+        s"""
            |{
            |  ${generateAttributeClauses(
-              i,
-              Some(v => s"FILTER (?$v != ${value.value.toString} ) .")
-            )}
+            i,
+            Some(v => s"FILTER (?$v != ${value.value.toString} ) .")
+          )}
            |}
            |""".stripMargin
-        }
-      )
+      })
   end =!=
 
   @targetName("stringEqual")
   def =:=(value: SearchPredicateValue[String]): String ?=> SearchPredicate =
     (i: String) ?=>
-      SearchPredicate(
-        {
-          s"""
+      SearchPredicate({
+        s"""
            |{
            |  ${generateAttributeClauses(
-              i,
-              Some(v => s"""FILTER (?$v = "${value.value}"^^xsd:string ) .""")
-            )}
+            i,
+            Some(v => s"""FILTER (?$v = "${value.value}"^^xsd:string ) .""")
+          )}
            |}
            |""".stripMargin
-        }
-      )
+      })
   end =:=
 
   @targetName("stringDifferent")
   def =!=(value: SearchPredicateValue[String]): String ?=> SearchPredicate =
     (i: String) ?=>
-      SearchPredicate(
-        {
-          s"""
+      SearchPredicate({
+        s"""
            |{
            |  ${generateAttributeClauses(
-              i,
-              Some(v => s"""FILTER (?$v != "${value.value}"^^xsd:string ) .""")
-            )}
+            i,
+            Some(v => s"""FILTER (?$v != "${value.value}"^^xsd:string ) .""")
+          )}
            |}
            |""".stripMargin
-        }
-      )
+      })
   end =!=
 
   def like(value: SearchPredicateValue[String]): String ?=> SearchPredicate =
     (i: String) ?=>
-      SearchPredicate(
-        {
-          s"""
+      SearchPredicate({
+        s"""
            |{
            |  ${generateAttributeClauses(
-              i,
-              Some(v => s"""FILTER REGEX(?$v, "${value.value}") .""")
-            )}
+            i,
+            Some(v => s"""FILTER REGEX(?$v, "${value.value}") .""")
+          )}
            |}
            |""".stripMargin
-        }
-      )
+      })
   end like
 
   private def generateComparison(
-      comparisonOperator: String,
-      value: AnyVal
+    comparisonOperator: String,
+    value: AnyVal
   ): String ?=> SearchPredicate = (i: String) ?=>
-    SearchPredicate(
-      {
-        s"""
+    SearchPredicate({
+      s"""
          |{
          |  ${generateAttributeClauses(
-            i,
-            Some(v => s"FILTER (?$v $comparisonOperator ${value.toString} ) .")
-          )}
+          i,
+          Some(v => s"FILTER (?$v $comparisonOperator ${value.toString} ) .")
+        )}
          |}
          |""".stripMargin
-      }
-    )
+    })
 
   def <(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
     (i: String) ?=> generateComparison("<", value.value)
@@ -210,19 +190,16 @@ end SearchPredicateAttribute
 
 case class SearchPredicate(querySegment: String) extends SearchPredicateTerm:
   def &&(pred: SearchPredicate): SearchPredicate =
-    SearchPredicate(
-      s"""
+    SearchPredicate(s"""
          |{
          |   ${this.querySegment}
          |   ${pred.querySegment}
          |}
-         |""".stripMargin
-    )
+         |""".stripMargin)
   end &&
 
   def ||(pred: SearchPredicate): SearchPredicate =
-    SearchPredicate(
-      s"""
+    SearchPredicate(s"""
          |{
          |   {
          |     ${this.querySegment}
@@ -230,19 +207,14 @@ case class SearchPredicate(querySegment: String) extends SearchPredicateTerm:
          |     ${pred.querySegment}
          |   }
          |}
-         |""".stripMargin
-    )
+         |""".stripMargin)
   end ||
 end SearchPredicate
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.asInstanceOf"
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
 def generateSearchPredicate(
-    instancePlaceHolder: String,
-    query: String
+  instancePlaceHolder: String,
+  query: String
 ): SearchPredicate =
 
   val sqlParserConfig = SqlParser
@@ -254,14 +226,10 @@ def generateSearchPredicate(
 
   val node = SqlParser.create(query, sqlParserConfig).parseExpression()
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   def generateCode(
-      instancePlaceHolder: String,
-      node: SqlNode
+    instancePlaceHolder: String,
+    node: SqlNode
   ): SearchPredicateTerm =
 
     given i: String = instancePlaceHolder

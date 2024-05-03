@@ -5,11 +5,7 @@ import scala.compiletime.summonAll
 import scala.deriving.Mirror
 import scala.language.{existentials, implicitConversions, postfixOps}
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.asInstanceOf"
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
 inline def stringEnumDecoder[T](using m: Mirror.SumOf[T]): String => T =
   val elemInstances =
     summonAll[Tuple.Map[m.MirroredElemTypes, ValueOf]].productIterator
@@ -23,11 +19,7 @@ inline def stringEnumDecoder[T](using m: Mirror.SumOf[T]): String => T =
   name => mapping(name)
 end stringEnumDecoder
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.asInstanceOf"
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
 inline def stringEnumEncoder[T](using m: Mirror.SumOf[T]): T => String =
   val elemInstances =
     summonAll[Tuple.Map[m.MirroredElemTypes, ValueOf]].productIterator

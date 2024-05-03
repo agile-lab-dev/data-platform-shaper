@@ -30,11 +30,11 @@ implicit val jsonOrdering: Ordering[Json] = Ordering.by(_.toString())
   )
 )
 private def unfoldPrimitive(
-    name: String,
-    value: Any,
-    dataType: DataType,
-    currentPath: String,
-    func: (String, DataType, Any, FoldingPhase) => Unit
+  name: String,
+  value: Any,
+  dataType: DataType,
+  currentPath: String,
+  func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   dataType match
     case tpe @ StringType(mode, _) =>
@@ -338,11 +338,11 @@ end unfoldPrimitive
   )
 )
 private def unfoldStruct(
-    name: String,
-    tuple: Any,
-    schema: DataType,
-    currentPath: String,
-    func: (String, DataType, Any, FoldingPhase) => Unit
+  name: String,
+  tuple: Any,
+  schema: DataType,
+  currentPath: String,
+  func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   schema match
     case tpe @ StructType(records, mode) =>
@@ -440,16 +440,12 @@ private def unfoldStruct(
   end match
 end unfoldStruct
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.asInstanceOf"
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
 private def unfoldDataType(
-    tuple: Tuple,
-    schema: DataType,
-    currentPath: String,
-    func: (String, DataType, Any, FoldingPhase) => Unit
+  tuple: Tuple,
+  schema: DataType,
+  currentPath: String,
+  func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   val tuple2 = tuple.asInstanceOf[Tuple2[String, Any]]
   val name = tuple2(0)
@@ -488,9 +484,9 @@ end unfoldDataType
   )
 )
 def unfoldTuple(
-    tuple: Tuple,
-    schema: Schema,
-    func: (String, DataType, Any, FoldingPhase) => Unit
+  tuple: Tuple,
+  schema: Schema,
+  func: (String, DataType, Any, FoldingPhase) => Unit
 ): Either[String, Unit] =
   val tuples =
     try Success(tuple.toArray.map(_.asInstanceOf[(String, Any)]).toMap)
@@ -527,16 +523,10 @@ def unfoldTuple(
 end unfoldTuple
 
 @SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.throw",
-    "scalafix:DisableSyntax.var"
-  )
+  Array("scalafix:DisableSyntax.throw", "scalafix:DisableSyntax.var")
 )
 @throws[IllegalArgumentException]
-def jsonToTupleChecked(
-    json: Json,
-    schema: Schema
-): Tuple =
+def jsonToTupleChecked(json: Json, schema: Schema): Tuple =
   var tuple: Tuple = EmptyTuple
   schema.records.reverse.foreach(pair =>
     tuple = (
@@ -705,16 +695,10 @@ def jsonToTupleChecked(
 end jsonToTupleChecked
 
 @SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.throw",
-    "scalafix:DisableSyntax.asInstanceOf"
-  )
+  Array("scalafix:DisableSyntax.throw", "scalafix:DisableSyntax.asInstanceOf")
 )
 @throws[IllegalArgumentException]
-def tupleToJsonChecked(
-    tuple: Tuple,
-    schema: Schema
-): Json =
+def tupleToJsonChecked(tuple: Tuple, schema: Schema): Json =
   val tupleFields = tuple.toArray.map(_.asInstanceOf[(String, Any)]).toMap
   Json.fromFields(
     schema.records.reverse.map(pair =>
@@ -809,9 +793,7 @@ def tupleToJsonChecked(
                 case Required =>
                   Json
                     .fromDouble(tupleFieldValue.asInstanceOf[Double])
-                    .getOrElse(
-                      throw IllegalArgumentException(s"Wrong value")
-                    )
+                    .getOrElse(throw IllegalArgumentException(s"Wrong value"))
                 case Repeated =>
                   Json.fromValues(
                     tupleFieldValue
@@ -841,9 +823,7 @@ def tupleToJsonChecked(
                 case Required =>
                   Json
                     .fromFloat(tupleFieldValue.asInstanceOf[Float])
-                    .getOrElse(
-                      throw IllegalArgumentException(s"Wrong value")
-                    )
+                    .getOrElse(throw IllegalArgumentException(s"Wrong value"))
                 case Repeated =>
                   Json.fromValues(
                     tupleFieldValue
@@ -956,13 +936,8 @@ def tupleToJsonChecked(
   )
 end tupleToJsonChecked
 
-def jsonToTuple(
-    json: Json,
-    schema: Schema
-): Either[ParsingFailure, Tuple] =
-  Try(
-    jsonToTupleChecked(json, schema)
-  ) match
+def jsonToTuple(json: Json, schema: Schema): Either[ParsingFailure, Tuple] =
+  Try(jsonToTupleChecked(json, schema)) match
     case Failure(ex) =>
       Left(
         ParsingFailure(
@@ -975,13 +950,8 @@ def jsonToTuple(
   end match
 end jsonToTuple
 
-def tupleToJson(
-    tuple: Tuple,
-    schema: Schema
-): Either[ParsingFailure, Json] =
-  Try(
-    tupleToJsonChecked(tuple, schema)
-  ) match
+def tupleToJson(tuple: Tuple, schema: Schema): Either[ParsingFailure, Json] =
+  Try(tupleToJsonChecked(tuple, schema)) match
     case Failure(ex) =>
       Left(
         ParsingFailure(
@@ -999,11 +969,7 @@ def parseTuple(tuple: Tuple, schema: Schema): Either[String, Tuple] =
 end parseTuple
 
 given Eq[Tuple] with
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.asInstanceOf"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
   override def eqv(x: Tuple, y: Tuple): Boolean =
     val xTupleFields = x.toArray.map(_.asInstanceOf[(String, Any)]).toMap
     val yTupleFields = x.toArray.map(_.asInstanceOf[(String, Any)]).toMap

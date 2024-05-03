@@ -27,10 +27,7 @@ class MappingDataTypeSpec extends AnyFlatSpec with Matchers:
         "domain" -> StringType(),
         "sub-domain" -> StringType(),
         "nested" -> StructType(
-          List(
-            "nestedField1" -> IntType(),
-            "nestedField2" -> IntType()
-          )
+          List("nestedField1" -> IntType(), "nestedField2" -> IntType())
         )
       )
     )

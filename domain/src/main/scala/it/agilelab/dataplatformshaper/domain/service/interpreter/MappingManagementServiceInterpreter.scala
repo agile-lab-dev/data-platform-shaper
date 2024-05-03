@@ -7,6 +7,7 @@ import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
+import it.agilelab.dataplatformshaper.domain.model.given
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -34,8 +35,8 @@ import java.util.UUID
 import scala.collection.mutable
 
 class MappingManagementServiceInterpreter[F[_]: Sync](
-    typeManagementService: TypeManagementService[F],
-    instanceManagementService: InstanceManagementService[F]
+  typeManagementService: TypeManagementService[F],
+  instanceManagementService: InstanceManagementService[F]
 ) extends MappingManagementService[F]
     with InstanceManagementServiceInterpreterCommonFunctions[F]:
 
@@ -44,7 +45,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   val repository: KnowledgeGraph[F] = typeManagementService.repository
 
   override def create(
-      mappingDefinition: MappingDefinition
+    mappingDefinition: MappingDefinition
   ): F[Either[ManagementServiceError, Unit]] =
     val key = mappingDefinition.mappingKey
     val mapper = mappingDefinition.mapper
@@ -98,18 +99,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     )
 
     val initialStatements = List(
-      statement(
-        mappedToTriple1,
-        L2
-      ),
-      statement(
-        mappedToTriple2,
-        L2
-      ),
-      statement(
-        mappedToTriple3,
-        L2
-      )
+      statement(mappedToTriple1, L2),
+      statement(mappedToTriple2, L2),
+      statement(mappedToTriple3, L2)
     )
 
     (for {
@@ -211,7 +203,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   end create
 
   def read(
-      mappingKey: MappingKey
+    mappingKey: MappingKey
   ): F[Either[ManagementServiceError, MappingDefinition]] =
     val query =
       s"""
@@ -260,8 +252,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   end read
 
   def update(
-      mappingKey: MappingKey,
-      mapper: Tuple
+    mappingKey: MappingKey,
+    mapper: Tuple
   ): F[Either[ManagementServiceError, Unit]] =
     (for {
       mappings <- EitherT(
@@ -283,19 +275,13 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       (_, _, _, pairs, mappingId) = firstMapping
       oldStatements = pairs.toList.map { case (key: String, value: String) =>
-        val mappedToTriple1 = triple(
-          iri(ns, mappingId),
-          iri(ns, key),
-          literal(value)
-        )
+        val mappedToTriple1 =
+          triple(iri(ns, mappingId), iri(ns, key), literal(value))
         statement(mappedToTriple1, L2)
       }
       newStatements = mapper.toList.map { case (key: String, value: String) =>
-        val mappedToTriple1 = triple(
-          iri(ns, mappingId),
-          iri(ns, key),
-          literal(value)
-        )
+        val mappedToTriple1 =
+          triple(iri(ns, mappingId), iri(ns, key), literal(value))
         statement(mappedToTriple1, L2)
       }
       _ <- EitherT.liftF(
@@ -322,9 +308,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield ()).value
   end update
 
-  def delete(
-      mappingKey: MappingKey
-  ): F[Either[ManagementServiceError, Unit]] =
+  def delete(mappingKey: MappingKey): F[Either[ManagementServiceError, Unit]] =
     (for {
       existingInstances <- EitherT(
         queryMappedInstances(
@@ -380,19 +364,10 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             mappingKey.sourceEntityTypeName
           ) && targetEntityType.name.equals(mappingKey.targetEntityTypeName)
       }
-      (
-        mappingName,
-        sourceEntityType,
-        targetEntityType,
-        mapper,
-        mapperId
-      ) = filteredMappings.head
+      (mappingName, sourceEntityType, targetEntityType, mapper, mapperId) =
+        filteredMappings.head
       firstMappingDefinition = MappingDefinition(
-        MappingKey(
-          mappingName,
-          sourceEntityType.name,
-          targetEntityType.name
-        ),
+        MappingKey(mappingName, sourceEntityType.name, targetEntityType.name),
         mapper
       )
       _ <- EitherT(
@@ -417,7 +392,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   end delete
 
   override def exist(
-      mapperKey: MappingKey
+    mapperKey: MappingKey
   ): F[Either[ManagementServiceError, Boolean]] =
     val query =
       s"""
@@ -443,12 +418,12 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
   end exist
 
   override def createMappedInstances(
-      sourceInstanceId: String
+    sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
     val completedOperations: scala.collection.mutable.Stack[Boolean] =
       scala.collection.mutable.Stack.empty[Boolean]
     def createMappedInstancesNoCheck(
-        sourceInstanceId: String
+      sourceInstanceId: String
     ): F[Either[ManagementServiceError, Unit]] =
       (for {
         sourceInstance <- EitherT(
@@ -461,6 +436,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             sourceInstance.entityTypeName
           )
         )
+        // format: off
         ids <- EitherT(
           summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
             val tuple: Either[ManagementServiceError, Tuple] =
@@ -492,7 +468,6 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               NS.MAPPEDBY,
               mapperIri
             )
-            // format: off
             val initialStatements = List(
               statement(mappedToTriple1, L2),
               statement(mappedToTriple2, L2),

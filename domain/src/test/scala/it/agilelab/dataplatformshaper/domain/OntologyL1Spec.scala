@@ -167,17 +167,11 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       val exampleSchema: StructType = StructType(
-        List(
-          "ExampleField1" -> StringType(),
-          "ExampleField2" -> StringType()
-        )
+        List("ExampleField1" -> StringType(), "ExampleField2" -> StringType())
       )
 
-      val exampleEntityType = EntityType(
-        "ExampleEntityType",
-        Set("ExampleTrait"),
-        exampleSchema
-      )
+      val exampleEntityType =
+        EntityType("ExampleEntityType", Set("ExampleTrait"), exampleSchema)
 
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
@@ -361,9 +355,8 @@ class OntologyL1Spec extends CommonSpec:
         trservice.unlink("DataProduct", Relationship.hasPart, "OutputPort")
       } asserting (res =>
         res should matchPattern {
-          case Left(
-                ManagementServiceError(List(error))
-              ) if error.contains("have linked instances") =>
+          case Left(ManagementServiceError(List(error)))
+              if error.contains("have linked instances") =>
         }
       )
     }

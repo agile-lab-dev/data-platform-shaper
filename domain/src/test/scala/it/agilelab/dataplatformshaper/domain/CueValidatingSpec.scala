@@ -48,19 +48,13 @@ class CueValidatingSpec extends AnyFlatSpec with Matchers:
           "nest1" -> StringType(),
           "nest2" -> StringType(),
           "furtherNested" -> StructType(
-            List(
-              "nest3" -> StringType(),
-              "nest4" -> StringType()
-            ),
+            List("nest3" -> StringType(), "nest4" -> StringType()),
             Repeated
           )
         )
       ),
       "columns" -> StructType(
-        List(
-          "name" -> StringType(),
-          "type" -> StringType()
-        ),
+        List("name" -> StringType(), "type" -> StringType()),
         Repeated
       )
     )
@@ -102,14 +96,12 @@ class CueValidatingSpec extends AnyFlatSpec with Matchers:
       parse(
         "{\"name\": \"Alice Williams\", \"age\": 29, \"city\": \"San Francisco\"}"
       ).getOrElse(""),
-      parse(
-        "{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}")
+        .getOrElse("")
     ),
     "aJsonNullable" -> Some(
-      parse(
-        "{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}")
+        .getOrElse("")
     ),
     "aFloat" -> 1.23f,
     "aFloatRepeated" -> List(1.23f, 3.21f),
@@ -169,14 +161,12 @@ class CueValidatingSpec extends AnyFlatSpec with Matchers:
       parse(
         "{\"name\": \"Alice Williams\", \"age\": 29, \"city\": \"San Francisco\"}"
       ).getOrElse(""),
-      parse(
-        "{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}")
+        .getOrElse("")
     ),
     "aJsonNullable" -> Some(
-      parse(
-        "{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}")
+        .getOrElse("")
     ),
     "aFloat" -> 1.23f,
     "aFloatRepeated" -> List(1.23f, 3.21f),

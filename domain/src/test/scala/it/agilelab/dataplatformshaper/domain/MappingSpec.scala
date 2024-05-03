@@ -37,11 +37,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scala.concurrent.duration.*
 import scala.language.{dynamics, implicitConversions}
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.=="
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.=="))
 class MappingSpec extends CommonSpec:
 
   given Equality[MappingDefinition] with
@@ -67,331 +63,182 @@ class MappingSpec extends CommonSpec:
   private val sourceType = EntityType(
     "SourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetType1 = EntityType(
     "TargetType1",
     Set("MappingSource", "MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetType2 = EntityType(
     "TargetType2",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetType3 = EntityType(
     "TargetType3",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetType4 = EntityType(
     "TargetType4",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val sourceCycleType = EntityType(
     "SourceCycleType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetCycleType1 = EntityType(
     "TargetCycleType1",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetCycleType2 = EntityType(
     "TargetCycleType2",
     Set("MappingTarget", "MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val invalidSourceType = EntityType(
     "InvalidSourceType",
     Set(),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val invalidTargetType = EntityType(
     "InvalidTargetType",
     Set(),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateSourceType = EntityType(
     "UpdateSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateTargetType = EntityType(
     "UpdateTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val readSourceType = EntityType(
     "ReadSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val readTargetType = EntityType(
     "ReadTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateMappingSourceType = EntityType(
     "UpdateMappingSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateMappingMidType = EntityType(
     "UpdateMappingMidType",
     Set("MappingTarget", "MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateMappingTargetType = EntityType(
     "UpdateMappingTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val deleteMappingSourceType = EntityType(
     "DeleteMappingSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val deleteMappingMidType = EntityType(
     "DeleteMappingMidType",
     Set("MappingSource", "MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val deleteMappingTargetType = EntityType(
     "DeleteMappingTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val twoMappedInstancesSourceType = EntityType(
     "TwoMappedInstancesSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val twoMappedInstancesTargetType = EntityType(
     "TwoMappedInstancesTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentCreationSourceType = EntityType(
     "IdempotentCreationSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentCreationMiddleType = EntityType(
     "IdempotentCreationMiddleType",
     Set("MappingSource", "MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentCreationTargetType = EntityType(
     "IdempotentCreationTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentDeletionSourceType = EntityType(
     "IdempotentDeletionSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentDeletionMiddleType = EntityType(
     "IdempotentDeletionMiddleType",
     Set("MappingSource", "MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentDeletionTargetType = EntityType(
     "IdempotentDeletionTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val createDirectlyTargetType = EntityType(
     "CreateDirectlyTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
-  private val mapperTuple = (
-    "field1" -> "source.get('field1')",
-    "field2" -> "source.get('field2')"
-  )
+  private val mapperTuple =
+    ("field1" -> "source.get('field1')", "field2" -> "source.get('field2')")
 
-  private val updatedMapperTuple = (
-    "field1" -> "source.get('field2')",
-    "field2" -> "source.get('field1')"
-  )
+  private val updatedMapperTuple =
+    ("field1" -> "source.get('field2')", "field2" -> "source.get('field1')")
 
   "Creating mapping instances" - {
     "works" in {
@@ -498,15 +345,10 @@ class MappingSpec extends CommonSpec:
           res1 <- EitherT(
             iservice.create(
               "SourceType",
-              (
-                "field1" -> "value5",
-                "field2" -> "value6"
-              )
+              ("field1" -> "value5", "field2" -> "value6")
             )
           )
-          _ <- EitherT(
-            mservice.createMappedInstances(res1)
-          )
+          _ <- EitherT(mservice.createMappedInstances(res1))
           lt1 <- EitherT(
             iservice.list(
               "TargetType1",
@@ -540,17 +382,9 @@ class MappingSpec extends CommonSpec:
             )
           )
           _ <- EitherT(
-            iservice.update(
-              res1,
-              (
-                "field1" -> "value7",
-                "field2" -> "value8"
-              )
-            )
+            iservice.update(res1, ("field1" -> "value7", "field2" -> "value8"))
           )
-          _ <- EitherT(
-            mservice.updateMappedInstances(res1)
-          )
+          _ <- EitherT(mservice.updateMappedInstances(res1))
           lt5 <- EitherT(
             iservice.list(
               "TargetType1",
@@ -768,12 +602,7 @@ class MappingSpec extends CommonSpec:
               None
             )
           )
-        } yield (
-          lt1.length,
-          lt2.length,
-          lt3.length,
-          lt4.length
-        )).value
+        } yield (lt1.length, lt2.length, lt3.length, lt4.length)).value
       } asserting (ret =>
         ret should matchPattern { case Right((0, 0, 0, 0)) => }
       )
@@ -804,11 +633,7 @@ class MappingSpec extends CommonSpec:
           res <- EitherT(
             mservice.create(
               MappingDefinition(
-                MappingKey(
-                  "mapping1",
-                  "SourceType",
-                  "TargetType1"
-                ),
+                MappingKey("mapping1", "SourceType", "TargetType1"),
                 mapperTuple
               )
             )
@@ -888,11 +713,7 @@ class MappingSpec extends CommonSpec:
             mservice
               .getMappingsForEntityType(logger, tservice, "SourceCycleType")
           )
-        } yield (
-          res1,
-          res2,
-          mappers
-        )).value
+        } yield (res1, res2, mappers)).value
 
       } asserting (ret =>
         ret should matchPattern {
@@ -944,10 +765,7 @@ class MappingSpec extends CommonSpec:
             mservice
               .getMappingsForEntityType(logger, tservice, "InvalidSourceType")
           )
-        } yield (
-          res1,
-          mappers
-        )).value
+        } yield (res1, mappers)).value
 
       } asserting (ret =>
         ret should matchPattern {
@@ -995,15 +813,10 @@ class MappingSpec extends CommonSpec:
           res1 <- EitherT(
             iservice.create(
               "UpdateSourceType",
-              (
-                "field1" -> "value10",
-                "field2" -> "value12"
-              )
+              ("field1" -> "value10", "field2" -> "value12")
             )
           )
-          _ <- EitherT(
-            mservice.createMappedInstances(res1)
-          )
+          _ <- EitherT(mservice.createMappedInstances(res1))
           lt1 <- EitherT(
             iservice.list(
               "UpdateTargetType",
@@ -1019,10 +832,7 @@ class MappingSpec extends CommonSpec:
           res <- EitherT(
             iservice.update(
               firstElement,
-              (
-                "field1" -> "value13",
-                "field2" -> "value14"
-              )
+              ("field1" -> "value13", "field2" -> "value14")
             )
           )
         } yield res).value
@@ -1060,10 +870,7 @@ class MappingSpec extends CommonSpec:
             res <- EitherT(
               iservice.create(
                 createDirectlyTargetType.name,
-                (
-                  "field1" -> "value10",
-                  "field2" -> "value12"
-                )
+                ("field1" -> "value10", "field2" -> "value12")
               )
             )
           } yield res).value
@@ -1071,9 +878,7 @@ class MappingSpec extends CommonSpec:
         .asserting {
           case Left(error) => succeed
           case _ =>
-            fail(
-              s"Expected an error during the creation of the instance"
-            )
+            fail(s"Expected an error during the creation of the instance")
         }
     }
   }
@@ -1184,9 +989,7 @@ class MappingSpec extends CommonSpec:
           case Right(actualMappingDef) =>
             actualMappingDef shouldEqual expectedMappingDef
           case Left(error) =>
-            fail(
-              s"Expected a mapping definition but received error: $error"
-            )
+            fail(s"Expected a mapping definition but received error: $error")
         }
     }
   }

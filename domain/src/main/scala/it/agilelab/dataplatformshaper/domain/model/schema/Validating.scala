@@ -11,8 +11,8 @@ import scala.util.{Failure, Success, Using}
 
 def generateCueModel(schema: Schema): String =
   def internalGenerateCueModel(
-      schema: StructType,
-      currentIndentation: Int
+    schema: StructType,
+    currentIndentation: Int
   ): String =
     val stringBuilder = StringBuilder()
 
@@ -23,10 +23,10 @@ def generateCueModel(schema: Schema): String =
     @inline def blanks: Int ?=> String = n ?=> List.fill(n)(' ').mkString
 
     def genCueConstraintsForAttribute(
-        attributeName: String,
-        mode: Mode,
-        constraints: Option[String],
-        cueType: String
+      attributeName: String,
+      mode: Mode,
+      constraints: Option[String],
+      cueType: String
     )(using currentIndentation: Int) = {
       mode match
         case Mode.Required =>
@@ -109,29 +109,23 @@ def generateCueModel(schema: Schema): String =
           given n: Int = currentIndentation
           mode match
             case Mode.Required =>
-              stringBuilder.append(
-                s"""$blanks${sanitizeAttributeName(
-                    attributeName
-                  )}!: {\n${internalGenerateCueModel(str, n + 2)}} //GEN"""
-              )
+              stringBuilder.append(s"""$blanks${sanitizeAttributeName(
+                  attributeName
+                )}!: {\n${internalGenerateCueModel(str, n + 2)}} //GEN""")
             case Mode.Repeated =>
-              stringBuilder.append(
-                s"""$blanks${sanitizeAttributeName(
-                    attributeName
-                  )}: [ ...{\n${internalGenerateCueModel(
-                    str,
-                    n + 2
-                  )}$blanks}] //GEN"""
-              )
+              stringBuilder.append(s"""$blanks${sanitizeAttributeName(
+                  attributeName
+                )}: [ ...{\n${internalGenerateCueModel(
+                  str,
+                  n + 2
+                )}$blanks}] //GEN""")
             case Mode.Nullable =>
-              stringBuilder.append(
-                s"""$blanks${sanitizeAttributeName(
-                    attributeName
-                  )}?: null | ({\n${internalGenerateCueModel(
-                    str,
-                    n + 2
-                  )}}) //GEN"""
-              )
+              stringBuilder.append(s"""$blanks${sanitizeAttributeName(
+                  attributeName
+                )}?: null | ({\n${internalGenerateCueModel(
+                  str,
+                  n + 2
+                )}}) //GEN""")
           end match
       stringBuilder.append('\n')
     )
@@ -147,9 +141,7 @@ given Releasable[File] with
   end release
 end given
 
-def cueValidateModel(
-    schema: Schema
-): Either[List[String], Unit] =
+def cueValidateModel(schema: Schema): Either[List[String], Unit] =
 
   Using.Manager { use =>
     val cueFile = use(File.createTempFile("test", ".cue"))

@@ -69,19 +69,13 @@ class ValidatingSpec extends CommonSpec:
           "nest1" -> StringType(),
           "nest2" -> StringType(),
           "furtherNested" -> StructType(
-            List(
-              "nest3" -> StringType(),
-              "nest4" -> StringType()
-            ),
+            List("nest3" -> StringType(), "nest4" -> StringType()),
             Repeated
           )
         )
       ),
       "columns" -> StructType(
-        List(
-          "name" -> StringType(),
-          "type" -> StringType()
-        ),
+        List("name" -> StringType(), "type" -> StringType()),
         Repeated
       )
     )
@@ -121,19 +115,13 @@ class ValidatingSpec extends CommonSpec:
           "nest1" -> StringType(),
           "nest2" -> StringType(),
           "furtherNested" -> StructType(
-            List(
-              "nest3" -> StringType(),
-              "nest4" -> StringType()
-            ),
+            List("nest3" -> StringType(), "nest4" -> StringType()),
             Repeated
           )
         )
       ),
       "columns" -> StructType(
-        List(
-          "name" -> StringType(),
-          "type" -> StringType()
-        ),
+        List("name" -> StringType(), "type" -> StringType()),
         Repeated
       )
     )
@@ -173,19 +161,13 @@ class ValidatingSpec extends CommonSpec:
           "nest1" -> StringType(),
           "nest2" -> StringType(),
           "furtherNested" -> StructType(
-            List(
-              "nest3" -> StringType(),
-              "nest4" -> StringType()
-            ),
+            List("nest3" -> StringType(), "nest4" -> StringType()),
             Repeated
           )
         )
       ),
       "columns" -> StructType(
-        List(
-          "name" -> StringType(),
-          "type" -> StringType()
-        ),
+        List("name" -> StringType(), "type" -> StringType()),
         Repeated
       )
     )
@@ -227,14 +209,12 @@ class ValidatingSpec extends CommonSpec:
       parse(
         "{\"name\": \"Alice Williams\", \"age\": 29, \"city\": \"San Francisco\"}"
       ).getOrElse(""),
-      parse(
-        "{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}")
+        .getOrElse("")
     ),
     "aJsonNullable" -> Some(
-      parse(
-        "{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}")
+        .getOrElse("")
     ),
     "aFloat" -> 1.23f,
     "aFloatRepeated" -> List(1.23f, 3.21f),
@@ -294,14 +274,12 @@ class ValidatingSpec extends CommonSpec:
       parse(
         "{\"name\": \"Alice Williams\", \"age\": 29, \"city\": \"San Francisco\"}"
       ).getOrElse(""),
-      parse(
-        "{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}")
+        .getOrElse("")
     ),
     "aJsonNullable" -> Some(
-      parse(
-        "{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}")
+        .getOrElse("")
     ),
     "aFloat" -> 1.23f,
     "aFloatRepeated" -> List(1.23f, 3.21f),
@@ -361,14 +339,12 @@ class ValidatingSpec extends CommonSpec:
       parse(
         "{\"name\": \"Alice Williams\", \"age\": 29, \"city\": \"San Francisco\"}"
       ).getOrElse(""),
-      parse(
-        "{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Robert Brown\", \"age\": 45, \"city\": \"Chicago\"}")
+        .getOrElse("")
     ),
     "aJsonNullable" -> Some(
-      parse(
-        "{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}"
-      ).getOrElse("")
+      parse("{\"name\": \"Olivia Davis\", \"age\": 31, \"city\": \"Houston\"}")
+        .getOrElse("")
     ),
     "aFloat" -> 1.23f,
     "aFloatRepeated" -> List(1.23f, 3.21f),
@@ -408,10 +384,7 @@ class ValidatingSpec extends CommonSpec:
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
-        val entityType = EntityType(
-          "ValidationDataCollectionType",
-          schema
-        )
+        val entityType = EntityType("ValidationDataCollectionType", schema)
         service.create(entityType)
       } asserting (ret =>
         ret should matchPattern { case Right(_) =>
@@ -436,10 +409,7 @@ class ValidatingSpec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        iservice.create(
-          "ValidationDataCollectionType",
-          tuple
-        )
+        iservice.create("ValidationDataCollectionType", tuple)
       } asserting (_ should matchPattern { case Right(_) => })
     }
   }
@@ -460,10 +430,7 @@ class ValidatingSpec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        iservice.create(
-          "ValidationDataCollectionType",
-          nonConformingTuple
-        )
+        iservice.create("ValidationDataCollectionType", nonConformingTuple)
       } asserting (_ should matchPattern {
         case Left(ManagementServiceError(errors)) if errors.size.equals(5) =>
       })
@@ -488,16 +455,10 @@ class ValidatingSpec extends CommonSpec:
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
-            iservice.create(
-              "ValidationDataCollectionType",
-              tuple
-            )
+            iservice.create("ValidationDataCollectionType", tuple)
           )
           _ <- EitherT[IO, ManagementServiceError, String](
-            iservice.update(
-              uid,
-              conformingTupleForUpdate
-            )
+            iservice.update(uid, conformingTupleForUpdate)
           )
           read <- EitherT[IO, ManagementServiceError, Entity](
             iservice.read(uid)
@@ -536,16 +497,10 @@ class ValidatingSpec extends CommonSpec:
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
-            iservice.create(
-              "ValidationDataCollectionType",
-              tuple
-            )
+            iservice.create("ValidationDataCollectionType", tuple)
           )
           update <- EitherT[IO, ManagementServiceError, String](
-            iservice.update(
-              uid,
-              nonConformingTuple
-            )
+            iservice.update(uid, nonConformingTuple)
           )
         } yield update).value
       } asserting {
@@ -572,14 +527,9 @@ class ValidatingSpec extends CommonSpec:
         "repo1",
         false
       )
-      val entityType = EntityType(
-        "UpdateDataCollectionType",
-        schema
-      )
-      val updatedEntityType = EntityType(
-        "UpdateDataCollectionType",
-        schemaAfterUpdate
-      )
+      val entityType = EntityType("UpdateDataCollectionType", schema)
+      val updatedEntityType =
+        EntityType("UpdateDataCollectionType", schemaAfterUpdate)
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
@@ -610,14 +560,9 @@ class ValidatingSpec extends CommonSpec:
         "repo1",
         false
       )
-      val entityType = EntityType(
-        "UpdateDataCollectionType",
-        schema
-      )
-      val updatedEntityType = EntityType(
-        "UpdateDataCollectionType",
-        wrongSchemaAfterUpdate
-      )
+      val entityType = EntityType("UpdateDataCollectionType", schema)
+      val updatedEntityType =
+        EntityType("UpdateDataCollectionType", wrongSchemaAfterUpdate)
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
           Rdf4jKnowledgeGraph[IO](session)
@@ -652,11 +597,7 @@ class ValidatingSpec extends CommonSpec:
       )
       val entityType = EntityType(
         "TypeWithWrongConstraints",
-        StructType(
-          List(
-            "anInt" -> IntType(constraints = Some("< NOTANUMBER"))
-          )
-        )
+        StructType(List("anInt" -> IntType(constraints = Some("< NOTANUMBER"))))
       )
       session.use { session =>
         val repository: Rdf4jKnowledgeGraph[IO] =
@@ -689,20 +630,12 @@ class ValidatingSpec extends CommonSpec:
       )
       val entityType = EntityType(
         "YetAnotherType",
-        StructType(
-          List(
-            "anInt" -> IntType(constraints = Some("< 10"))
-          )
-        )
+        StructType(List("anInt" -> IntType(constraints = Some("< 10"))))
       )
 
       val wrongEntityType = EntityType(
         "YetAnotherType",
-        StructType(
-          List(
-            "anInt" -> IntType(constraints = Some("< NOTANUMBER"))
-          )
-        )
+        StructType(List("anInt" -> IntType(constraints = Some("< NOTANUMBER"))))
       )
 
       session.use { session =>

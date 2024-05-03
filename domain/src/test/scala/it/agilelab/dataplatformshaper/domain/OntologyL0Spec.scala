@@ -27,11 +27,7 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 import scala.util.Right
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.asInstanceOf"
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
 class OntologyL0Spec extends CommonSpec:
 
   given cache: Cache[IO, String, EntityType] = CaffeineCache
@@ -117,10 +113,7 @@ class OntologyL0Spec extends CommonSpec:
       "longRepeated" -> LongType(Repeated),
       "longNullable" -> LongType(Nullable),
       "columns" -> StructType(
-        List(
-          "name" -> StringType(),
-          "type" -> StringType()
-        ),
+        List("name" -> StringType(), "type" -> StringType()),
         Repeated
       ),
       "aBool" -> BooleanType(),
@@ -139,17 +132,11 @@ class OntologyL0Spec extends CommonSpec:
         )
       ),
       "optionalStruct" -> StructType(
-        List(
-          "nest1" -> StringType(),
-          "nest2" -> StringType()
-        ),
+        List("nest1" -> StringType(), "nest2" -> StringType()),
         Nullable
       ),
       "emptyOptionalStruct" -> StructType(
-        List(
-          "nest1" -> StringType(),
-          "nest2" -> StringType()
-        ),
+        List("nest1" -> StringType(), "nest2" -> StringType()),
         Nullable
       )
     )
@@ -285,12 +272,7 @@ class OntologyL0Spec extends CommonSpec:
       "nest2" -> "ciccio2",
       "intList" -> List(1, 2, 3)
     ),
-    "optionalStruct" -> Some(
-      (
-        "nest1" -> "ciccio1",
-        "nest2" -> "ciccio2"
-      )
-    ),
+    "optionalStruct" -> Some(("nest1" -> "ciccio1", "nest2" -> "ciccio2")),
     "emptyOptionalStruct" -> None
   )
 
@@ -423,45 +405,26 @@ class OntologyL0Spec extends CommonSpec:
       "nest2" -> "ciccio4",
       "intList" -> List(1, 2, 3)
     ),
-    "optionalStruct" -> Some(
-      (
-        "nest1" -> "ciccio5",
-        "nest2" -> "ciccio6"
-      )
-    ),
+    "optionalStruct" -> Some(("nest1" -> "ciccio5", "nest2" -> "ciccio6")),
     "emptyOptionalStruct" -> None
   )
 
   val repeatedTypeSchema: StructType = StructType(
     List(
       "columns" -> StructType(
-        List(
-          "name" -> StringType(),
-          "type" -> StringType()
-        ),
+        List("name" -> StringType(), "type" -> StringType()),
         Repeated
       ),
       "additionalField" -> StringType(),
-      "externalStruct" -> StructType(
-        List("inner-field" -> StringType())
-      )
+      "externalStruct" -> StructType(List("inner-field" -> StringType()))
     )
   )
 
   val repeatedTypeTuple: Tuple = Tuple3(
     "columns" -> List(
-      (
-        "type" -> "Int",
-        "name" -> "Age"
-      ),
-      (
-        "type" -> "String",
-        "name" -> "FamilyNane"
-      ),
-      (
-        "type" -> "String",
-        "name" -> "FirstName"
-      )
+      ("type" -> "Int", "name" -> "Age"),
+      ("type" -> "String", "name" -> "FamilyNane"),
+      ("type" -> "String", "name" -> "FirstName")
     ),
     "additionalField" -> "Example",
     "externalStruct" -> Tuple1("inner-field" -> "StructExample")
@@ -483,10 +446,7 @@ class OntologyL0Spec extends CommonSpec:
         "ListEntityTypes1",
         Set(),
         StructType(
-          List(
-            "field1" -> StringType(),
-            "field2" -> StringType()
-          )
+          List("field1" -> StringType(), "field2" -> StringType())
         ): Schema
       )
 
@@ -494,17 +454,11 @@ class OntologyL0Spec extends CommonSpec:
         "ListEntityTypes2",
         Set(),
         StructType(
-          List(
-            "field1" -> StringType(),
-            "field2" -> StringType()
-          )
+          List("field1" -> StringType(), "field2" -> StringType())
         ): Schema
       )
 
-      val testResult: IO[Either[
-        ManagementServiceError,
-        List[EntityType]
-      ]] =
+      val testResult: IO[Either[ManagementServiceError, List[EntityType]]] =
         session.use { session =>
           val repository: Rdf4jKnowledgeGraph[IO] =
             Rdf4jKnowledgeGraph[IO](session)
@@ -560,10 +514,7 @@ class OntologyL0Spec extends CommonSpec:
             List(
               "nest1" -> StringType(),
               "nest2" -> StructType(
-                List(
-                  "nest3" -> StringType(),
-                  "nest4" -> StringType()
-                )
+                List("nest3" -> StringType(), "nest4" -> StringType())
               )
             )
           )
@@ -575,10 +526,7 @@ class OntologyL0Spec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 
-        val entityType = EntityType(
-          "TestType",
-          schema
-        )
+        val entityType = EntityType("TestType", schema)
 
         service.create(entityType) *>
           service.read("TestType").map(_.map(_.schema))
@@ -617,10 +565,7 @@ class OntologyL0Spec extends CommonSpec:
             List(
               "nest1" -> StringType(),
               "nest2" -> StructType(
-                List(
-                  "nest3" -> StringType(),
-                  "nest4" -> StringType()
-                )
+                List("nest3" -> StringType(), "nest4" -> StringType())
               )
             )
           )
@@ -633,10 +578,7 @@ class OntologyL0Spec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 
-        val entityType = EntityType(
-          "TestDeleteType",
-          schema
-        )
+        val entityType = EntityType("TestDeleteType", schema)
 
         for {
           _ <- service.create(entityType)
@@ -750,10 +692,7 @@ class OntologyL0Spec extends CommonSpec:
             List(
               "nest1" -> StringType(),
               "nest2" -> StructType(
-                List(
-                  "nest3" -> StringType(),
-                  "nest4" -> StringType()
-                )
+                List("nest3" -> StringType(), "nest4" -> StringType())
               )
             )
           )
@@ -766,16 +705,10 @@ class OntologyL0Spec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 
-        val fatherEntityType = EntityType(
-          "FatherDeleteEntityType",
-          schema
-        )
+        val fatherEntityType = EntityType("FatherDeleteEntityType", schema)
 
-        val sonEntityType = EntityType(
-          "SonDeleteEntityType",
-          schema,
-          fatherEntityType
-        )
+        val sonEntityType =
+          EntityType("SonDeleteEntityType", schema, fatherEntityType)
 
         for {
           _ <- service.create(fatherEntityType)
@@ -797,12 +730,7 @@ class OntologyL0Spec extends CommonSpec:
           inCacheAfterDeleted
         )
       }) asserting {
-        case (
-              true,
-              Left(ManagementServiceError(_)),
-              Right(_),
-              true
-            ) =>
+        case (true, Left(ManagementServiceError(_)), Right(_), true) =>
           succeed
         case x =>
           fail("EntityType was not deleted successfully")
@@ -822,11 +750,7 @@ class OntologyL0Spec extends CommonSpec:
         false
       )
 
-      val schema: StructType = StructType(
-        List(
-          "name" -> StringType()
-        )
-      )
+      val schema: StructType = StructType(List("name" -> StringType()))
 
       val testResult: IO[Either[
         ManagementServiceError,
@@ -839,10 +763,7 @@ class OntologyL0Spec extends CommonSpec:
           val service = TypeManagementServiceInterpreter[IO](trservice)
           val ims = InstanceManagementServiceInterpreter[IO](service)
 
-          val entityType = EntityType(
-            "DataProductType",
-            schema
-          )
+          val entityType = EntityType("DataProductType", schema)
 
           (for {
             _ <- EitherT.liftF(service.create(entityType))
@@ -871,11 +792,7 @@ class OntologyL0Spec extends CommonSpec:
         false
       )
 
-      val schema: StructType = StructType(
-        List(
-          "name" -> StringType()
-        )
-      )
+      val schema: StructType = StructType(List("name" -> StringType()))
 
       val testResult: IO[Either[
         ManagementServiceError,
@@ -888,16 +805,9 @@ class OntologyL0Spec extends CommonSpec:
           val service = TypeManagementServiceInterpreter[IO](trservice)
           val ims = InstanceManagementServiceInterpreter[IO](service)
 
-          val fatherEntityType = EntityType(
-            "FatherType",
-            schema
-          )
+          val fatherEntityType = EntityType("FatherType", schema)
 
-          val sonEntityType = EntityType(
-            "SonType",
-            schema,
-            fatherEntityType
-          )
+          val sonEntityType = EntityType("SonType", schema, fatherEntityType)
 
           (for {
             _ <- EitherT.liftF(service.create(fatherEntityType))
@@ -931,10 +841,8 @@ class OntologyL0Spec extends CommonSpec:
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 
-        val entityType = EntityType(
-          "RepeatedStructTestType",
-          repeatedTypeSchema
-        )
+        val entityType =
+          EntityType("RepeatedStructTestType", repeatedTypeSchema)
 
         service.create(entityType) *>
           service.read("RepeatedStructTestType").map(_.map(_.schema))
@@ -964,10 +872,7 @@ class OntologyL0Spec extends CommonSpec:
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
-            iservice.create(
-              "RepeatedStructTestType",
-              repeatedTypeTuple
-            )
+            iservice.create("RepeatedStructTestType", repeatedTypeTuple)
           )
           read <- EitherT[IO, ManagementServiceError, Entity](
             iservice.read(uid)
@@ -1160,10 +1065,7 @@ class OntologyL0Spec extends CommonSpec:
             )
           )
           _ <- EitherT[IO, ManagementServiceError, String](
-            iservice.update(
-              uid,
-              fileBasedDataCollectionTupleForUpdate
-            )
+            iservice.update(uid, fileBasedDataCollectionTupleForUpdate)
           )
           read <- EitherT[IO, ManagementServiceError, Entity](
             iservice.read(uid)
@@ -1274,27 +1176,17 @@ class OntologyL0Spec extends CommonSpec:
         "repo1",
         false
       )
-      val commonSchema: StructType = StructType(
-        List(
-          "commonString" -> StringType()
-        )
-      )
+      val commonSchema: StructType =
+        StructType(List("commonString" -> StringType()))
 
-      val schema: StructType = StructType(
-        List(
-          "anotherString" -> StringType()
-        )
-      )
+      val schema: StructType = StructType(List("anotherString" -> StringType()))
 
       session.use(session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 
-        val commonEntityType = EntityType(
-          "CommonEntityType",
-          commonSchema
-        )
+        val commonEntityType = EntityType("CommonEntityType", commonSchema)
 
         (for {
           _ <- EitherT[IO, ManagementServiceError, Unit](
@@ -1304,10 +1196,8 @@ class OntologyL0Spec extends CommonSpec:
             service.read("CommonEntityType")
           )
           _ <- EitherT[IO, ManagementServiceError, Unit](
-            service.create(
-              EntityType("BaseEntityType", schema),
-              "CommonEntityType"
-            )
+            service
+              .create(EntityType("BaseEntityType", schema), "CommonEntityType")
           )
           etype <- EitherT[IO, ManagementServiceError, EntityType](
             service.read("BaseEntityType")
@@ -1336,18 +1226,10 @@ class OntologyL0Spec extends CommonSpec:
         "repo1",
         false
       )
-      val schema0: Schema = StructType(
-        List(
-          "field0" -> StringType()
-        )
-      )
+      val schema0: Schema = StructType(List("field0" -> StringType()))
 
-      val schema1: Schema = StructType(
-        List(
-          "field1" -> StringType(),
-          "field3" -> StringType()
-        )
-      )
+      val schema1: Schema =
+        StructType(List("field1" -> StringType(), "field3" -> StringType()))
 
       val schema2: Schema = StructType(
         List(

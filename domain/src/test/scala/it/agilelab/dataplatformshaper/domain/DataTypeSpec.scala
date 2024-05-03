@@ -51,19 +51,13 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
             "nest1" -> StringType(),
             "nest2" -> StringType(),
             "furtherNested" -> StructType(
-              List(
-                "nest3" -> StringType(),
-                "nest4" -> StringType()
-              ),
+              List("nest3" -> StringType(), "nest4" -> StringType()),
               Repeated
             )
           )
         ),
         "columns" -> StructType(
-          List(
-            "name" -> StringType(),
-            "type" -> StringType()
-          ),
+          List("name" -> StringType(), "type" -> StringType()),
           Repeated
         )
       )
@@ -252,16 +246,10 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
         "labels" -> StringType(Repeated),
         "version" -> IntType(),
         "aStruct" -> StructType(
-          List(
-            "nest1" -> StringType(),
-            "nest2" -> StringType()
-          )
+          List("nest1" -> StringType(), "nest2" -> StringType())
         ),
         "columns" -> StructType(
-          List(
-            "name" -> StringType(),
-            "type" -> StringType()
-          ),
+          List("name" -> StringType(), "type" -> StringType()),
           Repeated
         ),
         "aNullable" -> StringType(Nullable)
@@ -372,10 +360,7 @@ class DataTypeSpec extends AnyFlatSpec with Matchers:
     val schema: Schema = StructType(
       List(
         "columns" -> StructType(
-          List(
-            "name" -> StringType(),
-            "type" -> StringType()
-          ),
+          List("name" -> StringType(), "type" -> StringType()),
           Repeated
         )
       )

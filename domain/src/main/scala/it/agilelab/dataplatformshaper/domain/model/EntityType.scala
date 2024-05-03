@@ -2,16 +2,12 @@ package it.agilelab.dataplatformshaper.domain.model
 
 import it.agilelab.dataplatformshaper.domain.model.schema.Schema
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.var"
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.var"))
 final case class EntityType(
-    name: String,
-    baseTraits: Set[String],
-    baseSchema: Schema,
-    father: Option[EntityType]
+  name: String,
+  baseTraits: Set[String],
+  baseSchema: Schema,
+  father: Option[EntityType]
 ):
   def traits: Set[String] =
     var trs = baseTraits
@@ -34,27 +30,23 @@ end EntityType
 
 object EntityType:
   def apply(
-      name: String,
-      traits: Set[String],
-      initialSchema: Schema
+    name: String,
+    traits: Set[String],
+    initialSchema: Schema
   ): EntityType = EntityType(name, traits, initialSchema, None)
   def apply(
-      name: String,
-      traits: Set[String],
-      initialSchema: Schema,
-      fatherEntityType: EntityType
+    name: String,
+    traits: Set[String],
+    initialSchema: Schema,
+    fatherEntityType: EntityType
   ): EntityType =
     EntityType(name, traits, initialSchema, Some(fatherEntityType))
   def apply(
-      name: String,
-      initialSchema: Schema,
-      fatherEntityType: EntityType
-  ): EntityType = EntityType(
-    name,
-    Set.empty[String],
-    initialSchema,
-    Some(fatherEntityType)
-  )
+    name: String,
+    initialSchema: Schema,
+    fatherEntityType: EntityType
+  ): EntityType =
+    EntityType(name, Set.empty[String], initialSchema, Some(fatherEntityType))
   def apply(name: String, initialSchema: Schema): EntityType =
     EntityType(name, Set.empty[String], initialSchema, None)
 

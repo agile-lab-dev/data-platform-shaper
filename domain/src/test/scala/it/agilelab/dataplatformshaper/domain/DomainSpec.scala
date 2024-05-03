@@ -30,11 +30,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scala.concurrent.duration.*
 import scala.language.{dynamics, implicitConversions}
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.var"
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.var"))
 class DomainSpec extends CommonSpec:
   given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
@@ -51,55 +47,33 @@ class DomainSpec extends CommonSpec:
   private val firstType = EntityType(
     "FirstType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val secondType = EntityType(
     "SecondType",
     Set("Trait1"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val thirdType = EntityType(
     "ThirdType",
     Set("MappingTarget", "MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val fourthType = EntityType(
     "FourthType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
-  private val mapperTuple = (
-    "field1" -> "source.get('field1')",
-    "field2" -> "source.get('field2')"
-  )
+  private val mapperTuple =
+    ("field1" -> "source.get('field1')", "field2" -> "source.get('field2')")
 
   def countStatements(
-      logger: Logger[IO],
-      repository: KnowledgeGraph[IO]
+    logger: Logger[IO],
+    repository: KnowledgeGraph[IO]
   ): IO[Either[ManagementServiceError, Int]] =
     val query =
       s"""
@@ -173,21 +147,13 @@ class DomainSpec extends CommonSpec:
           res3 <- EitherT(tservice.create(thirdType))
           res4 <- EitherT(tservice.create(fourthType))
           res5 <- EitherT(
-            iservice.create(
-              "FirstType",
-              (
-                "field1" -> "value1",
-                "field2" -> "value2"
-              )
-            )
+            iservice
+              .create("FirstType", ("field1" -> "value1", "field2" -> "value2"))
           )
           res6 <- EitherT(
             iservice.create(
               "SecondType",
-              (
-                "field1" -> "value3",
-                "field2" -> "value4"
-              )
+              ("field1" -> "value3", "field2" -> "value4")
             )
           )
           res7 <- EitherT(

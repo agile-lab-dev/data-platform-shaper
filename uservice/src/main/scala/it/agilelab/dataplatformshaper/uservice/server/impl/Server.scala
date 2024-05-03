@@ -45,8 +45,8 @@ object Server:
     .mkString("\n")
 
   def server[F[_]: Async: Network](
-      session: Session,
-      typeCache: Cache[F, String, EntityType]
+    session: Session,
+    typeCache: Cache[F, String, EntityType]
   ): Resource[F, Unit] =
     val dsl = Http4sDsl[F]
     import dsl.*

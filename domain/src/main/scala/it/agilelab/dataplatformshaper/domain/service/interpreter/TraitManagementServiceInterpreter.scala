@@ -21,14 +21,14 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 class TraitManagementServiceInterpreter[F[_]: Sync](
-    val repository: KnowledgeGraph[F]
+  val repository: KnowledgeGraph[F]
 ) extends TraitManagementService[F]:
 
   given logger: Logger[F] = Slf4jLogger.getLogger[F]
 
   override def create(
-      traitName: String,
-      inheritsFrom: Option[String]
+    traitName: String,
+    inheritsFrom: Option[String]
   ): F[Either[ManagementServiceError, Unit]] =
     val traitIri = iri(ns, traitName)
 
@@ -46,26 +46,21 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     )
 
     (for {
-      _ <- traceT(
-        s"About to create a trait with name $traitName"
-      )
+      _ <- traceT(s"About to create a trait with name $traitName")
       exist <- EitherT(exist(traitName))
       _ <- traceT(
         s"Checking the existence, does $traitName already exist? $exist"
       )
       stmts <- EitherT(
-        summon[Applicative[F]].pure(
-          Right[ManagementServiceError, List[Statement]](statements)
-        )
+        summon[Applicative[F]]
+          .pure(Right[ManagementServiceError, List[Statement]](statements))
       )
       _ <- EitherT {
         if !exist
         then
-          summon[Functor[F]].map(
-            repository.removeAndInsertStatements(
-              stmts
-            )
-          )(Right[ManagementServiceError, Unit])
+          summon[Functor[F]].map(repository.removeAndInsertStatements(stmts))(
+            Right[ManagementServiceError, Unit]
+          )
         else
           summon[Applicative[F]]
             .pure(
@@ -81,7 +76,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   end create
 
   override def delete(
-      traitName: String
+    traitName: String
   ): F[Either[ManagementServiceError, Unit]] =
     val traitIri = iri(ns, traitName)
     val initialStatements: List[Statement] = List(
@@ -95,27 +90,21 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
           )
         then
           EitherT.leftT[F, Unit](
-            ManagementServiceError(
-              s"Cannot delete the trait $traitName"
-            )
+            ManagementServiceError(s"Cannot delete the trait $traitName")
           )
         else EitherT.rightT[F, ManagementServiceError](())
       traitExists <- EitherT(exist(traitName))
       _ <-
         if !traitExists then
           EitherT.leftT[F, Unit](
-            ManagementServiceError(
-              s"The trait $traitName does not exist"
-            )
+            ManagementServiceError(s"The trait $traitName does not exist")
           )
         else EitherT.rightT[F, ManagementServiceError](())
       hasEntities <- EitherT(entityHasTrait(traitName))
       _ <-
         if hasEntities then
           EitherT.leftT[F, Unit](
-            ManagementServiceError(
-              s"An entity has the trait $traitName"
-            )
+            ManagementServiceError(s"An entity has the trait $traitName")
           )
         else EitherT.rightT[F, ManagementServiceError](())
       hasLinks <- EitherT(hasLinkedTraits(traitName))
@@ -151,7 +140,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   end delete
 
   private def hasLinkedTraits(
-      traitName: String
+    traitName: String
   ): F[Either[ManagementServiceError, Boolean]] =
     val traitIri = iri(ns, traitName)
 
@@ -170,9 +159,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         |}
         |""".stripMargin
     (for {
-      _ <- traceT(
-        s"Looking for linked traits for trait $traitName"
-      )
+      _ <- traceT(s"Looking for linked traits for trait $traitName")
       queryResult = repository.evaluateQuery(query)
       res <- EitherT(summon[Functor[F]].map(queryResult) { resultSet =>
         val resultList = resultSet.toList
@@ -187,7 +174,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   end hasLinkedTraits
 
   private def entityHasTrait(
-      traitName: String
+    traitName: String
   ): F[Either[ManagementServiceError, Boolean]] =
     val traitIri = iri(ns, traitName)
     val query = s"""
@@ -203,9 +190,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
                    |}
                    |""".stripMargin
     (for {
-      _ <- traceT(
-        s"Looking for entities having trait $traitName"
-      )
+      _ <- traceT(s"Looking for entities having trait $traitName")
       queryResult = repository.evaluateQuery(query)
       res <- EitherT(summon[Functor[F]].map(queryResult) { resultSet =>
         val resultList = resultSet.toList
@@ -219,9 +204,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end entityHasTrait
 
-  private def getSuperClassOf(
-      traitName: String
-  ): F[Option[String]] =
+  private def getSuperClassOf(traitName: String): F[Option[String]] =
     val traitIri = iri(ns.getName, traitName)
     val query = s"""
         |PREFIX ns:  <${ns.getName}>
@@ -247,7 +230,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   end getSuperClassOf
 
   override def exist(
-      traitName: String
+    traitName: String
   ): F[Either[ManagementServiceError, Boolean]] =
     val traitIri = iri(ns, traitName)
     val res = repository.evaluateQuery(s"""
@@ -269,7 +252,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   end exist
 
   override def exist(
-      traitNames: Set[String]
+    traitNames: Set[String]
   ): F[Either[ManagementServiceError, Set[(String, Boolean)]]] =
 
     val traitIris = traitNames
@@ -304,9 +287,9 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   end exist
 
   override def link(
-      traitName1: String,
-      linkType: Relationship,
-      traitName2: String
+    traitName1: String,
+    linkType: Relationship,
+    traitName2: String
   ): F[Either[ManagementServiceError, Unit]] =
     val statements = List(
       statement(
@@ -363,9 +346,9 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   end link
 
   override def unlink(
-      traitName1: String,
-      linkType: Relationship,
-      traitName2: String
+    traitName1: String,
+    linkType: Relationship,
+    traitName2: String
   ): F[Either[ManagementServiceError, Unit]] =
     val query =
       s"""
@@ -421,10 +404,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
                 .head
               if count === 0 then
                 summon[Functor[F]].map(
-                  repository.removeAndInsertStatements(
-                    List.empty,
-                    statements
-                  )
+                  repository.removeAndInsertStatements(List.empty, statements)
                 )(_ => Right[ManagementServiceError, Unit](()))
               else
                 summon[Applicative[F]].pure(
@@ -470,8 +450,8 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   end unlink
 
   override def linked(
-      traitName: String,
-      linkType: Relationship
+    traitName: String,
+    linkType: Relationship
   ): F[Either[ManagementServiceError, List[String]]] =
     val query =
       s"""

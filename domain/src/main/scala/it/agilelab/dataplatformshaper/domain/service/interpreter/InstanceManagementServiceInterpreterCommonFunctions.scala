@@ -52,13 +52,13 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     MappingManagementServiceInterpreter[F] =>
 
   def createInstanceNoCheck(
-      logger: Logger[F],
-      typeManagementService: TypeManagementService[F],
-      entityId: String,
-      instanceTypeName: String,
-      tuple: Tuple,
-      additionalStatementsToAdd: List[Statement],
-      statementsToRemove: List[Statement]
+    logger: Logger[F],
+    typeManagementService: TypeManagementService[F],
+    entityId: String,
+    instanceTypeName: String,
+    tuple: Tuple,
+    additionalStatementsToAdd: List[Statement],
+    statementsToRemove: List[Statement]
   ): F[Either[ManagementServiceError, String]] =
 
     given Logger[F] = logger
@@ -99,17 +99,14 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end createInstanceNoCheck
 
   @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.var",
-      "scalafix:DisableSyntax.defaultArgs"
-    )
+    Array("scalafix:DisableSyntax.var", "scalafix:DisableSyntax.defaultArgs")
   )
   def emitStatementsForEntity(
-      entityId: String,
-      instanceTypeName: String,
-      tuple: Tuple,
-      schema: Schema,
-      ontologyLevel: IRI = L2
+    entityId: String,
+    instanceTypeName: String,
+    tuple: Tuple,
+    schema: Schema,
+    ontologyLevel: IRI = L2
   ): Either[ManagementServiceError, List[Statement]] =
 
     val entity = iri(ns, entityId)
@@ -121,16 +118,12 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     val previousEntityIriStack = mutable.Stack(entity)
     var currentEntityIri = entity
 
-    @SuppressWarnings(
-      Array(
-        "scalafix:DisableSyntax.asInstanceOf"
-      )
-    )
+    @SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
     def internalEmitStatements(
-        currentPath: String,
-        tpe: DataType,
-        value: Any,
-        foldingPhase: FoldingPhase
+      currentPath: String,
+      tpe: DataType,
+      value: Any,
+      foldingPhase: FoldingPhase
     ): Unit =
       tpe match
         case StringType(mode, _) =>
@@ -275,11 +268,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       end match
     end internalEmitStatements
 
-    unfoldTuple(
-      tuple,
-      schema,
-      internalEmitStatements
-    ) match
+    unfoldTuple(tuple, schema, internalEmitStatements) match
       case Left(parsingError) =>
         Left[ManagementServiceError, List[Statement]](
           ManagementServiceError(
@@ -293,9 +282,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end emitStatementsForEntity
 
   def fetchEntityFieldsAndTypeName(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      instanceId: String
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    instanceId: String
   ): F[(String, List[(String, String)])] = {
     fetchFieldsForInstance(logger, repository, instanceId)
       .map(lp => {
@@ -313,9 +302,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   }
 
   private def fetchFieldsForInstance(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      instanceId: String
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    instanceId: String
   ): F[List[(String, String)]] =
     val query: String =
       s"""
@@ -352,9 +341,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end fetchFieldsForInstance
 
   private def handlePrimitiveDataTypes(
-      fieldName: String,
-      dataType: DataType,
-      fieldValue: Option[List[(String, String)]]
+    fieldName: String,
+    dataType: DataType,
+    fieldValue: Option[List[(String, String)]]
   ): F[Tuple] =
     val tuple = dataType match
       case StringType(mode, _) =>
@@ -491,17 +480,17 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end handlePrimitiveDataTypes
 
   private def handleStructDataType(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      fieldName: String,
-      dataType: StructType,
-      maybeFieldValue: Option[List[(String, String)]]
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    fieldName: String,
+    dataType: StructType,
+    maybeFieldValue: Option[List[(String, String)]]
   ): F[Tuple] =
 
     def createTupleForStructDataType(
-        logger: Logger[F],
-        dataType: StructType,
-        fieldValue: (String, String)
+      logger: Logger[F],
+      dataType: StructType,
+      fieldValue: (String, String)
     ): F[Tuple] =
       val nestedStructIRI: IRI = iri(fieldValue(1))
       val nestedStructFields: F[List[(String, String)]] =
@@ -538,10 +527,10 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end handleStructDataType
 
   def fieldsToTuple(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      fields: List[(String, String)],
-      struct: StructType
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    fields: List[(String, String)],
+    struct: StructType
   ): F[Tuple] =
     val groupedFields: Map[String, List[(String, String)]] =
       fields.groupBy(_(0))
@@ -582,14 +571,11 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end fieldsToTuple
 
   @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.asInstanceOf",
-      "scalafix:DisableSyntax.=="
-    )
+    Array("scalafix:DisableSyntax.asInstanceOf", "scalafix:DisableSyntax.==")
   )
   def fetchStatementsForInstance(
-      repository: KnowledgeGraph[F],
-      instanceId: String
+    repository: KnowledgeGraph[F],
+    instanceId: String
   ): F[List[Statement]] =
     // TODO add a filter to avoid to remove any relationships with other instances
     val query: String =
@@ -636,10 +622,8 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                       )
                     )
                   else
-                    val stmt = statement(
-                      triple(s, p, iri(ob.getValue.stringValue)),
-                      L2
-                    )
+                    val stmt =
+                      statement(triple(s, p, iri(ob.getValue.stringValue)), L2)
                     fetchStatementsForInstance(
                       repository,
                       iri(ob.getValue.stringValue).getLocalName
@@ -654,17 +638,13 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     statements
   end fetchStatementsForInstance
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.=="
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.=="))
   def updateInstanceNoCheck(
-      logger: Logger[F],
-      typeManagementService: TypeManagementService[F],
-      instanceManagementService: InstanceManagementService[F],
-      instanceId: String,
-      values: Tuple
+    logger: Logger[F],
+    typeManagementService: TypeManagementService[F],
+    instanceManagementService: InstanceManagementService[F],
+    instanceId: String,
+    values: Tuple
   ): F[Either[ManagementServiceError, String]] =
 
     given Logger[F] = logger
@@ -674,9 +654,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       instanceId
     )
     val res: F[Either[ManagementServiceError, String]] = (for {
-      _ <- traceT(
-        s"About to remove the instance $instanceId"
-      )
+      _ <- traceT(s"About to remove the instance $instanceId")
       stmts <- EitherT.liftF(statementsToRemove)
       _ <- traceT(
         s"Statements for removing the previous version \n${stmts.mkString("\n")}"
@@ -726,9 +704,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end updateInstanceNoCheck
 
   def getMappingsForEntityType(
-      logger: Logger[F],
-      typeManagementService: TypeManagementService[F],
-      sourceEntityTypeName: String
+    logger: Logger[F],
+    typeManagementService: TypeManagementService[F],
+    sourceEntityTypeName: String
   ): F[Either[ManagementServiceError, List[
     (String, EntityType, EntityType, Tuple, String)
   ]]] =
@@ -799,11 +777,11 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end getMappingsForEntityType
 
   def queryMappedInstances(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      sourceEntityTypeName: Option[String],
-      mappingName: Option[String],
-      targetEntityTypeName: Option[String]
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    sourceEntityTypeName: Option[String],
+    mappingName: Option[String],
+    targetEntityTypeName: Option[String]
   ): F[Either[ManagementServiceError, List[(String, String, String)]]] =
     val predicateSource = sourceEntityTypeName
       .map(value => s"?instance1 ns:isClassifiedBy ns:$value .")
@@ -873,10 +851,10 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end queryMappedInstances
 
   def recursiveDelete(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      entityTypeName: String,
-      typeManagementService: TypeManagementService[F]
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    entityTypeName: String,
+    typeManagementService: TypeManagementService[F]
   ): F[Either[ManagementServiceError, Unit]] =
     val stack = scala.collection.mutable.Stack(entityTypeName)
 
@@ -942,11 +920,11 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end recursiveDelete
 
   def deleteMappedInstances(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      typeManagementService: TypeManagementService[F],
-      mappingDefinition: MappingDefinition,
-      mapperId: String
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    typeManagementService: TypeManagementService[F],
+    mappingDefinition: MappingDefinition,
+    mapperId: String
   ): F[Either[ManagementServiceError, Unit]] =
     val key = mappingDefinition.mappingKey
     val mapper = mappingDefinition.mapper
@@ -973,30 +951,13 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     )
 
     val initialStatementsL2 = List(
-      statement(
-        mappedToTriple1,
-        L2
-      ),
-      statement(
-        mappedToTriple2,
-        L2
-      ),
-      statement(
-        mappedToTriple3,
-        L2
-      )
+      statement(mappedToTriple1, L2),
+      statement(mappedToTriple2, L2),
+      statement(mappedToTriple3, L2)
     )
 
-    val initialStatementsL3 = List(
-      statement(
-        mappedToTriple2,
-        L2
-      ),
-      statement(
-        mappedToTriple3,
-        L2
-      )
-    )
+    val initialStatementsL3 =
+      List(statement(mappedToTriple2, L2), statement(mappedToTriple3, L2))
 
     (for {
       ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
@@ -1023,10 +984,10 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end deleteMappedInstances
 
   def getMappingsForEntity(
-      logger: Logger[F],
-      typeManagementService: TypeManagementService[F],
-      instanceManagementService: InstanceManagementService[F],
-      sourceEntityId: String
+    logger: Logger[F],
+    typeManagementService: TypeManagementService[F],
+    instanceManagementService: InstanceManagementService[F],
+    sourceEntityId: String
   ): F[Either[ManagementServiceError, List[
     (EntityType, Entity, EntityType, Entity, Tuple, String)
   ]]] =
@@ -1105,10 +1066,10 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end getMappingsForEntity
 
   def getRelations(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      sourceEntityTypeName: String,
-      isGetParent: Boolean
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    sourceEntityTypeName: String,
+    isGetParent: Boolean
   ): F[List[String]] =
     val nsName = ns.getName
     val (relationship, direction) =
@@ -1157,9 +1118,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       }
 
   def getRoots(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      entityTypeName: String
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    entityTypeName: String
   ): F[List[String]] =
     def loop(pending: Set[String], roots: Set[String]): F[Set[String]] =
       if pending.isEmpty then summon[Functor[F]].pure(roots)
@@ -1179,15 +1140,15 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end getRoots
 
   def detectCycles(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      sourceEntityTypeName: String,
-      targetEntityTypeName: String
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    sourceEntityTypeName: String,
+    targetEntityTypeName: String
   ): F[Either[ManagementServiceError, List[String]]] =
     def loop(
-        pendingTypes: mutable.Stack[String],
-        visited: Set[String],
-        accumulator: List[String]
+      pendingTypes: mutable.Stack[String],
+      visited: Set[String],
+      accumulator: List[String]
     ): F[Either[ManagementServiceError, List[String]]] =
       if pendingTypes.isEmpty then summon[Functor[F]].pure(Right(accumulator))
       else
@@ -1213,11 +1174,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                 )
               )
             else if roots.contains(currentType) then
-              loop(
-                pendingTypes,
-                newVisited,
-                currentType :: accumulator
-              )
+              loop(pendingTypes, newVisited, currentType :: accumulator)
             else
               roots.filterNot(newVisited.contains).foreach(pendingTypes.push)
               loop(pendingTypes, newVisited, accumulator)
@@ -1227,10 +1184,10 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   end detectCycles
 
   def checkTraitForEntityType(
-      logger: Logger[F],
-      repository: KnowledgeGraph[F],
-      entityTypeName: String,
-      traitName: String
+    logger: Logger[F],
+    repository: KnowledgeGraph[F],
+    entityTypeName: String,
+    traitName: String
   ): F[Either[ManagementServiceError, Boolean]] =
     val query =
       s"""
