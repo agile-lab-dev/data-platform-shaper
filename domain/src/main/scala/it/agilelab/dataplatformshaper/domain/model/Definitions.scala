@@ -38,5 +38,11 @@ object NS:
   val TRAIT = iri(ns, "Trait")
   val MAPPINGNAME = iri(ns, "mappingName")
   val MAPPEDBY = iri(ns, "mappedBy")
+  val INSTANCEREFERENCENAME = iri(ns, "instanceReferenceName")
+  val INSTANCEREFERENCEEXPRESSION = iri(ns, "instanceReferenceExpression")
+  val NAMEDINSTANCEREFRENCEEXPRESSION =
+    iri(ns, "namedInstanceReferenceExpression")
+  val WITHNAMEDINSTANCEREFERENCEEXPRESSION =
+    iri(ns, "withNamedInstanceReferenceExpression")
 
 end NS

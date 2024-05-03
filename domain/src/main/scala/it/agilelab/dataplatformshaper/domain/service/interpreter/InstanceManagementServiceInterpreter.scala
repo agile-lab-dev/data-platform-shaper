@@ -350,7 +350,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     val predicate: F[Either[ManagementServiceError, Option[SearchPredicate]]] =
       summon[Applicative[F]].pure(
         (if query.trim.isEmpty then Either.right(None)
-         else Either.catchNonFatal(Some(generateSearchPredicate(query)))).left
+         else
+           Either.catchNonFatal(Some(generateSearchPredicate("i", query)))
+        ).left
           .map(t =>
             ManagementServiceError(s"Invalid search predicate: ${t.getMessage}")
           )

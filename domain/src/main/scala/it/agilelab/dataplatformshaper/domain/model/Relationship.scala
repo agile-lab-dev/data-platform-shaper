@@ -8,7 +8,6 @@ import it.agilelab.dataplatformshaper.domain.common.{
 enum Relationship:
   case hasPart
   case mappedTo
-  case mappedFrom
   case dependsOn
   case dependencyOf
 
@@ -17,8 +16,6 @@ enum Relationship:
       case Relationship.hasPart =>
         "http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl#"
       case Relationship.mappedTo =>
-        "https://w3id.org/agile-dm/ontology/"
-      case Relationship.mappedFrom =>
         "https://w3id.org/agile-dm/ontology/"
       case Relationship.dependsOn =>
         "https://w3id.org/agile-dm/ontology/"
@@ -32,8 +29,6 @@ enum Relationship:
       case Relationship.hasPart =>
         None
       case Relationship.mappedTo =>
-        None
-      case Relationship.mappedFrom =>
         None
       case Relationship.dependsOn =>
         Some(Relationship.dependencyOf)
@@ -54,6 +49,5 @@ end given
 
 export Relationship.hasPart as hasPart
 export Relationship.mappedTo as mappedTo
-export Relationship.mappedFrom as mappedFrom
 export Relationship.dependsOn as dependsOn
 export Relationship.dependencyOf as dependencyOf

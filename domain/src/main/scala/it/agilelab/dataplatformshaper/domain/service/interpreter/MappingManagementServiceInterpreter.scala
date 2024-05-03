@@ -6,9 +6,7 @@ import cats.effect.*
 import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.NS
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
-import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -18,6 +16,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.{
   tupleToMappedTuple,
   validateMappingTuple
 }
+import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{
   InstanceManagementService,
@@ -70,6 +69,32 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       iri(mappedTo.getNamespace, s"${mappedTo: String}#${key.mappingName}"),
       NS.MAPPEDBY,
       mapperIri
+    )
+
+    // TODO
+    val _ = mappingDefinition.additionalSourcesReferences.map(pair =>
+      val nieIri = iri(ns, UUID.randomUUID().toString)
+      List(
+        statement(
+          triple(nieIri, NS.INSTANCEREFERENCENAME, literal(pair(0))),
+          L2
+        ),
+        statement(
+          triple(nieIri, NS.INSTANCEREFERENCEEXPRESSION, literal(pair(1))),
+          L2
+        ),
+        statement(
+          triple(
+            iri(
+              mappedTo.getNamespace,
+              s"${mappedTo: String}#${key.mappingName}"
+            ),
+            NS.WITHNAMEDINSTANCEREFERENCEEXPRESSION,
+            nieIri
+          ),
+          L2
+        )
+      )
     )
 
     val initialStatements = List(
@@ -443,7 +468,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
                 sourceInstance.values,
                 mapping(1).schema,
                 mapping(3),
-                mapping(2).schema
+                mapping(2).schema,
+                Map.empty[String, Tuple] // TODO
               ).leftMap(e =>
                 ManagementServiceError(s"The mapper instance is invalid: $e")
               )
@@ -466,6 +492,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               NS.MAPPEDBY,
               mapperIri
             )
+            // format: off
             val initialStatements = List(
               statement(mappedToTriple1, L2),
               statement(mappedToTriple2, L2),
@@ -647,7 +674,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
                 mapping(1).values,
                 mapping(0).schema,
                 mapping(4),
-                mapping(2).schema
+                mapping(2).schema,
+                Map.empty[String, Tuple] // TODO
               ).leftMap(e =>
                 ManagementServiceError(s"The mapper instance is invalid: $e")
               )

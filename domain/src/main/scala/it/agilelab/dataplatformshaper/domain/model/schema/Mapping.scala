@@ -34,20 +34,24 @@ def tupleToMappedTuple(
     sourceTuple: Tuple,
     sourceTupleSchema: Schema,
     mappingTuple: Tuple,
-    mappedTupleSchema: Schema
+    mappedTupleSchema: Schema,
+    additionalSourceTuples: Map[String, Tuple] = Map.empty[String, Tuple]
 ): Either[String, Tuple] =
-  val elProcesspr = ELProcessor()
+  val elProcessor = ELProcessor()
   val exFactory = ExpressionFactoryImpl()
   for {
     _ <- validateMappingTuple(mappingTuple, mappedTupleSchema)
     _ <- {
       val pt = parseTuple(sourceTuple, sourceTupleSchema)
-      elProcesspr.defineBean("source", sourceTuple: DynamicTuple)
+      elProcessor.defineBean("source", sourceTuple: DynamicTuple)
+      additionalSourceTuples.foreach(pair =>
+        elProcessor.defineBean(pair(0), pair(1): DynamicTuple)
+      )
       pt
     }
     mt <- Try(
       tupleToMappedTupleChecked(
-        elProcesspr,
+        elProcessor,
         exFactory,
         mappingTuple,
         mappedTupleSchema,

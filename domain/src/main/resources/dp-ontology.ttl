@@ -88,12 +88,19 @@ ns:isInheritedBy rdf:type owl:ObjectProperty ,
                  rdfs:domain ns:EntityType ;
                  rdfs:range ns:EntityType .
 
-
 ###  https://w3id.org/agile-dm/ontology/mappedTo
 ns:mappedTo rdf:type owl:ObjectProperty ;
+            rdf:type owl:TransitiveProperty ;  
             rdfs:domain ns:MappingSource ;
             rdfs:range ns:MappingTarget .
 
+###  https://w3id.org/agile-dm/ontology/mappedBy
+ns:mappedBy rdf:type owl:ObjectProperty ;
+            rdfs:range ns:Entity .
+
+###  https://w3id.org/agile-dm/ontology/withNamedInstanceReferenceExpression
+ns:withNamedInstanceReferenceExpression rdf:type owl:ObjectProperty ;
+            rdfs:range ns:NamedInstanceReferenceExpression .
 
 ###  https://w3id.org/agile-dm/ontology/mode
 ns:mode rdf:type owl:ObjectProperty ;
@@ -116,6 +123,15 @@ ns:typeName rdf:type owl:DatatypeProperty ;
             rdfs:domain ns:EntityType ;
             rdfs:range xsd:string .
 
+###  https://w3id.org/agile-dm/ontology/additionalInstanceReferenceName
+ns:instanceReferenceName rdf:type owl:DatatypeProperty ;
+                         rdfs:domain ns:NamedInstanceReferenceExpression ;
+                         rdfs:range xsd:string .
+
+###  https://w3id.org/agile-dm/ontology/additionalInstanceReferenceExpression
+ns:instanceReferenceExpression rdf:type owl:DatatypeProperty ;
+                               rdfs:domain ns:NamedInstanceReferenceExpression ;
+                               rdfs:range xsd:string .
 
 #################################################################
 #    Classes
@@ -213,6 +229,8 @@ ns:TimestampAttributeType rdf:type owl:Class ;
 ###  https://w3id.org/agile-dm/ontology/Trait
 ns:Trait rdf:type owl:Class .
 
+###  https://w3id.org/agile-dm/ontology/NamedInstanceReferenceExpression
+ns:NamedInstanceReferenceExpression rdf:type owl:Class .
 
 #################################################################
 #    Individuals

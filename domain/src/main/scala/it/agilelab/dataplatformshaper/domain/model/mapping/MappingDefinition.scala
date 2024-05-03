@@ -8,5 +8,6 @@ case class MappingKey(
 
 case class MappingDefinition(
     mappingKey: MappingKey,
-    mapper: Tuple
+    mapper: Tuple,
+    additionalSourcesReferences: Map[String, String] = Map.empty[String, String]
 )

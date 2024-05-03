@@ -58,7 +58,10 @@ case class SearchPredicateAttribute(attributePath: List[String])
     SearchPredicateAttribute(subPath.attributePath ::: this.attributePath)
   end /
 
-  def generateAttributeClauses(filter: Option[String => String]): String =
+  def generateAttributeClauses(
+      i: String,
+      filter: Option[String => String]
+  ): String =
     val attributeRels = attributePath.reverse.inits.toList
       .filter(_.nonEmpty)
       .map(l => s"ns:${l.mkString("\\/")}")
@@ -88,108 +91,120 @@ case class SearchPredicateAttribute(attributePath: List[String])
           ()
     end loopOnAttributeRels
 
-    loopOnAttributeRels("i", genId, filter, attributeRels)
+    loopOnAttributeRels(i, genId, filter, attributeRels)
     stringBuffer.toString
   end generateAttributeClauses
 
-  def =:=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    SearchPredicate(
-      {
-        s"""
+  def =:=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate(
+        {
+          s"""
          |{
          |  ${generateAttributeClauses(
-            Some(v => s"FILTER (?$v = ${value.value.toString} ) .")
-          )}
+              i,
+              Some(v => s"FILTER (?$v = ${value.value.toString} ) .")
+            )}
          |}
          |""".stripMargin
-      }
-    )
+        }
+      )
   end =:=
 
-  def =!=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    SearchPredicate(
-      {
-        s"""
+  def =!=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate(
+        {
+          s"""
            |{
            |  ${generateAttributeClauses(
-            Some(v => s"FILTER (?$v != ${value.value.toString} ) .")
-          )}
+              i,
+              Some(v => s"FILTER (?$v != ${value.value.toString} ) .")
+            )}
            |}
            |""".stripMargin
-      }
-    )
+        }
+      )
   end =!=
 
   @targetName("stringEqual")
-  def =:=(value: SearchPredicateValue[String]): SearchPredicate =
-    SearchPredicate(
-      {
-        s"""
+  def =:=(value: SearchPredicateValue[String]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate(
+        {
+          s"""
            |{
            |  ${generateAttributeClauses(
-            Some(v => s"""FILTER (?$v = "${value.value}"^^xsd:string ) .""")
-          )}
+              i,
+              Some(v => s"""FILTER (?$v = "${value.value}"^^xsd:string ) .""")
+            )}
            |}
            |""".stripMargin
-      }
-    )
+        }
+      )
   end =:=
 
   @targetName("stringDifferent")
-  def =!=(value: SearchPredicateValue[String]): SearchPredicate =
-    SearchPredicate(
-      {
-        s"""
+  def =!=(value: SearchPredicateValue[String]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate(
+        {
+          s"""
            |{
            |  ${generateAttributeClauses(
-            Some(v => s"""FILTER (?$v != "${value.value}"^^xsd:string ) .""")
-          )}
+              i,
+              Some(v => s"""FILTER (?$v != "${value.value}"^^xsd:string ) .""")
+            )}
            |}
            |""".stripMargin
-      }
-    )
+        }
+      )
   end =!=
 
-  def like(value: SearchPredicateValue[String]): SearchPredicate =
-    SearchPredicate(
-      {
-        s"""
+  def like(value: SearchPredicateValue[String]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate(
+        {
+          s"""
            |{
            |  ${generateAttributeClauses(
-            Some(v => s"""FILTER REGEX(?$v, "${value.value}") .""")
-          )}
+              i,
+              Some(v => s"""FILTER REGEX(?$v, "${value.value}") .""")
+            )}
            |}
            |""".stripMargin
-      }
-    )
+        }
+      )
   end like
 
   private def generateComparison(
       comparisonOperator: String,
       value: AnyVal
-  ): SearchPredicate = SearchPredicate(
-    {
-      s"""
+  ): String ?=> SearchPredicate = (i: String) ?=>
+    SearchPredicate(
+      {
+        s"""
          |{
          |  ${generateAttributeClauses(
-          Some(v => s"FILTER (?$v $comparisonOperator ${value.toString} ) .")
-        )}
+            i,
+            Some(v => s"FILTER (?$v $comparisonOperator ${value.toString} ) .")
+          )}
          |}
          |""".stripMargin
-    }
-  )
+      }
+    )
 
-  def <(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    generateComparison("<", value.value)
+  def <(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=> generateComparison("<", value.value)
 
-  def <=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    generateComparison("<=", value.value)
+  def <=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=> generateComparison("<=", value.value)
 
-  def >(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    generateComparison(">", value.value)
+  def >(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=> generateComparison(">", value.value)
 
-  def >=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    generateComparison(">=", value.value)
+  def >=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=> generateComparison(">=", value.value)
 
 end SearchPredicateAttribute
 
@@ -225,7 +240,10 @@ end SearchPredicate
     "scalafix:DisableSyntax.asInstanceOf"
   )
 )
-def generateSearchPredicate(query: String): SearchPredicate =
+def generateSearchPredicate(
+    instancePlaceHolder: String,
+    query: String
+): SearchPredicate =
 
   val sqlParserConfig = SqlParser
     .config()
@@ -241,7 +259,13 @@ def generateSearchPredicate(query: String): SearchPredicate =
       "scalafix:DisableSyntax.throw"
     )
   )
-  def generateCode(node: SqlNode): SearchPredicateTerm =
+  def generateCode(
+      instancePlaceHolder: String,
+      node: SqlNode
+  ): SearchPredicateTerm =
+
+    given i: String = instancePlaceHolder
+
     node match
       case call: SqlCall =>
         val operator = call.getOperator
@@ -250,8 +274,8 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operandList = call.getOperandList.asScala.toList
             val head = operandList.head
             val tail = operandList.tail
-            tail.foldRight(generateCode(head))((n1, n2) =>
-              generateCode(n1)
+            tail.foldRight(generateCode(instancePlaceHolder, head))((n1, n2) =>
+              generateCode(instancePlaceHolder, n1)
                 .asInstanceOf[SearchPredicate]
                 .&&(n2.asInstanceOf[SearchPredicate])
             )
@@ -259,8 +283,8 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operandList = call.getOperandList.asScala.toList
             val head = operandList.head
             val tail = operandList.tail
-            tail.foldRight(generateCode(head))((n1, n2) =>
-              generateCode(n1)
+            tail.foldRight(generateCode(instancePlaceHolder, head))((n1, n2) =>
+              generateCode(instancePlaceHolder, n1)
                 .asInstanceOf[SearchPredicate]
                 .||(n2.asInstanceOf[SearchPredicate])
             )
@@ -270,13 +294,15 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operand2 = operandList.tail.head
             operand2 match
               case _: SqlCharStringLiteral =>
-                generateCode(operand1)
+                generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =:= generateCode(
+                  instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[String]]
               case _: SqlNumericLiteral =>
-                generateCode(operand1)
+                generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =:= generateCode(
+                  instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[AnyVal]]
             end match
@@ -286,13 +312,15 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operand2 = operandList.tail.head
             operand2 match
               case _: SqlCharStringLiteral =>
-                generateCode(operand1)
+                generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =!= generateCode(
+                  instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[String]]
               case _: SqlNumericLiteral =>
-                generateCode(operand1)
+                generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =!= generateCode(
+                  instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[AnyVal]]
             end match
@@ -300,36 +328,49 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
-              .asInstanceOf[SearchPredicateAttribute] < generateCode(operand2)
+            generateCode(instancePlaceHolder, operand1)
+              .asInstanceOf[SearchPredicateAttribute] < generateCode(
+              instancePlaceHolder,
+              operand2
+            )
               .asInstanceOf[SearchPredicateValue[AnyVal]]
           case SqlKind.LESS_THAN_OR_EQUAL =>
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
-              .asInstanceOf[SearchPredicateAttribute] <= generateCode(operand2)
+            generateCode(instancePlaceHolder, operand1)
+              .asInstanceOf[SearchPredicateAttribute] <= generateCode(
+              instancePlaceHolder,
+              operand2
+            )
               .asInstanceOf[SearchPredicateValue[AnyVal]]
           case SqlKind.GREATER_THAN =>
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
-              .asInstanceOf[SearchPredicateAttribute] > generateCode(operand2)
+            generateCode(instancePlaceHolder, operand1)
+              .asInstanceOf[SearchPredicateAttribute] > generateCode(
+              instancePlaceHolder,
+              operand2
+            )
               .asInstanceOf[SearchPredicateValue[AnyVal]]
           case SqlKind.GREATER_THAN_OR_EQUAL =>
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
-              .asInstanceOf[SearchPredicateAttribute] >= generateCode(operand2)
+            generateCode(instancePlaceHolder, operand1)
+              .asInstanceOf[SearchPredicateAttribute] >= generateCode(
+              instancePlaceHolder,
+              operand2
+            )
               .asInstanceOf[SearchPredicateValue[AnyVal]]
           case SqlKind.LIKE =>
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
+            generateCode(instancePlaceHolder, operand1)
               .asInstanceOf[SearchPredicateAttribute] `like` generateCode(
+              instancePlaceHolder,
               operand2
             )
               .asInstanceOf[SearchPredicateValue[String]]
@@ -337,8 +378,8 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operandList = call.getOperandList.asScala.toList.reverse
             val head = operandList.head
             val tail = operandList.tail
-            tail.foldRight(generateCode(head))((n1, n2) =>
-              generateCode(n1)
+            tail.foldRight(generateCode(instancePlaceHolder, head))((n1, n2) =>
+              generateCode(instancePlaceHolder, n1)
                 .asInstanceOf[SearchPredicateAttribute]
                 ./(n2.asInstanceOf[SearchPredicateAttribute])
             )
@@ -361,5 +402,5 @@ def generateSearchPredicate(query: String): SearchPredicate =
     end match
   end generateCode
 
-  generateCode(node).asInstanceOf[SearchPredicate]
+  generateCode(instancePlaceHolder, node).asInstanceOf[SearchPredicate]
 end generateSearchPredicate
