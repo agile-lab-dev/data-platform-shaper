@@ -393,16 +393,26 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         query
       )
 
-    val statements = List(
-      statement(
-        triple(
-          iri(ns, instanceId1),
-          iri(linkType.getNamespace, linkType),
-          iri(ns, instanceId2)
-        ),
-        L2
+    val statements = statement(
+      triple(
+        iri(ns, instanceId1),
+        iri(linkType.getNamespace, linkType),
+        iri(ns, instanceId2)
+      ),
+      L2
+    ) :: linkType.getInverse.fold(Nil: List[Statement])(inverse =>
+      List(
+        statement(
+          triple(
+            iri(ns, instanceId2),
+            iri(linkType.getNamespace, inverse),
+            iri(ns, instanceId1)
+          ),
+          L2
+        )
       )
     )
+
     (for {
       _ <- traceT(
         s"About to link $instanceId1 with $instanceId2 using the relationship $linkType"
@@ -473,14 +483,23 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       linkType: Relationship,
       instanceId2: String
   ): F[Either[ManagementServiceError, Unit]] =
-    val statements = List(
-      statement(
-        triple(
-          iri(ns, instanceId1),
-          iri(linkType.getNamespace, linkType),
-          iri(ns, instanceId2)
-        ),
-        L2
+    val statements = statement(
+      triple(
+        iri(ns, instanceId1),
+        iri(linkType.getNamespace, linkType),
+        iri(ns, instanceId2)
+      ),
+      L2
+    ) :: linkType.getInverse.fold(Nil: List[Statement])(inverse =>
+      List(
+        statement(
+          triple(
+            iri(ns, instanceId2),
+            iri(linkType.getNamespace, inverse),
+            iri(ns, instanceId1)
+          ),
+          L2
+        )
       )
     )
     (for {
