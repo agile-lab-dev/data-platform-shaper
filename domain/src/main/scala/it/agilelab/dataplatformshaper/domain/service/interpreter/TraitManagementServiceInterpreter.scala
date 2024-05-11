@@ -6,8 +6,8 @@ import cats.implicits.*
 import cats.{Applicative, Functor}
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.NS.{L1, ns}
+import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
@@ -27,12 +27,11 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   given logger: Logger[F] = Slf4jLogger.getLogger[F]
 
   override def create(
-    traitName: String,
-    inheritsFrom: Option[String]
+    traitDefinition: Trait
   ): F[Either[ManagementServiceError, Unit]] =
-    val traitIri = iri(ns, traitName)
+    val traitIri = iri(ns, traitDefinition.traitName)
 
-    val statements = inheritsFrom.fold(
+    val statements = traitDefinition.inheritsFrom.fold(
       List(
         statement(triple(traitIri, RDF.TYPE, OWL.NAMEDINDIVIDUAL), L1),
         statement(triple(traitIri, RDF.TYPE, NS.TRAIT), L1)
@@ -46,10 +45,12 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     )
 
     (for {
-      _ <- traceT(s"About to create a trait with name $traitName")
-      exist <- EitherT(exist(traitName))
       _ <- traceT(
-        s"Checking the existence, does $traitName already exist? $exist"
+        s"About to create a trait with name ${traitDefinition.traitName}"
+      )
+      exist <- EitherT(exist(traitDefinition.traitName))
+      _ <- traceT(
+        s"Checking the existence, does ${traitDefinition.traitName} already exist? $exist"
       )
       stmts <- EitherT(
         summon[Applicative[F]]
@@ -66,13 +67,19 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
             .pure(
               Left[ManagementServiceError, Unit](
                 ManagementServiceError(
-                  s"The trait $traitName has been already defined"
+                  s"The trait ${traitDefinition.traitName} has been already defined"
                 )
               )
             )
       }
       _ <- traceT(s"Instance type created")
     } yield ()).value
+  end create
+
+  def create(
+    bulkTraitsCreationRequest: BulkTraitsCreationRequest
+  ): F[Either[ManagementServiceError, Unit]] =
+    ???
   end create
 
   override def delete(

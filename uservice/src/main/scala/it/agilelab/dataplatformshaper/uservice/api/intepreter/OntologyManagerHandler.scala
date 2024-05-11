@@ -19,6 +19,7 @@ import it.agilelab.dataplatformshaper.domain.model.{
   Entity,
   EntityType,
   Relationship,
+  Trait,
   given_Conversion_String_Relationship
 }
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
@@ -33,7 +34,7 @@ import it.agilelab.dataplatformshaper.domain.service.{
 import it.agilelab.dataplatformshaper.uservice.Resource.*
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   MappedInstancesItem,
-  Trait,
+  Trait => OpenApiTrait,
   ValidationError,
   Entity as OpenApiEntity,
   EntityType as OpenApiEntityType,
@@ -535,9 +536,9 @@ class OntologyManagerHandler[F[_]: Async](
   end readEntityAsYaml
 
   override def createTrait(respond: Resource.CreateTraitResponse.type)(
-    body: Trait
+    body: OpenApiTrait
   ): F[Resource.CreateTraitResponse] =
-    val res = trms.create(body.name, body.inheritsFrom)
+    val res = trms.create(Trait(body.name, body.inheritsFrom))
 
     res.map {
       case Left(error) =>

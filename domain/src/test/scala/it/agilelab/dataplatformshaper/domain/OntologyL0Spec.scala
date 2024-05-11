@@ -621,7 +621,7 @@ class OntologyL0Spec extends CommonSpec:
           Set("DataCollection"),
           fileBasedDataCollectionTypeSchema
         )
-        trservice.create("DataCollection", None) *>
+        trservice.create(Trait("DataCollection", None)) *>
           service.create(entityType) *>
           service.create(entityType)
       } asserting (ret =>

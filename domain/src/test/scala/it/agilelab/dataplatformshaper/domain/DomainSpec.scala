@@ -139,8 +139,8 @@ class DomainSpec extends CommonSpec:
         val mservice =
           MappingManagementServiceInterpreter[IO](tservice, iservice)
         (for {
-          _ <- EitherT(trservice.create("Trait1", None))
-          _ <- EitherT(trservice.create("Trait2", Some("Trait1")))
+          _ <- EitherT(trservice.create(Trait("Trait1", None)))
+          _ <- EitherT(trservice.create(Trait("Trait2", Some("Trait1"))))
           _ <- EitherT(trservice.link("Trait1", hasPart, "Trait2"))
           res1 <- EitherT(tservice.create(firstType))
           res2 <- EitherT(tservice.create(secondType))
