@@ -7,7 +7,7 @@ import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
-import it.agilelab.dataplatformshaper.domain.model.given
+import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -17,7 +17,6 @@ import it.agilelab.dataplatformshaper.domain.model.schema.{
   tupleToMappedTuple,
   validateMappingTuple
 }
-import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{
   InstanceManagementService,
@@ -117,29 +116,26 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
       )
       _ <- EitherT(
-        summon[Functor[F]]
-          .map(exist(key))(
-            _.flatMap(exist =>
-              if exist then
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"the mapping with name ${key.mappingName}, source type ${key.sourceEntityTypeName} and target type ${key.targetEntityTypeName} already exists"
-                  )
+        exist(key).map(
+          _.flatMap(exist =>
+            if exist then
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError(
+                  s"the mapping with name ${key.mappingName}, source type ${key.sourceEntityTypeName} and target type ${key.targetEntityTypeName} already exists"
                 )
-              else Right[ManagementServiceError, Unit](())
-            )
+              )
+            else Right[ManagementServiceError, Unit](())
           )
+        )
       )
       _ <- EitherT(
-        summon[Functor[F]]
+        checkTraitForEntityType(
+          logger,
+          repository,
+          key.sourceEntityTypeName,
+          "MappingSource"
+        )
           .map(
-            checkTraitForEntityType(
-              logger,
-              repository,
-              key.sourceEntityTypeName,
-              "MappingSource"
-            )
-          )(
             _.flatMap(exist =>
               if !exist then
                 Left[ManagementServiceError, Unit](
@@ -152,15 +148,13 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           )
       )
       _ <- EitherT(
-        summon[Functor[F]]
+        checkTraitForEntityType(
+          logger,
+          repository,
+          key.targetEntityTypeName,
+          "MappingTarget"
+        )
           .map(
-            checkTraitForEntityType(
-              logger,
-              repository,
-              key.targetEntityTypeName,
-              "MappingTarget"
-            )
-          )(
             _.flatMap(exist =>
               if !exist then
                 Left[ManagementServiceError, Unit](
@@ -174,14 +168,14 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
       _ <- EitherT(
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           validateMappingTuple(mapper, ttype.schema).leftMap(error =>
             ManagementServiceError(s"The mapper instance is invalid: $error")
           )
         )
       )
       stmts <- EitherT(
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           emitStatementsForEntity(
             mapperId,
             ttype.name,
@@ -192,12 +186,12 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
       )
       res <- EitherT(
-        summon[Functor[F]].map(
-          repository.removeAndInsertStatements(
+        repository
+          .removeAndInsertStatements(
             initialStatements ::: stmts,
             List.empty[Statement]
           )
-        )(Right[ManagementServiceError, Unit])
+          .map(Right[ManagementServiceError, Unit])
       )
     } yield res).value
   end create
@@ -221,7 +215,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       s"Reading the mapping with name ${mappingKey.mappingName} with the query:\n$query"
     ) *> repository.evaluateQuery(query)
 
-    summon[Functor[F]].map(res) { result =>
+    res.map(result =>
       val pairs = Iterator
         .continually(result)
         .takeWhile(_.hasNext)
@@ -248,7 +242,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               s"Mapping with name ${mappingKey.mappingName} has not been found or does not have exactly two pairs"
             )
           )
-    }
+    )
   end read
 
   def update(
@@ -301,7 +295,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         ).map(_.collect { case s: String => s })
       }
       instanceIds <- EitherT.liftF(
-        summon[Applicative[F]].pure(rawInstanceIdsList.flatten.distinct)
+        Applicative[F].pure(rawInstanceIdsList.flatten.distinct)
       )
       _ <- EitherT.liftF(instanceIds.traverse(id => updateMappedInstances(id)))
       _ <- EitherT.liftF(logger.trace(s"Selected mapping last string: $pairs"))
@@ -409,7 +403,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     val res = logger.trace(
       s"Checking the mapping existence with name ${mapperKey.mappingName} with the query:\n$query"
     ) *> repository.evaluateQuery(query)
-    summon[Functor[F]].map(res)(res =>
+    res.map(res =>
       val count = res.toList.length
       if count > 0 then Right[ManagementServiceError, Boolean](true)
       else Right[ManagementServiceError, Boolean](false)
@@ -438,7 +432,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
         // format: off
         ids <- EitherT(
-          summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
+          Traverse[List].sequence(mappings.map(mapping =>
             val tuple: Either[ManagementServiceError, Tuple] =
               tupleToMappedTuple(
                 sourceInstance.values,
@@ -482,41 +476,37 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
                 then
                   completedOperations.push(false)
                   EitherT.liftF(
-                    summon[Applicative[F]]
+                    Applicative[F]
                       .pure(targetInstanceOption.get.entityId)
                   )
                 else
                   for {
                     _ <- EitherT.liftF(
-                      summon[Applicative[F]]
+                      Applicative[F]
                         .pure(completedOperations.push(true))
                     )
                     createdInstance <- EitherT(
-                      summon[Functor[F]].map(
-                        tuple
-                          .map(
-                            createInstanceNoCheck(
-                              logger,
-                              typeManagementService,
-                              targetInstanceId,
-                              mapping(2).name,
+                      tuple
+                        .map(
+                          createInstanceNoCheck(
+                            logger,
+                            typeManagementService,
+                            targetInstanceId,
+                            mapping(2).name,
                               _,
-                              initialStatements,
-                              List.empty
-                            )
+                            initialStatements,
+                            List.empty
                           )
-                          .sequence
-                      )(_.flatten)
+                        )
+                        .sequence
+                      .map(_.flatten)
                     )
                   } yield createdInstance
             } yield result).value
-          )))(_.sequence)
+          )).map(_.sequence)
         )
         _ <- EitherT(
-          summon[Functor[F]]
-            .map(ids.map(id => createMappedInstancesNoCheck(id)).sequence)(
-              _.sequence
-            )
+          ids.map(id => createMappedInstancesNoCheck(id)).sequence.map(_.sequence)
         )
       } yield ()).value
     end createMappedInstancesNoCheck
@@ -584,11 +574,10 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
         _ <- traceT(s"Read instances to update: $entities")
         entities <- EitherT(
-          summon[Functor[F]].map(
-            entities
+          entities
               .map(e => readMappedInstancesNoCheck(e(2)(1).entityId))
-              .sequence
-          )(_.sequence.map(_.flatten).map(l => entities ::: l))
+            .sequence
+            .map(_.sequence.map(_.flatten).map(l => entities ::: l))
         )
       } yield entities).value
     end readMappedInstancesNoCheck
@@ -643,7 +632,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         )
         _ <- traceT(s"Retrieved mappings: $mappings")
         ids <- EitherT(
-          summon[Functor[F]].map(Traverse[List].sequence(mappings.map(mapping =>
+          Traverse[List].sequence(mappings.map(mapping =>
             val tuple: Either[ManagementServiceError, Tuple] =
               tupleToMappedTuple(
                 mapping(1).values,
@@ -666,15 +655,15 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
                   )
                 )
                 .sequence
-            )(_.flatten)
-          )))(_.sequence)
+            )(x => x.flatten)
+
+          )).map(_.sequence)
         )
         _ <- traceT(s"Instances to update: $ids")
         _ <- EitherT(
-          summon[Functor[F]]
-            .map(ids.map(id => updateMappedInstancesNoCheck(id)).sequence)(
-              _.sequence
-            )
+          ids.map(id => updateMappedInstancesNoCheck(id)).sequence.map(
+            _.sequence
+          )
         )
       } yield ()).value
     end updateMappedInstancesNoCheck
@@ -756,11 +745,11 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         stack: mutable.Stack[String],
         accumulated: Set[EntityType]
     ): F[Either[ManagementServiceError, Set[EntityType]]] =
-      if stack.isEmpty then summon[Applicative[F]].pure(Right(accumulated))
+      if stack.isEmpty then Applicative[F].pure(Right(accumulated))
       else
         val head = stack.pop()
         getTargetEntityType(head).flatMap {
-          case Left(error) => summon[Applicative[F]].pure(Left(error))
+          case Left(error) => Applicative[F].pure(Left(error))
           case Right(entityTypes) =>
             entityTypes
               .traverse { entityType =>
@@ -827,27 +816,26 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             )
           )
           _ <- EitherT.liftF(
-            summon[Applicative[F]]
+            Applicative[F]
               .pure(statementsToRemove.pushAll(filteredStatements))
           )
           ids <- EitherT.liftF(
-            summon[Applicative[F]].pure(mappings.map(mapping =>
+            Applicative[F].pure(mappings.map(mapping =>
               instancesToDelete.push(mapping(3).entityId)
               mapping(3).entityId: String
             ))
           )
           _ <- EitherT(
-            summon[Functor[F]]
-              .map(ids.map(id => getMappedInstancesToDelete(id)).sequence)(
-                _.sequence
-              )
+            ids.map(id => getMappedInstancesToDelete(id)).sequence.map(
+              _.sequence
+            )
           )
         } yield ()).value
       end getMappedInstancesToDelete
 
       (for {
         stack <- EitherT.liftF(
-          summon[Functor[F]].map(getMappedInstancesToDelete(sourceInstanceId))(
+          getMappedInstancesToDelete(sourceInstanceId).map(
             _ => instancesToDelete
           )
         )
@@ -923,7 +911,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           .read(targetId)
           .map(_.map(entity => Option(entity)))
       case _ =>
-        summon[Applicative[F]].pure(Right(None))
+        Applicative[F].pure(Right(None))
     }
     response
   end readTargetInstance

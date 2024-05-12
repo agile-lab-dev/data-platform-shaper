@@ -75,6 +75,29 @@ class OntologyL1Spec extends CommonSpec:
     }
   }
 
+  "Creating a trait with a missing father" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        (for {
+          _ <- EitherT(
+            trms.create(Trait("YetAnotherTrait", Some("AMissingTrait")))
+          )
+        } yield ()).value
+      } asserting (res => res.isLeft should be(true))
+    }
+  }
+
   "Listing all traits" - {
     "works" in {
       val session = Session[IO](

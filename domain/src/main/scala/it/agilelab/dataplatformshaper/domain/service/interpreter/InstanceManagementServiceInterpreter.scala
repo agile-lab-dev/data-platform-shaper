@@ -63,7 +63,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             List.empty
           )
         else
-          summon[Applicative[F]]
+          Applicative[F]
             .pure(
               Left[ManagementServiceError, String](
                 ManagementServiceError(
@@ -85,26 +85,20 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
 
     val res = for {
       _ <- traceT(s"About to read instance with id: $instanceId")
-      fe <- EitherT[
-        F,
-        ManagementServiceError,
-        (String, List[(String, String)])
-      ](
-        summon[Functor[F]].map(
-          fetchEntityFieldsAndTypeName(logger, repository, instanceId)
-        )(Right[ManagementServiceError, (String, List[(String, String)])])
+      fe <- EitherT(
+        fetchEntityFieldsAndTypeName(logger, repository, instanceId)
+          .map(Right[ManagementServiceError, (String, List[(String, String)])])
       )
       _ <- traceT(s"Retrieved fields and type name $fe")
       entityType: EntityType <- EitherT(typeManagementService.read(fe(0)))
       _ <- traceT(s"Retrieved the entity type $entityType with name ${fe(0)} ")
       tuple <- EitherT[F, ManagementServiceError, Tuple](
-        summon[Functor[F]].map(
-          fieldsToTuple(logger, repository, fe(1), entityType.schema)
-        )(Right[ManagementServiceError, Tuple])
+        fieldsToTuple(logger, repository, fe(1), entityType.schema)
+          .map(Right[ManagementServiceError, Tuple])
       )
       _ <- traceT(s"Loaded the tuple $tuple")
       entity <- EitherT[F, ManagementServiceError, Entity](
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           Right[ManagementServiceError, Entity](
             Entity(instanceId, entityType.name, tuple)
           )
@@ -119,7 +113,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         if exist then res
         else
           EitherT(
-            summon[Applicative[F]].pure(
+            Applicative[F].pure(
               Left[ManagementServiceError, Entity](
                 ManagementServiceError(
                   s"The instance with id $instanceId does not exist"
@@ -167,7 +161,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     EitherT(exist(instanceId)).flatMapF { exist =>
       if exist then res
       else
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           Left(
             ManagementServiceError(
               s"This instance with id $instanceId does not exist"
@@ -213,8 +207,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       logger.trace(
         s"About to run the query $checkLinkedInstancesQuery to check if the instance $instanceId has linked instances"
       ) *>
-        summon[Functor[F]]
-          .map(repository.evaluateQuery(checkLinkedInstancesQuery))(ibs =>
+        repository
+          .evaluateQuery(checkLinkedInstancesQuery)
+          .map(ibs =>
             val count = ibs
               .map(bs => bs.getBinding("count").getValue.stringValue())
               .toList
@@ -231,7 +226,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
       r <- EitherT(
         if linkedInstancesExisting then
-          summon[Applicative[F]].pure(
+          Applicative[F].pure(
             Left[ManagementServiceError, Unit](
               ManagementServiceError(
                 s"This instance with id $instanceId cannot be deleted because has linked instances"
@@ -240,7 +235,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           )
         else if exist then res
         else
-          summon[Applicative[F]].pure(
+          Applicative[F].pure(
             Left[ManagementServiceError, Unit](
               ManagementServiceError(
                 s"This instance with id $instanceId cannot be deleted because does not exist"
@@ -265,7 +260,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |    ?entity ns:isClassifiedBy ?entityType
          |  }
          |""".stripMargin)
-    summon[Functor[F]].map(res)(res => {
+    res.map(res => {
       val count = res.toList.length
       if count > 0
       then Right[ManagementServiceError, Boolean](true)
@@ -325,9 +320,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             )
             .map(Right[ManagementServiceError, List[String]])
         )
-        entities <- EitherT(
-          summon[Functor[F]].map(ids.map(id => read(id)).sequence)(_.sequence)
-        )
+        entities <- EitherT(ids.map(id => read(id)).sequence.map(_.sequence))
       } yield entities).value
     end if
   end list
@@ -339,7 +332,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val predicate: F[Either[ManagementServiceError, Option[SearchPredicate]]] =
-      summon[Applicative[F]].pure(
+      Applicative[F].pure(
         (if query.trim.isEmpty then Either.right(None)
          else
            Either.catchNonFatal(Some(generateSearchPredicate("i", query)))
@@ -415,8 +408,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       link <- EitherT(
         if exist1 && exist2
         then
-          summon[Functor[F]]
-            .map(res)(ibs =>
+          res
+            .map(ibs =>
               val count = ibs
                 .map(bs => bs.getBinding("count").getValue.stringValue())
                 .toList
@@ -427,7 +420,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   .removeAndInsertStatements(statements, List.empty)
                   .map(_ => Right[ManagementServiceError, Unit](()))
               else
-                summon[Applicative[F]].pure(
+                Applicative[F].pure(
                   Left[ManagementServiceError, Unit](
                     ManagementServiceError(
                       s"Linking $instanceId1 to $instanceId2 with relationship $linkType: invalid relationship"
@@ -440,7 +433,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         else
           if !exist1
           then
-            summon[Applicative[F]].pure(
+            Applicative[F].pure(
               Left[ManagementServiceError, Unit](
                 ManagementServiceError(
                   s"This instance with id $instanceId1 cannot be linked because does not exist"
@@ -450,7 +443,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           else
             if !exist2
             then
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"This instance with id $instanceId2 cannot be linked because does not exist"
@@ -458,7 +451,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                 )
               )
             else
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"This instance with id $instanceId1 or $instanceId2 cannot be linked because does not exist"
@@ -503,12 +496,12 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       exist2 <- EitherT(exist(instanceId2))
       res <- EitherT(
         if exist1 && exist2 then
-          summon[Functor[F]].map(
-            repository.removeAndInsertStatements(List.empty, statements)
-          )(_ => Right[ManagementServiceError, Unit](()))
+          repository
+            .removeAndInsertStatements(List.empty, statements)
+            .map(_ => Right[ManagementServiceError, Unit](()))
         else
           if !exist1 then
-            summon[Applicative[F]].pure(
+            Applicative[F].pure(
               Left[ManagementServiceError, Unit](
                 ManagementServiceError(
                   s"This instance with id $instanceId1 cannot be unlinked because does not exist"
@@ -517,7 +510,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             )
           else
             if !exist2 then
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"This instance with id $instanceId1 cannot be unlinked because does not exist"
@@ -525,7 +518,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                 )
               )
             else
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"This instance with id $instanceId1 or $instanceId2 cannot be unlinked because does not exist"
@@ -563,19 +556,16 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <- traceT(s"Looking for linked instances with the query: $query")
       res <- EitherT(
         if exist then
-          summon[Functor[F]].map(
-            repository
-              .evaluateQuery(query)
-              .map(
-                _.map(bs =>
-                  iri(
-                    bs.getBinding("linked").getValue.stringValue()
-                  ).getLocalName
-                ).toList
-              )
-          )(Right[ManagementServiceError, List[String]])
+          repository
+            .evaluateQuery(query)
+            .map(
+              _.map(bs =>
+                iri(bs.getBinding("linked").getValue.stringValue()).getLocalName
+              ).toList
+            )
+            .map(Right[ManagementServiceError, List[String]])
         else
-          summon[Applicative[F]].pure(
+          Applicative[F].pure(
             Left[ManagementServiceError, List[String]](
               ManagementServiceError(
                 s"This instance with id $instanceId does not exist"

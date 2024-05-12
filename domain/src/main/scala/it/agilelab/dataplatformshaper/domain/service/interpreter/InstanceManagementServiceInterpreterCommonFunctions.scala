@@ -64,33 +64,31 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     given Logger[F] = logger
 
     val getSchema: F[Either[ManagementServiceError, Schema]] =
-      summon[Functor[F]].map(typeManagementService.read(instanceTypeName))(
-        _.map(_.schema)
-      )
+      typeManagementService.read(instanceTypeName).map(_.map(_.schema))
 
     (for {
       schema <- EitherT[F, ManagementServiceError, Schema](getSchema)
       _ <- traceT(s"Retrieved schema $schema for type name $instanceTypeName")
       _ <- EitherT[F, ManagementServiceError, Unit](
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           cueValidate(schema, tuple).leftMap(errors =>
             ManagementServiceError(s"Instance validation error" :: errors)
           )
         )
       )
       stmts <- EitherT[F, ManagementServiceError, List[Statement]](
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           emitStatementsForEntity(entityId, instanceTypeName, tuple, schema)
         )
       )
       _ <- traceT(s"Statements emitted ${stmts.mkString("\n")}")
       id <- EitherT[F, ManagementServiceError, String](
-        summon[Functor[F]].map(
-          typeManagementService.repository.removeAndInsertStatements(
+        typeManagementService.repository
+          .removeAndInsertStatements(
             additionalStatementsToAdd ::: stmts,
             statementsToRemove
           )
-        )(_ => Right[ManagementServiceError, String](entityId))
+          .map(_ => Right[ManagementServiceError, String](entityId))
       )
       _ <- traceT(
         s"Statements emitted creating the instance $id:\n${stmts.mkString("\n")}\n"
@@ -603,7 +601,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                 val s = iri(sb.getValue.stringValue)
                 val p = iri(pb.getValue.stringValue)
                 if ob.getValue.isLiteral then
-                  summon[Applicative[F]].pure(
+                  Applicative[F].pure(
                     List(
                       statement(
                         triple(s, p, ob.getValue.asInstanceOf[Literal]),
@@ -613,7 +611,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                   )
                 else
                   if p == RDF.TYPE || p == NS.ISCLASSIFIEDBY then
-                    summon[Applicative[F]].pure(
+                    Applicative[F].pure(
                       List(
                         statement(
                           triple(s, p, iri(ob.getValue.stringValue)),
@@ -668,7 +666,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       ).getLocalName
       entityType <- EitherT(typeManagementService.read(instanceType))
       _ <- EitherT[F, ManagementServiceError, Unit](
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           cueValidate(entityType.schema, values).leftMap(errors =>
             ManagementServiceError(s"Instance validation error" :: errors)
           )
@@ -693,7 +691,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     EitherT(instanceManagementService.exist(instanceId)).flatMapF { exist =>
       if exist then res
       else
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           Left(
             ManagementServiceError(
               s"The instance with id $instanceId does not exist"
@@ -722,7 +720,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
          |   ?mr ns:mappedBy ?m .
          |}
          |""".stripMargin
-    val res1 = summon[Monad[F]].flatMap(
+    val res1 = Monad[F].flatMap(
       logger.trace(
         s"Retrieving the mappings for source type $sourceEntityTypeName with the query:\n$query"
       ) *>
@@ -743,25 +741,21 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
               typeManagementService.read(targetEntityTypeName)
             )
             fields <- EitherT(
-              summon[Functor[F]].map(
-                fetchEntityFieldsAndTypeName(
-                  logger,
-                  typeManagementService.repository,
-                  mapperId
-                )
-              )(t =>
+              fetchEntityFieldsAndTypeName(
+                logger,
+                typeManagementService.repository,
+                mapperId
+              ).map(t =>
                 Right[ManagementServiceError, List[(String, String)]](t(1))
               )
             )
             tuple <- EitherT(
-              summon[Functor[F]].map(
-                fieldsToTuple(
-                  logger,
-                  typeManagementService.repository,
-                  fields,
-                  schemaToMapperSchema(targetEntityType.schema)
-                )
-              )(Right[ManagementServiceError, Tuple])
+              fieldsToTuple(
+                logger,
+                typeManagementService.repository,
+                fields,
+                schemaToMapperSchema(targetEntityType.schema)
+              ).map(Right[ManagementServiceError, Tuple])
             )
           } yield (
             mappingName,
@@ -773,7 +767,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
         )
         .sequence
     )
-    summon[Functor[F]].map(res1)(_.sequence)
+    res1.map(_.sequence)
   end getMappingsForEntityType
 
   def queryMappedInstances(
@@ -835,7 +829,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       s"Retrieving instances for the mapping ${mappingName.getOrElse(" ")} with the query:\n$query"
     ) *> repository.evaluateQuery(query)
 
-    summon[Functor[F]].map(res)(rows =>
+    res.map(rows =>
       Right(
         rows.toList.map(row =>
           (
@@ -859,7 +853,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     val stack = scala.collection.mutable.Stack(entityTypeName)
 
     def loop(): F[Either[ManagementServiceError, Unit]] =
-      if stack.isEmpty then summon[Functor[F]].pure(Right(()))
+      if stack.isEmpty then Applicative[F].pure(Right(()))
       else
         val currentType = stack.pop()
         getRelations(logger, repository, currentType, isGetParent = false)
@@ -874,7 +868,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                   }
 
                   if filteredMappings.isEmpty then
-                    summon[Functor[F]].pure(Right(()))
+                    Applicative[F].pure(Right(()))
                   else
                     val (
                       mappingName,
@@ -900,15 +894,15 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                       mapperId
                     ).map(Right(_))
 
-                case Left(error) => summon[Functor[F]].pure(Left(error))
+                case Left(error) => Applicative[F].pure(Left(error))
               }
               .flatMap {
                 case Right(_)    => loop()
-                case Left(error) => summon[Functor[F]].pure(Left(error))
+                case Left(error) => Applicative[F].pure(Left(error))
               }
           }
           .handleErrorWith { error =>
-            summon[Functor[F]].pure(
+            Applicative[F].pure(
               Left(
                 ManagementServiceError(
                   s"There was an error during the deletion of the mapping: $error"
@@ -962,7 +956,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     (for {
       ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
       stmts <- EitherT(
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           emitStatementsForEntity(
             mapperId,
             ttype.name,
@@ -973,12 +967,12 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
         )
       )
       res <- EitherT(
-        summon[Functor[F]].map(
-          repository.removeAndInsertStatements(
+        repository
+          .removeAndInsertStatements(
             List.empty[Statement],
             initialStatementsL2 ::: initialStatementsL3 ::: stmts
           )
-        )(Right[ManagementServiceError, Unit])
+          .map(Right[ManagementServiceError, Unit])
       )
     } yield res).value
   end deleteMappedInstances
@@ -1003,66 +997,66 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
          |   ?mr ns:mappedBy ?m .
          |}
          |""".stripMargin
-    val res1 = summon[Monad[F]].flatMap(
+    val res1 =
       logger.trace(
         s"Retrieving the mappings for source id $sourceEntityId with the query:\n$query"
       ) *>
-        instanceManagementService.repository.evaluateQuery(query)
-    )(bit =>
-      bit.toList
-        .map(b =>
-          val mapperId = iri(b.getBinding("m").getValue.toString).getLocalName
-          val mappingRelationship = iri(
-            b.getBinding("mr").getValue.toString
-          ).toString.replaceFirst(ns.getName, "")
-          val targetEntityId =
-            iri(b.getBinding("t").getValue.toString).getLocalName
-          (for {
-            sourceEntity <- EitherT(
-              instanceManagementService.read(sourceEntityId)
-            )
-            sourceEntityType <- EitherT(
-              typeManagementService.read(sourceEntity.entityTypeName)
-            )
-            targetEntity <- EitherT(
-              instanceManagementService.read(targetEntityId)
-            )
-            targetEntityType <- EitherT(
-              typeManagementService.read(targetEntity.entityTypeName)
-            )
-            fields <- EitherT(
-              summon[Functor[F]].map(
-                fetchEntityFieldsAndTypeName(
-                  logger,
-                  instanceManagementService.repository,
-                  mapperId
-                )
-              )(t =>
-                Right[ManagementServiceError, List[(String, String)]](t(1))
+        instanceManagementService.repository
+          .evaluateQuery(query)
+          .flatMap(bit =>
+            bit.toList
+              .map(b =>
+                val mapperId =
+                  iri(b.getBinding("m").getValue.toString).getLocalName
+                val mappingRelationship = iri(
+                  b.getBinding("mr").getValue.toString
+                ).toString.replaceFirst(ns.getName, "")
+                val targetEntityId =
+                  iri(b.getBinding("t").getValue.toString).getLocalName
+                (for {
+                  sourceEntity <- EitherT(
+                    instanceManagementService.read(sourceEntityId)
+                  )
+                  sourceEntityType <- EitherT(
+                    typeManagementService.read(sourceEntity.entityTypeName)
+                  )
+                  targetEntity <- EitherT(
+                    instanceManagementService.read(targetEntityId)
+                  )
+                  targetEntityType <- EitherT(
+                    typeManagementService.read(targetEntity.entityTypeName)
+                  )
+                  fields <- EitherT(
+                    fetchEntityFieldsAndTypeName(
+                      logger,
+                      instanceManagementService.repository,
+                      mapperId
+                    ).map(t =>
+                      Right[ManagementServiceError, List[(String, String)]](
+                        t(1)
+                      )
+                    )
+                  )
+                  tuple <- EitherT(
+                    fieldsToTuple(
+                      logger,
+                      instanceManagementService.repository,
+                      fields,
+                      schemaToMapperSchema(targetEntityType.schema)
+                    ).map(Right[ManagementServiceError, Tuple])
+                  )
+                } yield (
+                  sourceEntityType,
+                  sourceEntity,
+                  targetEntityType,
+                  targetEntity,
+                  tuple,
+                  mappingRelationship
+                )).value
               )
-            )
-            tuple <- EitherT(
-              summon[Functor[F]].map(
-                fieldsToTuple(
-                  logger,
-                  instanceManagementService.repository,
-                  fields,
-                  schemaToMapperSchema(targetEntityType.schema)
-                )
-              )(Right[ManagementServiceError, Tuple])
-            )
-          } yield (
-            sourceEntityType,
-            sourceEntity,
-            targetEntityType,
-            targetEntity,
-            tuple,
-            mappingRelationship
-          )).value
-        )
-        .sequence
-    )
-    summon[Functor[F]].map(res1)(_.sequence)
+              .sequence
+          )
+    res1.map(_.sequence)
   end getMappingsForEntity
 
   def getRelations(
@@ -1114,7 +1108,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
             loop(tValue :: acc)
 
-        summon[Functor[F]].pure(loop(Nil).reverse)
+        Applicative[F].pure(loop(Nil).reverse)
       }
 
   def getRoots(
@@ -1123,7 +1117,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     entityTypeName: String
   ): F[List[String]] =
     def loop(pending: Set[String], roots: Set[String]): F[Set[String]] =
-      if pending.isEmpty then summon[Functor[F]].pure(roots)
+      if pending.isEmpty then Applicative[F].pure(roots)
       else
         val next = pending.head
         getRelations(logger, repository, next, true).flatMap { parents =>
@@ -1135,7 +1129,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       initialParents =>
         if !initialParents.isEmpty then
           loop(initialParents.toSet, Set.empty).map(_.toList)
-        else summon[Functor[F]].pure(List(entityTypeName))
+        else Applicative[F].pure(List(entityTypeName))
     }
   end getRoots
 
@@ -1150,11 +1144,11 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       visited: Set[String],
       accumulator: List[String]
     ): F[Either[ManagementServiceError, List[String]]] =
-      if pendingTypes.isEmpty then summon[Functor[F]].pure(Right(accumulator))
+      if pendingTypes.isEmpty then Applicative[F].pure(Right(accumulator))
       else
         val currentType = pendingTypes.pop()
         if visited.contains(currentType) then
-          summon[Functor[F]].pure(
+          Applicative[F].pure(
             Left(
               ManagementServiceError(
                 s"Cycle detected in the hierarchy when processing '$currentType'"
@@ -1166,7 +1160,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             val newVisited = visited + currentType
             val commonRoots = roots.toSet.intersect(newVisited)
             if commonRoots.nonEmpty then
-              summon[Functor[F]].pure(
+              Applicative[F].pure(
                 Left(
                   ManagementServiceError(
                     s"Cycle detected in the hierarchy when processing one of the roots of '$currentType'"
@@ -1200,7 +1194,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     val res = logger.trace(
       s"Checking if the type $entityTypeName is related to the trait $traitName with the query:\n$query"
     ) *> repository.evaluateQuery(query)
-    summon[Functor[F]].map(res)(res =>
+    res.map(res =>
       val count = res.toList.headOption
         .flatMap(row => Option(row.getValue("count")))
         .flatMap(_.stringValue().toIntOption)

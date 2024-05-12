@@ -52,25 +52,42 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       _ <- traceT(
         s"Checking the existence, does ${traitDefinition.traitName} already exist? $exist"
       )
+      fatherExist <- EitherT(
+        traitDefinition.inheritsFrom.fold(
+          Applicative[F]
+            .pure(Right[ManagementServiceError, Boolean](true))
+        )(inhf => this.exist(inhf))
+      )
+      _ <- traceT(s"Checking if the father exists: $fatherExist")
       stmts <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(Right[ManagementServiceError, List[Statement]](statements))
       )
       _ <- EitherT {
-        if !exist
-        then
-          summon[Functor[F]].map(repository.removeAndInsertStatements(stmts))(
-            Right[ManagementServiceError, Unit]
-          )
-        else
-          summon[Applicative[F]]
-            .pure(
-              Left[ManagementServiceError, Unit](
-                ManagementServiceError(
-                  s"The trait ${traitDefinition.traitName} has been already defined"
+        if fatherExist then
+          if !exist
+          then
+            repository
+              .removeAndInsertStatements(stmts)
+              .map(Right[ManagementServiceError, Unit])
+          else
+            Applicative[F]
+              .pure(
+                Left[ManagementServiceError, Unit](
+                  ManagementServiceError(
+                    s"The trait ${traitDefinition.traitName} has been already defined"
+                  )
                 )
               )
+        else
+          Applicative[F].pure(
+            Left[ManagementServiceError, Unit](
+              ManagementServiceError(
+                s"The father trait ${traitDefinition.inheritsFrom.getOrElse("")} does not exist"
+              )
             )
+          )
+        end if
       }
       _ <- traceT(s"Instance type created")
     } yield ()).value
@@ -79,7 +96,18 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   def create(
     bulkTraitsCreationRequest: BulkTraitsCreationRequest
   ): F[Either[ManagementServiceError, Unit]] =
-    ???
+    for {
+      _ <- bulkTraitsCreationRequest.traits
+        .map(traitDefinition => this.create(traitDefinition))
+        .sequence
+        .map(_.sequence)
+        .map(_.map(_ => ()))
+      res <- bulkTraitsCreationRequest.relationships
+        .map(rel => this.link(rel(0), rel(1), rel(2)))
+        .sequence
+        .map(_.sequence)
+        .map(_.map(_ => ()))
+    } yield res
   end create
 
   override def delete(
@@ -125,7 +153,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         else EitherT.rightT[F, ManagementServiceError](())
       superClass <- EitherT.liftF(getSuperClassOf(traitName))
       additionalStatements <- EitherT.liftF(
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           superClass
             .map(trait2 =>
               List(
@@ -168,7 +196,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     (for {
       _ <- traceT(s"Looking for linked traits for trait $traitName")
       queryResult = repository.evaluateQuery(query)
-      res <- EitherT(summon[Functor[F]].map(queryResult) { resultSet =>
+      res <- EitherT(queryResult.map(resultSet =>
         val resultList = resultSet.toList
         Right(
           resultList.nonEmpty && resultList.head
@@ -176,7 +204,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
             .stringValue()
             .toInt > 0
         )
-      })
+      ))
     } yield res).value
   end hasLinkedTraits
 
@@ -199,7 +227,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     (for {
       _ <- traceT(s"Looking for entities having trait $traitName")
       queryResult = repository.evaluateQuery(query)
-      res <- EitherT(summon[Functor[F]].map(queryResult) { resultSet =>
+      res <- EitherT(queryResult.map(resultSet =>
         val resultList = resultSet.toList
         Right(
           resultList.nonEmpty && resultList.head
@@ -207,7 +235,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
             .stringValue()
             .toInt > 0
         )
-      })
+      ))
     } yield res).value
   end entityHasTrait
 
@@ -229,7 +257,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         |""".stripMargin
 
     val queryResult = repository.evaluateQuery(query)
-    summon[Functor[F]].map(queryResult)(
+    queryResult.map(
       _.nextOption().map(bs =>
         iri(bs.getValue("trait2").stringValue()).getLocalName
       )
@@ -250,7 +278,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
          |     ?trait rdf:type ns:Trait .
          |}
          |""".stripMargin)
-    summon[Functor[F]].map(res)(res => {
+    res.map(res => {
       val count = res.toList.length
       if count > 0
       then Right[ManagementServiceError, Boolean](true)
@@ -280,7 +308,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
 
     val res = repository.evaluateQuery(query)
 
-    summon[Functor[F]].map(res) { bindings =>
+    res.map(bindings =>
       val existingTraits = bindings
         .flatMap(binding =>
           Option(binding.getValue("trait")).map(_.stringValue())
@@ -290,7 +318,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         (traitName, existingTraits.contains(iri(ns, traitName).stringValue()))
       )
       Right[ManagementServiceError, Set[(String, Boolean)]](result)
-    }
+    )
   end exist
 
   override def link(
@@ -317,13 +345,13 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       link <- EitherT(
         if exist1 && exist2
         then
-          summon[Functor[F]].map(
-            repository.removeAndInsertStatements(statements, List.empty)
-          )(_ => Right[ManagementServiceError, Unit](()))
+          repository
+            .removeAndInsertStatements(statements, List.empty)
+            .map(_ => Right[ManagementServiceError, Unit](()))
         else
           if !exist1
           then
-            summon[Applicative[F]].pure(
+            Applicative[F].pure(
               Left[ManagementServiceError, Unit](
                 ManagementServiceError(s"The trait $traitName1 does not exist")
               )
@@ -331,7 +359,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
           else
             if !exist2
             then
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"The trait $traitName2 does not exist"
@@ -339,7 +367,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
                 )
               )
             else
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"The trait $traitName1 $traitName2 or does not exist"
@@ -403,18 +431,18 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       res <- EitherT(
         if exist1 && exist2
         then
-          summon[Functor[F]]
-            .map(res)(ibs =>
+          res
+            .map(ibs =>
               val count = ibs
                 .map(bs => bs.getBinding("count").getValue.stringValue().toInt)
                 .toList
                 .head
               if count === 0 then
-                summon[Functor[F]].map(
-                  repository.removeAndInsertStatements(List.empty, statements)
-                )(_ => Right[ManagementServiceError, Unit](()))
+                repository
+                  .removeAndInsertStatements(List.empty, statements)
+                  .map(_ => Right[ManagementServiceError, Unit](()))
               else
-                summon[Applicative[F]].pure(
+                Applicative[F].pure(
                   Left[ManagementServiceError, Unit](
                     ManagementServiceError(
                       s"Traits $traitName1 and $traitName2 have linked instances"
@@ -427,7 +455,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         else
           if !exist1
           then
-            summon[Applicative[F]].pure(
+            Applicative[F].pure(
               Left[ManagementServiceError, Unit](
                 ManagementServiceError(s"The trait $traitName1 does not exist")
               )
@@ -435,7 +463,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
           else
             if !exist2
             then
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"The trait $traitName2 does not exist"
@@ -443,7 +471,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
                 )
               )
             else
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"The trait $traitName1 or $traitName2 does not exist"
@@ -481,19 +509,16 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       _ <- traceT(s"Looking for linked traits with the query: $query")
       res <- EitherT(
         if exist then
-          summon[Functor[F]].map(
-            repository
-              .evaluateQuery(query)
-              .map(
-                _.map(bs =>
-                  iri(
-                    bs.getBinding("linked").getValue.stringValue()
-                  ).getLocalName
-                ).toList
-              )
-          )(Right[ManagementServiceError, List[String]])
+          repository
+            .evaluateQuery(query)
+            .map(
+              _.map(bs =>
+                iri(bs.getBinding("linked").getValue.stringValue()).getLocalName
+              ).toList
+            )
+            .map(Right[ManagementServiceError, List[String]])
         else
-          summon[Applicative[F]].pure(
+          Applicative[F].pure(
             Left[ManagementServiceError, List[String]](
               ManagementServiceError(s"The trait $traitName does not exist")
             )
