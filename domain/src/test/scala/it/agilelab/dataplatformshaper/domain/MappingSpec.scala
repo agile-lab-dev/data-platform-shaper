@@ -8,8 +8,13 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.*
+import it.agilelab.dataplatformshaper.domain.model.*
+import it.agilelab.dataplatformshaper.domain.model.NS.{
+  ENTITY,
+  ISCLASSIFIEDBY,
+  L2,
+  ns
+}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -22,28 +27,17 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
+import org.eclipse.rdf4j.model.util.Statements.statement
+import org.eclipse.rdf4j.model.util.Values.{iri, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.scalactic.Equality
-import org.eclipse.rdf4j.model.util.Statements.statement
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration.*
-import it.agilelab.dataplatformshaper.domain.model.NS.{
-  ENTITY,
-  ISCLASSIFIEDBY,
-  L2,
-  ns
-}
-import org.eclipse.rdf4j.model.util.Values.{iri, triple}
-
 import scala.language.{dynamics, implicitConversions}
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.=="
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.=="))
 class MappingSpec extends CommonSpec:
 
   given Equality[MappingDefinition] with
@@ -51,7 +45,8 @@ class MappingSpec extends CommonSpec:
       b match
         case bDef: MappingDefinition =>
           a.mappingKey == bDef.mappingKey &&
-          a.mapper.productIterator.toSet == bDef.mapper.productIterator.toSet
+          a.mapper.toArray.toSet == bDef.mapper.toArray.toSet &&
+          a.additionalSourcesReferences.toSet == bDef.additionalSourcesReferences.toSet
         case _ => false
     end areEqual
   end given
@@ -69,331 +64,284 @@ class MappingSpec extends CommonSpec:
   private val sourceType = EntityType(
     "SourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetType1 = EntityType(
     "TargetType1",
     Set("MappingSource", "MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetType2 = EntityType(
     "TargetType2",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetType3 = EntityType(
     "TargetType3",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetType4 = EntityType(
     "TargetType4",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val sourceCycleType = EntityType(
     "SourceCycleType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetCycleType1 = EntityType(
     "TargetCycleType1",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val targetCycleType2 = EntityType(
     "TargetCycleType2",
     Set("MappingTarget", "MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val invalidSourceType = EntityType(
     "InvalidSourceType",
     Set(),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val invalidTargetType = EntityType(
     "InvalidTargetType",
     Set(),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateSourceType = EntityType(
     "UpdateSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateTargetType = EntityType(
     "UpdateTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val readSourceType = EntityType(
     "ReadSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val readTargetType = EntityType(
     "ReadTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateMappingSourceType = EntityType(
     "UpdateMappingSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateMappingMidType = EntityType(
     "UpdateMappingMidType",
     Set("MappingTarget", "MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val updateMappingTargetType = EntityType(
     "UpdateMappingTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val deleteMappingSourceType = EntityType(
     "DeleteMappingSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val deleteMappingMidType = EntityType(
     "DeleteMappingMidType",
     Set("MappingSource", "MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val deleteMappingTargetType = EntityType(
     "DeleteMappingTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val twoMappedInstancesSourceType = EntityType(
     "TwoMappedInstancesSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val twoMappedInstancesTargetType = EntityType(
     "TwoMappedInstancesTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentCreationSourceType = EntityType(
     "IdempotentCreationSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentCreationMiddleType = EntityType(
     "IdempotentCreationMiddleType",
     Set("MappingSource", "MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentCreationTargetType = EntityType(
     "IdempotentCreationTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentDeletionSourceType = EntityType(
     "IdempotentDeletionSourceType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentDeletionMiddleType = EntityType(
     "IdempotentDeletionMiddleType",
     Set("MappingSource", "MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val idempotentDeletionTargetType = EntityType(
     "IdempotentDeletionTargetType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val createDirectlyTargetType = EntityType(
     "CreateDirectlyTargetType",
     Set("MappingTarget"),
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
+  )
+
+  private val fileBasedOutputPortType = EntityType(
+    "FileBasedOutputPortType",
+    Set("MappingSource", "FileBasedOutputPort"),
+    StructType(
+      List("name" -> StringType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
+  private val tableBasedOutputPortType = EntityType(
+    "TableBasedOutputPortType",
+    Set("MappingSource", "TableBasedOutputPort"),
+    StructType(List("name" -> StringType())): Schema
+  )
+
+  private val athenaTableType = EntityType(
+    "AthenaTableType",
+    Set("MappingTarget"),
+    StructType(
+      List("name" -> StringType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
+  private val s3Folder = EntityType(
+    "S3Folder",
+    Set("MappingTarget"),
+    StructType(
+      List("name" -> StringType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
+  private val nestTargetType = EntityType(
+    "NestTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List("age" -> IntType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
+  private val nestSourceType = EntityType(
+    "NestSourceType",
+    Set("MappingSource", "NestSource"),
+    StructType(List("age" -> IntType())): Schema
+  )
+
+  private val nestLinkedType = EntityType(
+    "NestLinkedType",
+    Set("NestLinked"),
     StructType(
       List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
+        "name" -> StringType(),
+        "parameterToGet" -> StringType(),
+        "nestedAttribute" -> StructType(
+          List("nest" -> StringType(), "surplusParam" -> StringType())
+        )
       )
     ): Schema
   )
 
-  private val mapperTuple = (
-    "field1" -> "instance.get('field1')",
-    "field2" -> "instance.get('field2')"
+  private val readMapSourceType = EntityType(
+    "ReadMapSourceType",
+    Set("MappingSource", "ReadSource"),
+    StructType(List("age" -> IntType())): Schema
   )
 
-  private val updatedMapperTuple = (
-    "field1" -> "instance.get('field2')",
-    "field2" -> "instance.get('field1')"
+  private val readMapTargetType = EntityType(
+    "ReadMapTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "age" -> IntType(),
+        "additionalParameter" -> StringType(),
+        "secondAdditionalParameter" -> StringType()
+      )
+    ): Schema
   )
+
+  private val firstReadMapLinkedType = EntityType(
+    "FirstReadMapLinkedType",
+    Set("FirstReadLinked"),
+    StructType(List("name" -> StringType())): Schema
+  )
+
+  private val secondReadMapLinkedType = EntityType(
+    "SecondReadMapLinkedType",
+    Set("SecondReadLinked"),
+    StructType(List("surname" -> StringType())): Schema
+  )
+
+  private val wrongPathSourceType = EntityType(
+    "WrongPathSourceType",
+    Set("MappingSource"),
+    StructType(List("age" -> IntType())): Schema
+  )
+
+  private val wrongPathTargetType = EntityType(
+    "WrongPathTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List("age" -> IntType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
+  private val mapperTuple =
+    ("field1" -> "source.get('field1')", "field2" -> "source.get('field2')")
+
+  private val updatedMapperTuple =
+    ("field1" -> "source.get('field2')", "field2" -> "source.get('field1')")
 
   "Creating mapping instances" - {
     "works" in {
@@ -500,15 +448,10 @@ class MappingSpec extends CommonSpec:
           res1 <- EitherT(
             iservice.create(
               "SourceType",
-              (
-                "field1" -> "value5",
-                "field2" -> "value6"
-              )
+              ("field1" -> "value5", "field2" -> "value6")
             )
           )
-          _ <- EitherT(
-            mservice.createMappedInstances(res1)
-          )
+          _ <- EitherT(mservice.createMappedInstances(res1))
           lt1 <- EitherT(
             iservice.list(
               "TargetType1",
@@ -542,17 +485,9 @@ class MappingSpec extends CommonSpec:
             )
           )
           _ <- EitherT(
-            iservice.update(
-              res1,
-              (
-                "field1" -> "value7",
-                "field2" -> "value8"
-              )
-            )
+            iservice.update(res1, ("field1" -> "value7", "field2" -> "value8"))
           )
-          _ <- EitherT(
-            mservice.updateMappedInstances(res1)
-          )
+          _ <- EitherT(mservice.updateMappedInstances(res1))
           lt5 <- EitherT(
             iservice.list(
               "TargetType1",
@@ -770,12 +705,7 @@ class MappingSpec extends CommonSpec:
               None
             )
           )
-        } yield (
-          lt1.length,
-          lt2.length,
-          lt3.length,
-          lt4.length
-        )).value
+        } yield (lt1.length, lt2.length, lt3.length, lt4.length)).value
       } asserting (ret =>
         ret should matchPattern { case Right((0, 0, 0, 0)) => }
       )
@@ -806,11 +736,7 @@ class MappingSpec extends CommonSpec:
           res <- EitherT(
             mservice.create(
               MappingDefinition(
-                MappingKey(
-                  "mapping1",
-                  "SourceType",
-                  "TargetType1"
-                ),
+                MappingKey("mapping1", "SourceType", "TargetType1"),
                 mapperTuple
               )
             )
@@ -890,11 +816,7 @@ class MappingSpec extends CommonSpec:
             mservice
               .getMappingsForEntityType(logger, tservice, "SourceCycleType")
           )
-        } yield (
-          res1,
-          res2,
-          mappers
-        )).value
+        } yield (res1, res2, mappers)).value
 
       } asserting (ret =>
         ret should matchPattern {
@@ -946,10 +868,7 @@ class MappingSpec extends CommonSpec:
             mservice
               .getMappingsForEntityType(logger, tservice, "InvalidSourceType")
           )
-        } yield (
-          res1,
-          mappers
-        )).value
+        } yield (res1, mappers)).value
 
       } asserting (ret =>
         ret should matchPattern {
@@ -997,15 +916,10 @@ class MappingSpec extends CommonSpec:
           res1 <- EitherT(
             iservice.create(
               "UpdateSourceType",
-              (
-                "field1" -> "value10",
-                "field2" -> "value12"
-              )
+              ("field1" -> "value10", "field2" -> "value12")
             )
           )
-          _ <- EitherT(
-            mservice.createMappedInstances(res1)
-          )
+          _ <- EitherT(mservice.createMappedInstances(res1))
           lt1 <- EitherT(
             iservice.list(
               "UpdateTargetType",
@@ -1021,10 +935,7 @@ class MappingSpec extends CommonSpec:
           res <- EitherT(
             iservice.update(
               firstElement,
-              (
-                "field1" -> "value13",
-                "field2" -> "value14"
-              )
+              ("field1" -> "value13", "field2" -> "value14")
             )
           )
         } yield res).value
@@ -1062,10 +973,7 @@ class MappingSpec extends CommonSpec:
             res <- EitherT(
               iservice.create(
                 createDirectlyTargetType.name,
-                (
-                  "field1" -> "value10",
-                  "field2" -> "value12"
-                )
+                ("field1" -> "value10", "field2" -> "value12")
               )
             )
           } yield res).value
@@ -1073,9 +981,7 @@ class MappingSpec extends CommonSpec:
         .asserting {
           case Left(error) => succeed
           case _ =>
-            fail(
-              s"Expected an error during the creation of the instance"
-            )
+            fail(s"Expected an error during the creation of the instance")
         }
     }
   }
@@ -1186,9 +1092,7 @@ class MappingSpec extends CommonSpec:
           case Right(actualMappingDef) =>
             actualMappingDef shouldEqual expectedMappingDef
           case Left(error) =>
-            fail(
-              s"Expected a mapping definition but received error: $error"
-            )
+            fail(s"Expected a mapping definition but received error: $error")
         }
     }
   }
@@ -1399,6 +1303,388 @@ class MappingSpec extends CommonSpec:
         }
     }
   }
+  // TODO: Solve repeated mapping
+  /*"Creating a mapping between two EntityTypes with  a repeated attribute" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val mappingKey = MappingKey(
+        "repeated_attribute_map",
+        "RepeatedAttributeSourceType",
+        "RepeatedAttributeTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(tservice.create(repeatedAttributeSourceType))
+            _ <- EitherT(tservice.create(repeatedAttributeTargetType))
+            res <- EitherT(
+              mservice.create(
+                MappingDefinition(mappingKey, repeatedMapperTuple)
+              )
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "RepeatedAttributeSourceType",
+                Tuple1(("field1", List("test")))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+          } yield res).value
+        }
+        .asserting {
+          case Right(()) => succeed
+          case Left(ex) =>
+            fail(
+              "Expected a successful created mapping but found an error"
+            )
+        }
+    }
+  }*/
+
+  "Injecting additional references in mapping" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val tableBasedMappingDefinition = MappingDefinition(
+        MappingKey(
+          "tableBasedMapping",
+          "TableBasedOutputPortType",
+          "AthenaTableType"
+        ),
+        (
+          "name" -> "source.get('name')",
+          "additionalParameter" -> "fileBasedOutputPort.get('additionalParameter')"
+        ),
+        Map(
+          "fileBasedOutputPort" -> "source/dependsOn/FileBasedOutputPortType.find(\"name = 'test'\")/mappedTo/S3Folder"
+        )
+      )
+
+      val fileBasedMappingDefinition = MappingDefinition(
+        MappingKey("fileBasedMapping", "FileBasedOutputPortType", "S3Folder"),
+        (
+          "name" -> "source.get('name')",
+          "additionalParameter" -> "source.get('additionalParameter')"
+        ),
+        Map()
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("FileBasedOutputPort", None)))
+            _ <- EitherT(trservice.create(Trait("TableBasedOutputPort", None)))
+            _ <- EitherT(
+              trservice.link(
+                "TableBasedOutputPort",
+                Relationship.dependsOn,
+                "FileBasedOutputPort"
+              )
+            )
+
+            _ <- EitherT(tservice.create(fileBasedOutputPortType))
+            _ <- EitherT(tservice.create(tableBasedOutputPortType))
+            _ <- EitherT(tservice.create(athenaTableType))
+            _ <- EitherT(tservice.create(s3Folder))
+
+            _ <- EitherT(mservice.create(fileBasedMappingDefinition))
+            _ <- EitherT(mservice.create(tableBasedMappingDefinition))
+
+            fileBasedSourceId <- EitherT(
+              iservice
+                .create(
+                  "FileBasedOutputPortType",
+                  (("name", "test"), ("additionalParameter", "addTest"))
+                )
+            )
+            tableBasedSourceId <- EitherT(
+              iservice
+                .create("TableBasedOutputPortType", Tuple1("name", "test"))
+            )
+            _ <- EitherT(mservice.createMappedInstances(fileBasedSourceId))
+            _ <- EitherT(mservice.createMappedInstances(tableBasedSourceId))
+            tableMappedInstances <- EitherT(
+              mservice.readMappedInstances(tableBasedSourceId)
+            )
+            targetEntity = tableMappedInstances.head._3._2
+            fileMappedInstances <- EitherT(
+              mservice.readMappedInstances(fileBasedSourceId)
+            )
+            expectedEntity = fileMappedInstances.head._3._2
+          } yield (targetEntity, expectedEntity)).value
+        }
+        .asserting {
+          case Right((targetEntity, expectedEntity))
+              if targetEntity.values.equals(expectedEntity.values) =>
+            succeed
+          case _ =>
+            fail(
+              "Expected a successful creation of mapped instances but found an error"
+            )
+        }
+    }
+  }
+
+  "Injecting additional source references when there are multiple instances" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "nestedMappingDefinition",
+          "NestSourceType",
+          "NestTargetType"
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "nestLinkedType.get('nestedAttribute/nest')"
+        ),
+        Map(
+          "nestLinkedType" -> "source/hasPart/NestLinkedType.find(\"nestedAttribute/nest = 'testNest'\")"
+        )
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("NestSource", None)))
+            _ <- EitherT(trservice.create(Trait("NestLinked", None)))
+            _ <- EitherT(
+              trservice.link("NestSource", Relationship.hasPart, "NestLinked")
+            )
+
+            _ <- EitherT(tservice.create(nestSourceType))
+            _ <- EitherT(tservice.create(nestTargetType))
+            _ <- EitherT(tservice.create(nestLinkedType))
+
+            _ <- EitherT(mservice.create(mappingDefinition))
+
+            nestedSourceId <- EitherT(
+              iservice
+                .create("NestSourceType", Tuple1("age", 23))
+            )
+            nestLinkedId <- EitherT(
+              iservice
+                .create(
+                  "NestLinkedType",
+                  (
+                    "name" -> "test",
+                    "parameterToGet" -> "getTest",
+                    "nestedAttribute" -> (
+                      "nest" -> "testNest",
+                      "surplusParam" -> "surplusValue"
+                    )
+                  )
+                )
+            )
+            _ <- EitherT(
+              iservice
+                .create(
+                  "NestLinkedType",
+                  (
+                    "name" -> "secondTest",
+                    "parameterToGet" -> "secondGetTest",
+                    "nestedAttribute" -> (
+                      "nest" -> "secondTestNest",
+                      "surplusParam" -> "secondSurplusValue"
+                    )
+                  )
+                )
+            )
+            res <- EitherT(mservice.createMappedInstances(nestedSourceId))
+            nestSourceInstances <- EitherT(
+              mservice.readMappedInstances(nestedSourceId)
+            )
+            targetEntity = nestSourceInstances.head._3._2
+            expectedEntity <- EitherT(iservice.read(nestLinkedId))
+          } yield targetEntity).value
+        }
+        .asserting {
+          case Right(targetEntity) =>
+            if targetEntity.values.toArray.toSet
+                .contains(("additionalParameter", "testNest"))
+            then succeed
+            else
+              fail(
+                "Expected the created type to have 'additionalParameter' with value 'testNest'"
+              )
+          case _ =>
+            fail(
+              "Expected a successful creation of mapped instances but found an error"
+            )
+        }
+    }
+  }
+
+  "Reading a mapping definition after injecting additional references" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "readMappingDefinition",
+          "ReadMapSourceType",
+          "ReadMapTargetType"
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "readLinkedType.get('name')",
+          "secondAdditionalParameter" -> "secondReadLinkedType.get('surname')"
+        ),
+        Map(
+          "readLinkedType" -> "source/dependsOn/FirstReadMapLinkedType",
+          "secondReadLinkedType" -> "source/hasPart/SecondReadMapLinkedType"
+        )
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("ReadSource", None)))
+            _ <- EitherT(trservice.create(Trait("FirstReadLinked", None)))
+            _ <- EitherT(trservice.create(Trait("SecondReadLinked", None)))
+            _ <- EitherT(
+              trservice
+                .link("ReadSource", Relationship.dependsOn, "FirstReadLinked")
+            )
+            _ <- EitherT(
+              trservice
+                .link("ReadSource", Relationship.hasPart, "SecondReadLinked")
+            )
+
+            _ <- EitherT(tservice.create(readMapSourceType))
+            _ <- EitherT(tservice.create(readMapTargetType))
+            _ <- EitherT(tservice.create(firstReadMapLinkedType))
+            _ <- EitherT(tservice.create(secondReadMapLinkedType))
+
+            _ <- EitherT(mservice.create(mappingDefinition))
+            res <- EitherT(mservice.read(mappingDefinition.mappingKey))
+          } yield res).value
+        }
+        .asserting {
+          case Right(m) => m shouldEqual mappingDefinition
+          case _ =>
+            fail(
+              "The MappingDefinition read is not equal to the starting MappingDefinition"
+            )
+        }
+    }
+  }
+
+  "Injecting additional source references with a wrong path" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "wrongMappingDefinition",
+          "WrongPathSourceType",
+          "WrongPathTargetType"
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "wrongType.get('nestedAttribute/nest')"
+        ),
+        Map("wrongType" -> "source/WrongType")
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(tservice.create(wrongPathSourceType))
+            _ <- EitherT(tservice.create(wrongPathTargetType))
+            _ <- EitherT(mservice.create(mappingDefinition))
+
+            nestedSourceId <- EitherT(
+              iservice
+                .create("WrongPathSourceType", Tuple1("age", 23))
+            )
+            res <- EitherT(mservice.createMappedInstances(nestedSourceId))
+          } yield res).value
+        }
+        .asserting {
+          case Left(_) => succeed
+          case _ =>
+            fail("Expected an error during the creation of the mapping")
+        }
+    }
+  }
 
   "Checking if the deletion of mapped instances is idempotent" - {
     "works" in {
@@ -1487,7 +1773,8 @@ class MappingSpec extends CommonSpec:
                 .list(idempotentDeletionMiddleType.name, None, false, None)
             )
             targetTypeElements <- EitherT(
-              iservice.list(idempotentDeletionTargetType.name, None, false, None)
+              iservice
+                .list(idempotentDeletionTargetType.name, None, false, None)
             )
             totalElements =
               middleTypeElements.length + targetTypeElements.length

@@ -1396,11 +1396,16 @@ components:
       required:
         - mappingKey
         - mapper
+        - additionalSourcesReferences
       properties:
         mappingKey:
           $ref: '#/components/schemas/MappingKey'
         mapper:
           $ref: '#/components/schemas/Values'
+        additionalSourcesReferences:
+          type: object
+          additionalProperties:
+            type: string
     MappedInstancesItem:
       type: object
       required:

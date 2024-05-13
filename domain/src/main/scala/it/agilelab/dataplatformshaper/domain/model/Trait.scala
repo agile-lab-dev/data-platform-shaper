@@ -1,3 +1,3 @@
-package it.agilelab.dataplatformshaper.domain.model.l0
+package it.agilelab.dataplatformshaper.domain.model
 
-trait Trait
+case class Trait(traitName: String, inheritsFrom: Option[String])

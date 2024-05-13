@@ -10,7 +10,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
+import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   MappingManagementServiceInterpreter,
@@ -45,8 +45,8 @@ object Server:
     .mkString("\n")
 
   def server[F[_]: Async: Network](
-      session: Session,
-      typeCache: Cache[F, String, EntityType]
+    session: Session,
+    typeCache: Cache[F, String, EntityType]
   ): Resource[F, Unit] =
     val dsl = Http4sDsl[F]
     import dsl.*

@@ -30,24 +30,29 @@ def schemaToMapperSchema(schema: Schema): Schema =
   )
 end schemaToMapperSchema
 
+@SuppressWarnings(Array("scalafix:DisableSyntax.defaultArgs"))
 def tupleToMappedTuple(
-    sourceTuple: Tuple,
-    sourceTupleSchema: Schema,
-    mappingTuple: Tuple,
-    mappedTupleSchema: Schema
+  sourceTuple: Tuple,
+  sourceTupleSchema: Schema,
+  mappingTuple: Tuple,
+  mappedTupleSchema: Schema,
+  additionalSourceTuples: Map[String, Tuple]
 ): Either[String, Tuple] =
-  val elProcesspr = ELProcessor()
+  val elProcessor = ELProcessor()
   val exFactory = ExpressionFactoryImpl()
   for {
     _ <- validateMappingTuple(mappingTuple, mappedTupleSchema)
     _ <- {
       val pt = parseTuple(sourceTuple, sourceTupleSchema)
-      elProcesspr.defineBean("instance", sourceTuple: DynamicTuple)
+      elProcessor.defineBean("source", sourceTuple: DynamicTuple)
+      additionalSourceTuples.foreach(pair =>
+        elProcessor.defineBean(pair(0), pair(1): DynamicTuple)
+      )
       pt
     }
     mt <- Try(
       tupleToMappedTupleChecked(
-        elProcesspr,
+        elProcessor,
         exFactory,
         mappingTuple,
         mappedTupleSchema,
@@ -60,7 +65,7 @@ end tupleToMappedTuple
 @inline def bracket(fieldExpr: String) = s"""$${ $fieldExpr }"""
 
 @inline private def evalField[T](
-    fieldExpr: String
+  fieldExpr: String
 )(using elp: ELProcessor, ef: ExpressionFactory, onlyValidation: Boolean): Any =
   if onlyValidation then
     ef.createValueExpression(
@@ -74,9 +79,9 @@ end tupleToMappedTuple
 end evalField
 
 @inline private def evalRepeatedField[T](fieldExpr: List[String])(using
-    elp: ELProcessor,
-    ef: ExpressionFactory,
-    onlyValidation: Boolean
+  elp: ELProcessor,
+  ef: ExpressionFactory,
+  onlyValidation: Boolean
 ): List[Any] =
   if onlyValidation then
     fieldExpr.foreach(expr =>
@@ -91,9 +96,9 @@ end evalField
 end evalRepeatedField
 
 @inline private def evalOptionalField[T](fieldExpr: Option[String])(using
-    elp: ELProcessor,
-    ef: ExpressionFactory,
-    onlyValidation: Boolean
+  elp: ELProcessor,
+  ef: ExpressionFactory,
+  onlyValidation: Boolean
 ): Option[Any] =
   if onlyValidation then
     val _ = fieldExpr.fold(None)(expr =>
@@ -108,8 +113,8 @@ end evalRepeatedField
 end evalOptionalField
 
 def validateMappingTuple(
-    mappingTuple: Tuple,
-    mappedTupleSchema: Schema
+  mappingTuple: Tuple,
+  mappedTupleSchema: Schema
 ): Either[String, Unit] =
   Try(
     tupleToMappedTupleChecked(
@@ -125,18 +130,15 @@ def validateMappingTuple(
 end validateMappingTuple
 
 @SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.throw",
-    "scalafix:DisableSyntax.asInstanceOf"
-  )
+  Array("scalafix:DisableSyntax.throw", "scalafix:DisableSyntax.asInstanceOf")
 )
 @throws[IllegalArgumentException]
 def tupleToMappedTupleChecked(
-    elProcessor: ELProcessor,
-    exFactory: ExpressionFactory,
-    mappingTuple: Tuple,
-    mappedTupleSchema: Schema,
-    onlyValidation: Boolean
+  elProcessor: ELProcessor,
+  exFactory: ExpressionFactory,
+  mappingTuple: Tuple,
+  mappedTupleSchema: Schema,
+  onlyValidation: Boolean
 ): Tuple =
   given elp: ELProcessor = elProcessor
   given exf: ExpressionFactory = exFactory

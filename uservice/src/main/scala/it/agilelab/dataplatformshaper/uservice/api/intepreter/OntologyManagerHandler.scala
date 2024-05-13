@@ -10,17 +10,18 @@ import fs2.{Stream, text}
 import io.circe.Json
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.{Entity, EntityType}
-import it.agilelab.dataplatformshaper.domain.model.l1.{
-  Relationship,
-  given_Conversion_String_Relationship
-}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.model.{
+  Entity,
+  EntityType,
+  Relationship,
+  Trait,
+  given_Conversion_String_Relationship
+}
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
@@ -33,7 +34,7 @@ import it.agilelab.dataplatformshaper.domain.service.{
 import it.agilelab.dataplatformshaper.uservice.Resource.*
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   MappedInstancesItem,
-  Trait,
+  Trait => OpenApiTrait,
   ValidationError,
   Entity as OpenApiEntity,
   EntityType as OpenApiEntityType,
@@ -48,16 +49,16 @@ import scala.language.implicitConversions
 import scala.util.Try
 
 class OntologyManagerHandler[F[_]: Async](
-    tms: TypeManagementServiceInterpreter[F],
-    ims: InstanceManagementServiceInterpreter[F],
-    trms: TraitManagementServiceInterpreter[F],
-    mms: MappingManagementService[F]
+  tms: TypeManagementServiceInterpreter[F],
+  ims: InstanceManagementServiceInterpreter[F],
+  trms: TraitManagementServiceInterpreter[F],
+  mms: MappingManagementService[F]
 ) extends Handler[F]
     with StrictLogging:
 
-  override def createType(
-      respond: Resource.CreateTypeResponse.type
-  )(body: OpenApiEntityType): F[CreateTypeResponse] =
+  override def createType(respond: Resource.CreateTypeResponse.type)(
+    body: OpenApiEntityType
+  ): F[CreateTypeResponse] =
     val schema: Schema = body.schema
 
     val fatherName = body.fatherName
@@ -77,25 +78,10 @@ class OntologyManagerHandler[F[_]: Async](
         fatherName
           .fold(
             tms
-              .create(
-                l0.EntityType(
-                  body.name,
-                  ts,
-                  schema,
-                  None
-                )
-              )
+              .create(EntityType(body.name, ts, schema, None))
           )(fn =>
             tms
-              .create(
-                l0.EntityType(
-                  body.name,
-                  ts,
-                  schema,
-                  None
-                ),
-                fn
-              )
+              .create(EntityType(body.name, ts, schema, None), fn)
           )
           .map {
             _.leftMap { case ManagementServiceError(errors) =>
@@ -116,7 +102,7 @@ class OntologyManagerHandler[F[_]: Async](
   end createType
 
   override def deleteType(respond: Resource.DeleteTypeResponse.type)(
-      name: String
+    name: String
   ): F[Resource.DeleteTypeResponse] =
     val res: F[Either[String, String]] = for {
       deleteResult <- tms.delete(name).map(_.bimap(_.errors.head, _ => "OK"))
@@ -133,12 +119,12 @@ class OntologyManagerHandler[F[_]: Async](
   end deleteType
 
   override def updateTypeConstraints(
-      respond: Resource.UpdateTypeConstraintsResponse.type
+    respond: Resource.UpdateTypeConstraintsResponse.type
   )(body: OpenApiEntityType): F[UpdateTypeConstraintsResponse] =
 
     val schema: Schema = body.schema
-    val entityType: l0.EntityType =
-      l0.EntityType(body.name, Set(), schema, None)
+    val entityType: EntityType =
+      EntityType(body.name, Set(), schema, None)
 
     val res = for {
       res <- EitherT(
@@ -163,7 +149,7 @@ class OntologyManagerHandler[F[_]: Async](
   end updateTypeConstraints
 
   override def createTypeByYaml(
-      respond: Resource.CreateTypeByYamlResponse.type
+    respond: Resource.CreateTypeByYamlResponse.type
   )(body: Stream[F, Byte]): F[Resource.CreateTypeByYamlResponse] =
     val getEntityType = body
       .through(text.utf8.decode)
@@ -187,23 +173,11 @@ class OntologyManagerHandler[F[_]: Async](
         entityType.fatherName
           .fold(
             tms
-              .create(
-                l0.EntityType(
-                  entityType.name,
-                  ts,
-                  entityType.schema,
-                  None
-                )
-              )
+              .create(EntityType(entityType.name, ts, entityType.schema, None))
           )(fn =>
             tms
               .create(
-                l0.EntityType(
-                  entityType.name,
-                  ts,
-                  entityType.schema,
-                  None
-                ),
+                EntityType(entityType.name, ts, entityType.schema, None),
                 fn
               )
           )
@@ -222,7 +196,7 @@ class OntologyManagerHandler[F[_]: Async](
   end createTypeByYaml
 
   override def updateTypeConstraintsByYaml(
-      respond: Resource.UpdateTypeConstraintsByYamlResponse.type
+    respond: Resource.UpdateTypeConstraintsByYamlResponse.type
   )(body: Stream[F, Byte]): F[Resource.UpdateTypeConstraintsByYamlResponse] =
     val getEntityType = body
       .through(text.utf8.decode)
@@ -243,12 +217,7 @@ class OntologyManagerHandler[F[_]: Async](
       res <- EitherT(
         tms
           .updateConstraints(
-            l0.EntityType(
-              entityType.name,
-              ts,
-              entityType.schema,
-              None
-            )
+            EntityType(entityType.name, ts, entityType.schema, None)
           )
           .map(_.leftMap(_.errors.head))
       )
@@ -265,7 +234,7 @@ class OntologyManagerHandler[F[_]: Async](
   end updateTypeConstraintsByYaml
 
   override def readType(respond: Resource.ReadTypeResponse.type)(
-      name: String
+    name: String
   ): F[Resource.ReadTypeResponse] =
 
     val res = for {
@@ -285,7 +254,7 @@ class OntologyManagerHandler[F[_]: Async](
   end readType
 
   override def readTypeAsYaml(respond: Resource.ReadTypeAsYamlResponse.type)(
-      name: String
+    name: String
   ): F[Resource.ReadTypeAsYamlResponse[F]] =
     val res = (for {
       et <- EitherT(
@@ -300,9 +269,7 @@ class OntologyManagerHandler[F[_]: Async](
               summon[Applicative[F]].pure(
                 ByteArrayInputStream(
                   OpenApiEntityType
-                    .encodeEntityType(
-                      et
-                    )
+                    .encodeEntityType(et)
                     .asYaml
                     .spaces2
                     .getBytes("UTF8")
@@ -326,7 +293,7 @@ class OntologyManagerHandler[F[_]: Async](
   end readTypeAsYaml
 
   override def createEntity(respond: Resource.CreateEntityResponse.type)(
-      body: OpenApiEntity
+    body: OpenApiEntity
   ): F[Resource.CreateEntityResponse] =
     val res = (for {
       schema <- EitherT(
@@ -359,9 +326,9 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createEntity
 
-  override def deleteEntity(respond: Resource.DeleteEntityResponse.type)(
-      deleteId: String
-  ): F[Resource.DeleteEntityResponse] =
+  override def deleteEntity(
+    respond: Resource.DeleteEntityResponse.type
+  )(deleteId: String): F[Resource.DeleteEntityResponse] =
     ims
       .delete(deleteId)
       .map {
@@ -374,10 +341,9 @@ class OntologyManagerHandler[F[_]: Async](
       }
   end deleteEntity
 
-  override def updateEntity(respond: Resource.UpdateEntityResponse.type)(
-      updateId: String,
-      body: OpenApiEntity
-  ): F[Resource.UpdateEntityResponse] =
+  override def updateEntity(
+    respond: Resource.UpdateEntityResponse.type
+  )(updateId: String, body: OpenApiEntity): F[Resource.UpdateEntityResponse] =
     val res = (for {
       schema <- EitherT(
         tms
@@ -411,10 +377,10 @@ class OntologyManagerHandler[F[_]: Async](
   end updateEntity
 
   override def updateEntityByYaml(
-      respond: Resource.UpdateEntityByYamlResponse.type
+    respond: Resource.UpdateEntityByYamlResponse.type
   )(
-      id: String,
-      body: Stream[F, Byte]
+    id: String,
+    body: Stream[F, Byte]
   ): F[Resource.UpdateEntityByYamlResponse] = {
     val getYaml = body
       .through(text.utf8.decode)
@@ -441,9 +407,7 @@ class OntologyManagerHandler[F[_]: Async](
         summon[Applicative[F]]
           .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
       )
-      _ <- EitherT(
-        ims.update(id, tuple).map(_.leftMap(_.errors.head))
-      )
+      _ <- EitherT(ims.update(id, tuple).map(_.leftMap(_.errors.head)))
     } yield id).value
 
     res
@@ -457,7 +421,7 @@ class OntologyManagerHandler[F[_]: Async](
   }
 
   override def createEntityByYaml(
-      respond: Resource.CreateEntityByYamlResponse.type
+    respond: Resource.CreateEntityByYamlResponse.type
   )(body: fs2.Stream[F, Byte]): F[Resource.CreateEntityByYamlResponse] =
     val getEntity = body
       .through(text.utf8.decode)
@@ -500,7 +464,7 @@ class OntologyManagerHandler[F[_]: Async](
   end createEntityByYaml
 
   override def readEntity(respond: Resource.ReadEntityResponse.type)(
-      id: String
+    id: String
   ): F[Resource.ReadEntityResponse] =
     val res = (for {
       et <- EitherT(ims.read(id).map(_.leftMap(_.errors.head)))
@@ -512,11 +476,8 @@ class OntologyManagerHandler[F[_]: Async](
           .pure(tupleToJson(et.values, schema).leftMap(_.getMessage))
       )
       oaEntity <- EitherT(
-        summon[Applicative[F]].pure(
-          Right(
-            OpenApiEntity(et.entityId, et.entityTypeName, values)
-          )
-        )
+        summon[Applicative[F]]
+          .pure(Right(OpenApiEntity(et.entityId, et.entityTypeName, values)))
       )
     } yield oaEntity).value
 
@@ -531,7 +492,7 @@ class OntologyManagerHandler[F[_]: Async](
   end readEntity
 
   override def readEntityAsYaml(
-      respond: Resource.ReadEntityAsYamlResponse.type
+    respond: Resource.ReadEntityAsYamlResponse.type
   )(id: String): F[Resource.ReadEntityAsYamlResponse[F]] =
     val res = (for {
       et <- EitherT(ims.read(id).map(_.leftMap(_.errors.head)))
@@ -575,9 +536,9 @@ class OntologyManagerHandler[F[_]: Async](
   end readEntityAsYaml
 
   override def createTrait(respond: Resource.CreateTraitResponse.type)(
-      body: Trait
+    body: OpenApiTrait
   ): F[Resource.CreateTraitResponse] =
-    val res = trms.create(body.name, body.inheritsFrom)
+    val res = trms.create(Trait(body.name, body.inheritsFrom))
 
     res.map {
       case Left(error) =>
@@ -589,7 +550,7 @@ class OntologyManagerHandler[F[_]: Async](
   end createTrait
 
   override def deleteTrait(respond: Resource.DeleteTraitResponse.type)(
-      traitName: String
+    traitName: String
   ): F[Resource.DeleteTraitResponse] =
     val res = trms.delete(traitName)
 
@@ -603,9 +564,9 @@ class OntologyManagerHandler[F[_]: Async](
   end deleteTrait
 
   override def linkTrait(respond: Resource.LinkTraitResponse.type)(
-      trait1: String,
-      rel: String,
-      trait2: String
+    trait1: String,
+    rel: String,
+    trait2: String
   ): F[Resource.LinkTraitResponse] =
 
     val conversion: Either[Throwable, Relationship] =
@@ -640,9 +601,9 @@ class OntologyManagerHandler[F[_]: Async](
   end linkTrait
 
   override def unlinkTrait(respond: Resource.UnlinkTraitResponse.type)(
-      trait1: String,
-      rel: String,
-      trait2: String
+    trait1: String,
+    rel: String,
+    trait2: String
   ): F[Resource.UnlinkTraitResponse] =
 
     val conversion: Either[Throwable, Relationship] =
@@ -676,10 +637,9 @@ class OntologyManagerHandler[F[_]: Async](
     }
   end unlinkTrait
 
-  override def linkedTraits(respond: Resource.LinkedTraitsResponse.type)(
-      traitName: String,
-      rel: String
-  ): F[Resource.LinkedTraitsResponse] =
+  override def linkedTraits(
+    respond: Resource.LinkedTraitsResponse.type
+  )(traitName: String, rel: String): F[Resource.LinkedTraitsResponse] =
 
     val conversion: Either[Throwable, Relationship] =
       Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
@@ -711,9 +671,9 @@ class OntologyManagerHandler[F[_]: Async](
   end linkedTraits
 
   override def linkEntity(respond: Resource.LinkEntityResponse.type)(
-      instanceId1: String,
-      rel: String,
-      instanceId2: String
+    instanceId1: String,
+    rel: String,
+    instanceId2: String
   ): F[Resource.LinkEntityResponse] =
 
     val conversion: Either[Throwable, Relationship] =
@@ -750,9 +710,9 @@ class OntologyManagerHandler[F[_]: Async](
   end linkEntity
 
   override def unlinkEntity(respond: Resource.UnlinkEntityResponse.type)(
-      instanceId1: String,
-      rel: String,
-      instanceId2: String
+    instanceId1: String,
+    rel: String,
+    instanceId2: String
   ): F[Resource.UnlinkEntityResponse] =
 
     val conversion: Either[Throwable, Relationship] =
@@ -788,10 +748,9 @@ class OntologyManagerHandler[F[_]: Async](
     }
   end unlinkEntity
 
-  override def linkedEntities(respond: Resource.LinkedEntitiesResponse.type)(
-      instanceId: String,
-      rel: String
-  ): F[Resource.LinkedEntitiesResponse] =
+  override def linkedEntities(
+    respond: Resource.LinkedEntitiesResponse.type
+  )(instanceId: String, rel: String): F[Resource.LinkedEntitiesResponse] =
 
     val conversion: Either[Throwable, Relationship] =
       Either.catchNonFatal(summon[Conversion[String, Relationship]].apply(rel))
@@ -822,57 +781,43 @@ class OntologyManagerHandler[F[_]: Async](
     }
   end linkedEntities
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   override def listEntities(respond: Resource.ListEntitiesResponse.type)(
-      entityTypeName: String,
-      query: String,
-      limit: Option[Int]
+    entityTypeName: String,
+    query: String,
+    limit: Option[Int]
   ): F[Resource.ListEntitiesResponse] =
     (for {
       schema <- EitherT(tms.read(entityTypeName).map(_.map(_.schema)))
-      listEntities <- EitherT(
-        ims.list(entityTypeName, query, true, limit)
-      )
+      listEntities <- EitherT(ims.list(entityTypeName, query, true, limit))
     } yield (schema, listEntities)).value
       .map(
         _.map(p =>
-          p(1).toVector.map(
-            {
-              case et: Entity =>
-                tupleToJson(et.values, p(0)) match
-                  case Left(error) =>
-                    logger.error(
-                      s"Error querying instances with type $entityTypeName and query $query: ${error.getMessage}"
-                    )
-                    throw Exception("It shouldn't be here")
-                  case Right(json) =>
-                    OpenApiEntity(
-                      et.entityId,
-                      et.entityTypeName,
-                      json
-                    )
-                end match
-              case _: String => throw Exception("It shouldn't be here")
-            }
-          )
+          p(1).toVector.map({
+            case et: Entity =>
+              tupleToJson(et.values, p(0)) match
+                case Left(error) =>
+                  logger.error(
+                    s"Error querying instances with type $entityTypeName and query $query: ${error.getMessage}"
+                  )
+                  throw Exception("It shouldn't be here")
+                case Right(json) =>
+                  OpenApiEntity(et.entityId, et.entityTypeName, json)
+              end match
+            case _: String => throw Exception("It shouldn't be here")
+          })
         )
       )
-      .map(
-        {
-          case Left(error) =>
-            respond.BadRequest(ValidationError(Vector(error.errors.head)))
-          case Right(entities) =>
-            respond.Ok(entities)
-        }
-      )
+      .map({
+        case Left(error) =>
+          respond.BadRequest(ValidationError(Vector(error.errors.head)))
+        case Right(entities) =>
+          respond.Ok(entities)
+      })
   end listEntities
 
   override def listTypes(
-      respond: Resource.ListTypesResponse.type
+    respond: Resource.ListTypesResponse.type
   )(): F[Resource.ListTypesResponse] =
     val result = for
       entityTypes <- EitherT(tms.list())
@@ -900,7 +845,7 @@ class OntologyManagerHandler[F[_]: Async](
   end listTypes
 
   override def listTraits(
-      respond: Resource.ListTraitsResponse.type
+    respond: Resource.ListTraitsResponse.type
   )(): F[Resource.ListTraitsResponse] =
     val result =
       for traitNames <- EitherT(trms.list())
@@ -916,17 +861,13 @@ class OntologyManagerHandler[F[_]: Async](
     }
   end listTraits
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   override def listEntitiesByIds(
-      respond: Resource.ListEntitiesByIdsResponse.type
+    respond: Resource.ListEntitiesByIdsResponse.type
   )(
-      entityTypeName: String,
-      query: String,
-      limit: Option[Int]
+    entityTypeName: String,
+    query: String,
+    limit: Option[Int]
   ): F[Resource.ListEntitiesByIdsResponse] =
     ims
       .list(entityTypeName, query, false, limit)
@@ -944,9 +885,9 @@ class OntologyManagerHandler[F[_]: Async](
       })
 
   override def readMapping(respond: Resource.ReadMappingResponse.type)(
-      mappingName: String,
-      sourceTypeName: String,
-      targetTypeName: String
+    mappingName: String,
+    sourceTypeName: String,
+    targetTypeName: String
   ): F[Resource.ReadMappingResponse] =
     (for {
       mappingDefinition <- EitherT(
@@ -968,16 +909,15 @@ class OntologyManagerHandler[F[_]: Async](
                   mappingDefinition.mappingKey.sourceEntityTypeName,
                   mappingDefinition.mappingKey.targetEntityTypeName
                 ),
-                _
+                _,
+                mappingDefinition.additionalSourcesReferences
               )
             )
         )
       )
     } yield res).value.map {
       case Left(error) =>
-        logger.error(
-          s"Error in retrieving the mapping: ${error.errors.head}"
-        )
+        logger.error(s"Error in retrieving the mapping: ${error.errors.head}")
         respond.BadRequest(ValidationError(error.errors.toVector))
       case Right(md) =>
         respond.Ok(md)
@@ -985,11 +925,11 @@ class OntologyManagerHandler[F[_]: Async](
   end readMapping
 
   override def readMappingAsYaml(
-      respond: Resource.ReadMappingAsYamlResponse.type
+    respond: Resource.ReadMappingAsYamlResponse.type
   )(
-      mappingName: String,
-      sourceTypeName: String,
-      targetTypeName: String
+    mappingName: String,
+    sourceTypeName: String,
+    targetTypeName: String
   ): F[Resource.ReadMappingAsYamlResponse[F]] =
     (for {
       mappingDefinition <- EitherT(
@@ -1023,9 +963,7 @@ class OntologyManagerHandler[F[_]: Async](
               summon[Applicative[F]].pure(
                 ByteArrayInputStream(
                   OpenApiMappingDefinition
-                    .encodeMappingDefinition(
-                      openApiMappingDefinition
-                    )
+                    .encodeMappingDefinition(openApiMappingDefinition)
                     .asYaml
                     .spaces2
                     .getBytes("UTF8")
@@ -1038,9 +976,7 @@ class OntologyManagerHandler[F[_]: Async](
       )
     } yield res).value map {
       case Left(error) =>
-        logger.error(
-          s"Error in retrieving the mapping: ${error.errors.head}"
-        )
+        logger.error(s"Error in retrieving the mapping: ${error.errors.head}")
         respond.BadRequest(ValidationError(error.errors.toVector))
       case Right(stream) =>
         respond.Ok(stream)
@@ -1048,9 +984,9 @@ class OntologyManagerHandler[F[_]: Async](
   end readMappingAsYaml
 
   override def deleteMapping(respond: Resource.DeleteMappingResponse.type)(
-      mappingName: String,
-      sourceTypeName: String,
-      targetTypeName: String
+    mappingName: String,
+    sourceTypeName: String,
+    targetTypeName: String
   ): F[Resource.DeleteMappingResponse] =
     val res =
       mms.delete(MappingKey(mappingName, sourceTypeName, targetTypeName))
@@ -1066,7 +1002,7 @@ class OntologyManagerHandler[F[_]: Async](
   end deleteMapping
 
   override def updateMapping(respond: Resource.UpdateMappingResponse.type)(
-      body: OpenApiMappingDefinition
+    body: OpenApiMappingDefinition
   ): F[Resource.UpdateMappingResponse] =
     val res = (for {
       schema <- EitherT(
@@ -1105,7 +1041,7 @@ class OntologyManagerHandler[F[_]: Async](
   end updateMapping
 
   override def createMapping(respond: Resource.CreateMappingResponse.type)(
-      body: OpenApiMappingDefinition
+    body: OpenApiMappingDefinition
   ): F[Resource.CreateMappingResponse] =
     val res = (for {
       schema <- EitherT(
@@ -1131,7 +1067,8 @@ class OntologyManagerHandler[F[_]: Async](
                 body.mappingKey.sourceEntityTypeName,
                 body.mappingKey.targetEntityTypeName
               ),
-              tuple
+              tuple,
+              body.additionalSourcesReferences
             )
           )
           .map(_.leftMap { case err: ManagementServiceError =>
@@ -1150,7 +1087,7 @@ class OntologyManagerHandler[F[_]: Async](
   end createMapping
 
   override def createMappingByYaml(
-      respond: Resource.CreateMappingByYamlResponse.type
+    respond: Resource.CreateMappingByYamlResponse.type
   )(body: Stream[F, Byte]): F[Resource.CreateMappingByYamlResponse] =
     val getMappingDefinition = body
       .through(text.utf8.decode)
@@ -1209,7 +1146,7 @@ class OntologyManagerHandler[F[_]: Async](
   end createMappingByYaml
 
   override def createMappedInstances(
-      respond: Resource.CreateMappedInstancesResponse.type
+    respond: Resource.CreateMappedInstancesResponse.type
   )(body: String): F[Resource.CreateMappedInstancesResponse] =
     val res = mms
       .createMappedInstances(body)
@@ -1225,7 +1162,7 @@ class OntologyManagerHandler[F[_]: Async](
   end createMappedInstances
 
   override def updateMappedInstances(
-      respond: Resource.UpdateMappedInstancesResponse.type
+    respond: Resource.UpdateMappedInstancesResponse.type
   )(body: String): F[Resource.UpdateMappedInstancesResponse] =
     val res = mms
       .updateMappedInstances(body)
@@ -1241,7 +1178,7 @@ class OntologyManagerHandler[F[_]: Async](
   end updateMappedInstances
 
   override def deleteMappedInstances(
-      respond: Resource.DeleteMappedInstancesResponse.type
+    respond: Resource.DeleteMappedInstancesResponse.type
   )(sourceInstanceId: String): F[Resource.DeleteMappedInstancesResponse] =
     val res = mms
       .deleteMappedInstances(sourceInstanceId)
@@ -1256,75 +1193,55 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end deleteMappedInstances
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   override def readMappedInstances(
-      respond: Resource.ReadMappedInstancesResponse.type
+    respond: Resource.ReadMappedInstancesResponse.type
   )(sourceInstanceId: String): F[Resource.ReadMappedInstancesResponse] =
     (for {
-      listItems <- EitherT(
-        mms.readMappedInstances(sourceInstanceId)
-      )
+      listItems <- EitherT(mms.readMappedInstances(sourceInstanceId))
     } yield listItems).value
-      .map(
-        _.map(
-          _.toVector.map(
-            {
-              case (
-                    (sourceEntityType, sourceEntity),
-                    mappingRelationship,
-                    (targetEntityType, targetEntity)
-                  ) =>
-                val se =
-                  tupleToJson(
-                    sourceEntity.values,
-                    sourceEntityType.schema
-                  ) match
-                    case Left(error) =>
-                      logger.error(
-                        s"Error getting mapped instances: ${error.getMessage}"
-                      )
-                      throw Exception("It shouldn't be here")
-                    case Right(json) =>
-                      OpenApiEntity(
-                        sourceEntity.entityId,
-                        sourceEntity.entityTypeName,
-                        json
-                      )
-                  end match
-                val te =
-                  tupleToJson(
-                    targetEntity.values,
-                    targetEntityType.schema
-                  ) match
-                    case Left(error) =>
-                      logger.error(
-                        s"Error getting mapped instances: ${error.getMessage}"
-                      )
-                      throw Exception("It shouldn't be here")
-                    case Right(json) =>
-                      OpenApiEntity(
-                        targetEntity.entityId,
-                        targetEntity.entityTypeName,
-                        json
-                      )
-                  end match
-                MappedInstancesItem(se, mappingRelationship, te)
-            }
-          )
-        )
-      )
-      .map(
-        {
-          case Left(error) =>
-            respond.BadRequest(ValidationError(Vector(error.errors.head)))
-          case Right(entities) =>
-            respond.Ok(entities)
-        }
-      )
+      .map(_.map(_.toVector.map({
+        case (
+              (sourceEntityType, sourceEntity),
+              mappingRelationship,
+              (targetEntityType, targetEntity)
+            ) =>
+          val se =
+            tupleToJson(sourceEntity.values, sourceEntityType.schema) match
+              case Left(error) =>
+                logger.error(
+                  s"Error getting mapped instances: ${error.getMessage}"
+                )
+                throw Exception("It shouldn't be here")
+              case Right(json) =>
+                OpenApiEntity(
+                  sourceEntity.entityId,
+                  sourceEntity.entityTypeName,
+                  json
+                )
+            end match
+          val te =
+            tupleToJson(targetEntity.values, targetEntityType.schema) match
+              case Left(error) =>
+                logger.error(
+                  s"Error getting mapped instances: ${error.getMessage}"
+                )
+                throw Exception("It shouldn't be here")
+              case Right(json) =>
+                OpenApiEntity(
+                  targetEntity.entityId,
+                  targetEntity.entityTypeName,
+                  json
+                )
+            end match
+          MappedInstancesItem(se, mappingRelationship, te)
+      })))
+      .map({
+        case Left(error) =>
+          respond.BadRequest(ValidationError(Vector(error.errors.head)))
+        case Right(entities) =>
+          respond.Ok(entities)
+      })
   end readMappedInstances
 
 end OntologyManagerHandler

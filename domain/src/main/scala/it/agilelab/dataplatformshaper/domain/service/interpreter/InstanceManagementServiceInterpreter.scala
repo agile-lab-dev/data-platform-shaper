@@ -6,11 +6,9 @@ import cats.effect.*
 import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.NS.*
-import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{
   InstanceManagementService,
@@ -27,7 +25,7 @@ import java.util.UUID
 import scala.language.{implicitConversions, postfixOps}
 
 class InstanceManagementServiceInterpreter[F[_]: Sync](
-    typeManagementService: TypeManagementService[F]
+  typeManagementService: TypeManagementService[F]
 ) extends InstanceManagementService[F]
     with InstanceManagementServiceInterpreterCommonFunctions[F]:
 
@@ -36,8 +34,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   val repository: KnowledgeGraph[F] = typeManagementService.repository
 
   override def create(
-      instanceTypeName: String,
-      values: Tuple
+    instanceTypeName: String,
+    values: Tuple
   ): F[Either[ManagementServiceError, String]] =
     val entityId = UUID.randomUUID().toString
     (for {
@@ -65,7 +63,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             List.empty
           )
         else
-          summon[Applicative[F]]
+          Applicative[F]
             .pure(
               Left[ManagementServiceError, String](
                 ManagementServiceError(
@@ -82,35 +80,25 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end create
 
   override def read(
-      instanceId: String
+    instanceId: String
   ): F[Either[ManagementServiceError, Entity]] =
 
     val res = for {
       _ <- traceT(s"About to read instance with id: $instanceId")
-      fe <- EitherT[
-        F,
-        ManagementServiceError,
-        (String, List[(String, String)])
-      ](
-        summon[Functor[F]].map(
-          fetchEntityFieldsAndTypeName(logger, repository, instanceId)
-        )(
-          Right[ManagementServiceError, (String, List[(String, String)])]
-        )
+      fe <- EitherT(
+        fetchEntityFieldsAndTypeName(logger, repository, instanceId)
+          .map(Right[ManagementServiceError, (String, List[(String, String)])])
       )
       _ <- traceT(s"Retrieved fields and type name $fe")
       entityType: EntityType <- EitherT(typeManagementService.read(fe(0)))
       _ <- traceT(s"Retrieved the entity type $entityType with name ${fe(0)} ")
       tuple <- EitherT[F, ManagementServiceError, Tuple](
-        summon[Functor[F]].map(
-          fieldsToTuple(logger, repository, fe(1), entityType.schema)
-        )(
-          Right[ManagementServiceError, Tuple]
-        )
+        fieldsToTuple(logger, repository, fe(1), entityType.schema)
+          .map(Right[ManagementServiceError, Tuple])
       )
       _ <- traceT(s"Loaded the tuple $tuple")
       entity <- EitherT[F, ManagementServiceError, Entity](
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           Right[ManagementServiceError, Entity](
             Entity(instanceId, entityType.name, tuple)
           )
@@ -125,7 +113,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         if exist then res
         else
           EitherT(
-            summon[Applicative[F]].pure(
+            Applicative[F].pure(
               Left[ManagementServiceError, Entity](
                 ManagementServiceError(
                   s"The instance with id $instanceId does not exist"
@@ -137,13 +125,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end read
 
   override def update(
-      instanceId: String,
-      values: Tuple
+    instanceId: String,
+    values: Tuple
   ): F[Either[ManagementServiceError, String]] =
     val res: F[Either[ManagementServiceError, String]] = (for {
-      _ <- traceT(
-        s"About to remove the instance $instanceId"
-      )
+      _ <- traceT(s"About to remove the instance $instanceId")
       entity <- EitherT(read(instanceId))
       hasTrait <- EitherT(
         checkTraitForEntityType(
@@ -175,7 +161,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     EitherT(exist(instanceId)).flatMapF { exist =>
       if exist then res
       else
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           Left(
             ManagementServiceError(
               s"This instance with id $instanceId does not exist"
@@ -186,7 +172,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end update
 
   override def delete(
-      instanceId: String
+    instanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
     val res: F[Either[ManagementServiceError, Unit]] = (for {
       _ <- logger.trace(s"About to remove the instance $instanceId")
@@ -194,10 +180,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <- logger.trace(
         s"About to remove the statements \n${stmts.mkString("\n")}"
       )
-      _ <- repository.removeAndInsertStatements(
-        List.empty[Statement],
-        stmts
-      )
+      _ <- repository.removeAndInsertStatements(List.empty[Statement], stmts)
     } yield ()).map(_ => Right[ManagementServiceError, Unit](()))
 
     val checkLinkedInstancesQuery =
@@ -224,8 +207,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       logger.trace(
         s"About to run the query $checkLinkedInstancesQuery to check if the instance $instanceId has linked instances"
       ) *>
-        summon[Functor[F]]
-          .map(repository.evaluateQuery(checkLinkedInstancesQuery))(ibs =>
+        repository
+          .evaluateQuery(checkLinkedInstancesQuery)
+          .map(ibs =>
             val count = ibs
               .map(bs => bs.getBinding("count").getValue.stringValue())
               .toList
@@ -242,7 +226,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
       r <- EitherT(
         if linkedInstancesExisting then
-          summon[Applicative[F]].pure(
+          Applicative[F].pure(
             Left[ManagementServiceError, Unit](
               ManagementServiceError(
                 s"This instance with id $instanceId cannot be deleted because has linked instances"
@@ -251,7 +235,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           )
         else if exist then res
         else
-          summon[Applicative[F]].pure(
+          Applicative[F].pure(
             Left[ManagementServiceError, Unit](
               ManagementServiceError(
                 s"This instance with id $instanceId cannot be deleted because does not exist"
@@ -264,7 +248,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end delete
 
   override def exist(
-      instanceId: String
+    instanceId: String
   ): F[Either[ManagementServiceError, Boolean]] =
     val res = repository.evaluateQuery(s"""
          |PREFIX ns:  <${ns.getName}>
@@ -276,7 +260,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |    ?entity ns:isClassifiedBy ?entityType
          |  }
          |""".stripMargin)
-    summon[Functor[F]].map(res)(res => {
+    res.map(res => {
       val count = res.toList.length
       if count > 0
       then Right[ManagementServiceError, Boolean](true)
@@ -285,10 +269,10 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end exist
 
   override def list(
-      instanceTypeName: String,
-      predicate: Option[SearchPredicate],
-      returnEntities: Boolean,
-      limit: Option[Int]
+    instanceTypeName: String,
+    predicate: Option[SearchPredicate],
+    returnEntities: Boolean,
+    limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val limitClause = limit.map(l => s"LIMIT $l").getOrElse("")
 
@@ -336,23 +320,23 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             )
             .map(Right[ManagementServiceError, List[String]])
         )
-        entities <- EitherT(
-          summon[Functor[F]].map(ids.map(id => read(id)).sequence)(_.sequence)
-        )
+        entities <- EitherT(ids.map(id => read(id)).sequence.map(_.sequence))
       } yield entities).value
     end if
   end list
 
   override def list(
-      instanceTypeName: String,
-      query: String,
-      returnEntities: Boolean,
-      limit: Option[Int]
+    instanceTypeName: String,
+    query: String,
+    returnEntities: Boolean,
+    limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val predicate: F[Either[ManagementServiceError, Option[SearchPredicate]]] =
-      summon[Applicative[F]].pure(
+      Applicative[F].pure(
         (if query.trim.isEmpty then Either.right(None)
-         else Either.catchNonFatal(Some(generateSearchPredicate(query)))).left
+         else
+           Either.catchNonFatal(Some(generateSearchPredicate("i", query)))
+        ).left
           .map(t =>
             ManagementServiceError(s"Invalid search predicate: ${t.getMessage}")
           )
@@ -365,9 +349,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end list
 
   override def link(
-      instanceId1: String,
-      linkType: Relationship,
-      instanceId2: String
+    instanceId1: String,
+    linkType: Relationship,
+    instanceId2: String
   ): F[Either[ManagementServiceError, Unit]] =
     val query =
       s"""
@@ -395,16 +379,26 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         query
       )
 
-    val statements = List(
-      statement(
-        triple(
-          iri(ns, instanceId1),
-          iri(linkType.getNamespace, linkType),
-          iri(ns, instanceId2)
-        ),
-        L2
+    val statements = statement(
+      triple(
+        iri(ns, instanceId1),
+        iri(linkType.getNamespace, linkType),
+        iri(ns, instanceId2)
+      ),
+      L2
+    ) :: linkType.getInverse.fold(Nil: List[Statement])(inverse =>
+      List(
+        statement(
+          triple(
+            iri(ns, instanceId2),
+            iri(linkType.getNamespace, inverse),
+            iri(ns, instanceId1)
+          ),
+          L2
+        )
       )
     )
+
     (for {
       _ <- traceT(
         s"About to link $instanceId1 with $instanceId2 using the relationship $linkType"
@@ -414,8 +408,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       link <- EitherT(
         if exist1 && exist2
         then
-          summon[Functor[F]]
-            .map(res)(ibs =>
+          res
+            .map(ibs =>
               val count = ibs
                 .map(bs => bs.getBinding("count").getValue.stringValue())
                 .toList
@@ -426,7 +420,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   .removeAndInsertStatements(statements, List.empty)
                   .map(_ => Right[ManagementServiceError, Unit](()))
               else
-                summon[Applicative[F]].pure(
+                Applicative[F].pure(
                   Left[ManagementServiceError, Unit](
                     ManagementServiceError(
                       s"Linking $instanceId1 to $instanceId2 with relationship $linkType: invalid relationship"
@@ -439,7 +433,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         else
           if !exist1
           then
-            summon[Applicative[F]].pure(
+            Applicative[F].pure(
               Left[ManagementServiceError, Unit](
                 ManagementServiceError(
                   s"This instance with id $instanceId1 cannot be linked because does not exist"
@@ -449,7 +443,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
           else
             if !exist2
             then
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"This instance with id $instanceId2 cannot be linked because does not exist"
@@ -457,7 +451,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                 )
               )
             else
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"This instance with id $instanceId1 or $instanceId2 cannot be linked because does not exist"
@@ -471,18 +465,27 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end link
 
   override def unlink(
-      instanceId1: String,
-      linkType: Relationship,
-      instanceId2: String
+    instanceId1: String,
+    linkType: Relationship,
+    instanceId2: String
   ): F[Either[ManagementServiceError, Unit]] =
-    val statements = List(
-      statement(
-        triple(
-          iri(ns, instanceId1),
-          iri(linkType.getNamespace, linkType),
-          iri(ns, instanceId2)
-        ),
-        L2
+    val statements = statement(
+      triple(
+        iri(ns, instanceId1),
+        iri(linkType.getNamespace, linkType),
+        iri(ns, instanceId2)
+      ),
+      L2
+    ) :: linkType.getInverse.fold(Nil: List[Statement])(inverse =>
+      List(
+        statement(
+          triple(
+            iri(ns, instanceId2),
+            iri(linkType.getNamespace, inverse),
+            iri(ns, instanceId1)
+          ),
+          L2
+        )
       )
     )
     (for {
@@ -493,15 +496,12 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       exist2 <- EitherT(exist(instanceId2))
       res <- EitherT(
         if exist1 && exist2 then
-          summon[Functor[F]].map(
-            repository.removeAndInsertStatements(
-              List.empty,
-              statements
-            )
-          )(_ => Right[ManagementServiceError, Unit](()))
+          repository
+            .removeAndInsertStatements(List.empty, statements)
+            .map(_ => Right[ManagementServiceError, Unit](()))
         else
           if !exist1 then
-            summon[Applicative[F]].pure(
+            Applicative[F].pure(
               Left[ManagementServiceError, Unit](
                 ManagementServiceError(
                   s"This instance with id $instanceId1 cannot be unlinked because does not exist"
@@ -510,7 +510,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             )
           else
             if !exist2 then
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"This instance with id $instanceId1 cannot be unlinked because does not exist"
@@ -518,7 +518,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                 )
               )
             else
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 Left[ManagementServiceError, Unit](
                   ManagementServiceError(
                     s"This instance with id $instanceId1 or $instanceId2 cannot be unlinked because does not exist"
@@ -532,8 +532,8 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
   end unlink
 
   override def linked(
-      instanceId: String,
-      linkType: Relationship
+    instanceId: String,
+    linkType: Relationship
   ): F[Either[ManagementServiceError, List[String]]] =
     val query =
       s"""
@@ -556,19 +556,16 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       _ <- traceT(s"Looking for linked instances with the query: $query")
       res <- EitherT(
         if exist then
-          summon[Functor[F]].map(
-            repository
-              .evaluateQuery(query)
-              .map(
-                _.map(bs =>
-                  iri(
-                    bs.getBinding("linked").getValue.stringValue()
-                  ).getLocalName
-                ).toList
-              )
-          )(Right[ManagementServiceError, List[String]])
+          repository
+            .evaluateQuery(query)
+            .map(
+              _.map(bs =>
+                iri(bs.getBinding("linked").getValue.stringValue()).getLocalName
+              ).toList
+            )
+            .map(Right[ManagementServiceError, List[String]])
         else
-          summon[Applicative[F]].pure(
+          Applicative[F].pure(
             Left[ManagementServiceError, List[String]](
               ManagementServiceError(
                 s"This instance with id $instanceId does not exist"

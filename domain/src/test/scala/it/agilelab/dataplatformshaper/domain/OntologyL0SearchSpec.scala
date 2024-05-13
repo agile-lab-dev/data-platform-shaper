@@ -8,8 +8,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.*
+import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
@@ -120,9 +119,7 @@ class OntologyL0SearchSpec extends CommonSpec:
           "longRepeated" -> LongType(Repeated),
           "longNullable" -> LongType(Nullable),
           "furtherNestedLongStruct" -> StructType(
-            List(
-              "furtherNestedLong" -> LongType()
-            )
+            List("furtherNestedLong" -> LongType())
           )
         )
       ),
@@ -158,24 +155,15 @@ class OntologyL0SearchSpec extends CommonSpec:
         )
       ),
       "optionalStruct" -> StructType(
-        List(
-          "nest1" -> StringType(),
-          "nest2" -> StringType()
-        ),
+        List("nest1" -> StringType(), "nest2" -> StringType()),
         Nullable
       ),
       "emptyOptionalStruct" -> StructType(
-        List(
-          "nest1" -> StringType(),
-          "nest2" -> StringType()
-        ),
+        List("nest1" -> StringType(), "nest2" -> StringType()),
         Nullable
       ),
       "columns" -> StructType(
-        List(
-          "name" -> StringType(),
-          "type" -> StringType()
-        ),
+        List("name" -> StringType(), "type" -> StringType()),
         Repeated
       )
     )
@@ -278,9 +266,7 @@ class OntologyL0SearchSpec extends CommonSpec:
       "aLong" -> 10L,
       "longRepeated" -> List(10L, 20L),
       "longNullable" -> Some(30L),
-      "furtherNestedLongStruct" -> Tuple1(
-        "furtherNestedLong" -> 100L
-      )
+      "furtherNestedLongStruct" -> Tuple1("furtherNestedLong" -> 100L)
     ),
     "boolStruct" -> (
       "aBool" -> true,
@@ -309,26 +295,12 @@ class OntologyL0SearchSpec extends CommonSpec:
       "nest2" -> "ciccio2",
       "intList" -> List(1, 2, 3)
     ),
-    "optionalStruct" -> Some(
-      (
-        "nest1" -> "ciccio1",
-        "nest2" -> "ciccio2"
-      )
-    ),
+    "optionalStruct" -> Some(("nest1" -> "ciccio1", "nest2" -> "ciccio2")),
     "emptyOptionalStruct" -> None,
     "columns" -> List(
-      (
-        "type" -> "Int",
-        "name" -> "Age"
-      ),
-      (
-        "type" -> "String",
-        "name" -> "FamilyNane"
-      ),
-      (
-        "type" -> "String",
-        "name" -> "FirstName"
-      )
+      ("type" -> "Int", "name" -> "Age"),
+      ("type" -> "String", "name" -> "FamilyNane"),
+      ("type" -> "String", "name" -> "FirstName")
     )
   )
 
@@ -348,12 +320,12 @@ class OntologyL0SearchSpec extends CommonSpec:
           Rdf4jKnowledgeGraph[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
-        val entityType = l0.EntityType(
+        val entityType = EntityType(
           "FileBasedDataCollectionType",
           Set("DataCollection"),
           fileBasedDataCollectionTypeSchema
         )
-        trservice.create("DataCollection", None) *>
+        trservice.create(Trait("DataCollection", None)) *>
           service.create(entityType) *>
           service.read("FileBasedDataCollectionType")
       } asserting (ret =>

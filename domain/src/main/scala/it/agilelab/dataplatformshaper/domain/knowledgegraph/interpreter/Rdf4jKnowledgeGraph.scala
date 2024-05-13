@@ -14,17 +14,12 @@ class Rdf4jKnowledgeGraph[F[_]: Sync](session: Session)
     extends KnowledgeGraph[F]:
 
   override def removeAndInsertStatements(
-      statements: List[Statement],
-      deleteStatements: List[Statement]
+    statements: List[Statement],
+    deleteStatements: List[Statement]
   ): F[Unit] =
     session.withTx(conn => {
       deleteStatements.foreach(st => {
-        conn.remove(
-          st.getSubject,
-          st.getPredicate,
-          st.getObject,
-          st.getContext
-        )
+        conn.remove(st.getSubject, st.getPredicate, st.getObject, st.getContext)
       })
       conn.add(statements.asJava)
     })
@@ -37,11 +32,7 @@ class Rdf4jKnowledgeGraph[F[_]: Sync](session: Session)
     }
   end evaluateQuery
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.null"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.null"))
   override def loadBaseOntologies(): F[Unit] =
     val repository = Rdf4jKnowledgeGraph[F](session)
     val model = Rio.parse(
@@ -52,8 +43,6 @@ class Rdf4jKnowledgeGraph[F[_]: Sync](session: Session)
       L0
     )
     val statements = model.getStatements(null, null, null, iri(ns, "L0"))
-    repository.removeAndInsertStatements(
-      statements.asScala.toList
-    )
+    repository.removeAndInsertStatements(statements.asScala.toList)
   end loadBaseOntologies
 end Rdf4jKnowledgeGraph

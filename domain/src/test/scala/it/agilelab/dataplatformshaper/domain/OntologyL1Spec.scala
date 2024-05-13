@@ -8,9 +8,8 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.Relationship
-import it.agilelab.dataplatformshaper.domain.model.l1.Relationship.hasPart
+import it.agilelab.dataplatformshaper.domain.model.*
+import it.agilelab.dataplatformshaper.domain.model.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
@@ -69,10 +68,33 @@ class OntologyL1Spec extends CommonSpec:
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
-          _ <- EitherT(trms.create("ANewTrait", None))
+          _ <- EitherT(trms.create(Trait("ANewTrait", None)))
           res <- EitherT(trms.exist("ANewTrait"))
         } yield res).value
       } asserting (res => res should be(Right(true)))
+    }
+  }
+
+  "Creating a trait with a missing father" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        (for {
+          _ <- EitherT(
+            trms.create(Trait("YetAnotherTrait", Some("AMissingTrait")))
+          )
+        } yield ()).value
+      } asserting (res => res.isLeft should be(true))
     }
   }
 
@@ -91,8 +113,8 @@ class OntologyL1Spec extends CommonSpec:
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
-          _ <- EitherT(trms.create("ListTrait1", None))
-          _ <- EitherT(trms.create("ListTrait2", Some("ListTrait1")))
+          _ <- EitherT(trms.create(Trait("ListTrait1", None)))
+          _ <- EitherT(trms.create(Trait("ListTrait2", Some("ListTrait1"))))
           res <- EitherT(trms.list())
         } yield res).value
       } asserting {
@@ -119,7 +141,7 @@ class OntologyL1Spec extends CommonSpec:
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
-          _ <- EitherT(trms.create("DeleteTrait", None))
+          _ <- EitherT(trms.create(Trait("DeleteTrait", None)))
           _ <- EitherT(trms.delete("DeleteTrait"))
           res <- EitherT(trms.exist("DeleteTrait"))
         } yield res).value
@@ -142,8 +164,8 @@ class OntologyL1Spec extends CommonSpec:
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
-          _ <- EitherT(trms.create("LinkTrait1", None))
-          _ <- EitherT(trms.create("LinkTrait2", None))
+          _ <- EitherT(trms.create(Trait("LinkTrait1", None)))
+          _ <- EitherT(trms.create(Trait("LinkTrait2", None)))
           _ <- EitherT(trms.link("LinkTrait1", hasPart, "LinkTrait2"))
           _ <- EitherT(trms.delete("LinkTrait2"))
           res <- EitherT(trms.exist("LinkTrait2"))
@@ -168,24 +190,18 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       val exampleSchema: StructType = StructType(
-        List(
-          "ExampleField1" -> StringType(),
-          "ExampleField2" -> StringType()
-        )
+        List("ExampleField1" -> StringType(), "ExampleField2" -> StringType())
       )
 
-      val exampleEntityType = EntityType(
-        "ExampleEntityType",
-        Set("ExampleTrait"),
-        exampleSchema
-      )
+      val exampleEntityType =
+        EntityType("ExampleEntityType", Set("ExampleTrait"), exampleSchema)
 
       session.use { session =>
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trms)
         (for {
-          _ <- EitherT(trms.create("ExampleTrait", None))
+          _ <- EitherT(trms.create(Trait("ExampleTrait", None)))
           _ <- EitherT(tservice.create(exampleEntityType))
           _ <- EitherT(trms.delete("ExampleTrait"))
           res <- EitherT(trms.exist("ExampleTrait"))
@@ -214,9 +230,9 @@ class OntologyL1Spec extends CommonSpec:
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
-          _ <- EitherT(trms.create("FatherExampleTrait", None))
+          _ <- EitherT(trms.create(Trait("FatherExampleTrait", None)))
           _ <- EitherT(
-            trms.create("SonExampleTrait", Some("FatherExampleTrait"))
+            trms.create(Trait("SonExampleTrait", Some("FatherExampleTrait")))
           )
           res <- EitherT(trms.delete("FatherExampleTrait"))
         } yield res).value
@@ -243,9 +259,11 @@ class OntologyL1Spec extends CommonSpec:
         val repository = Rdf4jKnowledgeGraph[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
-          _ <- EitherT(trms.create("DataProductComponent", None))
-          _ <- EitherT(trms.create("OutputPort", Some("DataProductComponent")))
-          _ <- EitherT(trms.create("DataProduct", None))
+          _ <- EitherT(trms.create(Trait("DataProductComponent", None)))
+          _ <- EitherT(
+            trms.create(Trait("OutputPort", Some("DataProductComponent")))
+          )
+          _ <- EitherT(trms.create(Trait("DataProduct", None)))
           _ <- EitherT(
             trms
               .link("DataProduct", Relationship.hasPart, "DataProductComponent")
@@ -362,9 +380,8 @@ class OntologyL1Spec extends CommonSpec:
         trservice.unlink("DataProduct", Relationship.hasPart, "OutputPort")
       } asserting (res =>
         res should matchPattern {
-          case Left(
-                ManagementServiceError(List(error))
-              ) if error.contains("have linked instances") =>
+          case Left(ManagementServiceError(List(error)))
+              if error.contains("have linked instances") =>
         }
       )
     }
@@ -425,8 +442,8 @@ class OntologyL1Spec extends CommonSpec:
         val tms = TypeManagementServiceInterpreter[IO](trs)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
         (for {
-          _ <- EitherT(trs.create("Trait1", None))
-          _ <- EitherT(trs.create("Trait2", None))
+          _ <- EitherT(trs.create(Trait("Trait1", None)))
+          _ <- EitherT(trs.create(Trait("Trait2", None)))
           _ <- EitherT(trs.link("Trait1", Relationship.hasPart, "Trait2"))
           _ <- EitherT(
             tms.create(

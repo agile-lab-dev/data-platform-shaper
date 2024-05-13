@@ -41,6 +41,23 @@
     
 
 
+    <!-- https://w3id.org/agile-dm/ontology/dependencyOf -->
+
+    <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/dependencyOf">
+        <inverseOf rdf:resource="https://w3id.org/agile-dm/ontology/dependsOn"/>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    </ObjectProperty>
+    
+
+
+    <!-- https://w3id.org/agile-dm/ontology/dependsOn -->
+
+    <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/dependsOn">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    </ObjectProperty>
+    
+
+
     <!-- https://w3id.org/agile-dm/ontology/hasATrait -->
 
     <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/hasATrait">
@@ -113,9 +130,18 @@
     
 
 
+    <!-- https://w3id.org/agile-dm/ontology/mappedBy -->
+
+    <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/mappedBy">
+        <rdfs:range rdf:resource="https://w3id.org/agile-dm/ontology/Entity"/>
+    </ObjectProperty>
+    
+
+
     <!-- https://w3id.org/agile-dm/ontology/mappedTo -->
 
     <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/mappedTo">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
         <rdfs:domain rdf:resource="https://w3id.org/agile-dm/ontology/MappingSource"/>
         <rdfs:range rdf:resource="https://w3id.org/agile-dm/ontology/MappingTarget"/>
     </ObjectProperty>
@@ -127,6 +153,14 @@
     <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/mode">
         <rdfs:domain rdf:resource="https://w3id.org/agile-dm/ontology/AttributeType"/>
         <rdfs:range rdf:resource="https://w3id.org/agile-dm/ontology/Mode"/>
+    </ObjectProperty>
+    
+
+
+    <!-- https://w3id.org/agile-dm/ontology/withNamedInstanceReferenceExpression -->
+
+    <ObjectProperty rdf:about="https://w3id.org/agile-dm/ontology/withNamedInstanceReferenceExpression">
+        <rdfs:range rdf:resource="https://w3id.org/agile-dm/ontology/NamedInstanceReferenceExpression"/>
     </ObjectProperty>
     
 
@@ -146,6 +180,24 @@
 
     <DatatypeProperty rdf:about="https://w3id.org/agile-dm/ontology/constraints">
         <rdfs:domain rdf:resource="https://w3id.org/agile-dm/ontology/AttributeType"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://w3id.org/agile-dm/ontology/instanceReferenceExpression -->
+
+    <DatatypeProperty rdf:about="https://w3id.org/agile-dm/ontology/instanceReferenceExpression">
+        <rdfs:domain rdf:resource="https://w3id.org/agile-dm/ontology/NamedInstanceReferenceExpression"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </DatatypeProperty>
+    
+
+
+    <!-- https://w3id.org/agile-dm/ontology/instanceReferenceName -->
+
+    <DatatypeProperty rdf:about="https://w3id.org/agile-dm/ontology/instanceReferenceName">
+        <rdfs:domain rdf:resource="https://w3id.org/agile-dm/ontology/NamedInstanceReferenceExpression"/>
         <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
     </DatatypeProperty>
     
@@ -270,6 +322,12 @@
             </Class>
         </equivalentClass>
     </Class>
+    
+
+
+    <!-- https://w3id.org/agile-dm/ontology/NamedInstanceReferenceExpression -->
+
+    <Class rdf:about="https://w3id.org/agile-dm/ontology/NamedInstanceReferenceExpression"/>
     
 
 

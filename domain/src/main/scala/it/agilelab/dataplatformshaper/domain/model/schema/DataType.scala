@@ -13,10 +13,7 @@ enum DataType {
   case SqlDecimal(mode: Mode = Required, constraints: Option[String] = None)
   case BooleanType(mode: Mode = Required, constraints: Option[String] = None)
   case StringType(mode: Mode = Required, constraints: Option[String] = None)
-  case TimestampType(
-      mode: Mode = Required,
-      constraints: Option[String] = None
-  )
+  case TimestampType(mode: Mode = Required, constraints: Option[String] = None)
   case DateType(mode: Mode = Required, constraints: Option[String] = None)
   case JsonType(mode: Mode = Required)
   case StructType(records: List[(String, DataType)], mode: Mode = Required)

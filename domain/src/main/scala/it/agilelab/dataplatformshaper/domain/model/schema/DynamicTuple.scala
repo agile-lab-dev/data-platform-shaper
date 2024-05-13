@@ -18,11 +18,7 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
 
   given CanEqual[Tuple, Tuple] = CanEqual.derived
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.asInstanceOf"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
   def selectDynamic(method: String): DynamicTuple =
     tuple match
       case t: Tuple =>
@@ -35,10 +31,7 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
   end selectDynamic
 
   @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.asInstanceOf",
-      "scalafix:DisableSyntax.var"
-    )
+    Array("scalafix:DisableSyntax.asInstanceOf", "scalafix:DisableSyntax.var")
   )
   def updateDynamic(method: String)(value: Any): DynamicTuple =
     tuple match
@@ -68,11 +61,7 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
   end updateDynamic
 
   @unused
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.asInstanceOf"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
   def applyDynamic(method: String)(arg: Int): DynamicTuple =
     val w = selectDynamic(method)
     DynamicTuple(w.tuple.asInstanceOf[List[Tuple]](arg))
@@ -84,17 +73,13 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
     end match
   end value
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.asInstanceOf"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
   def replace(path: String, value: Any): Either[String, DynamicTuple] =
     @tailrec
     def recursiveReplace(
-        tuple: DynamicTuple,
-        path: List[String],
-        value: Any
+      tuple: DynamicTuple,
+      path: List[String],
+      value: Any
     ): DynamicTuple =
       path match
         case head :: tail =>
@@ -116,10 +101,7 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
 
   def getValue(path: String): Either[String, Any] =
     @inline
-    def listPathGet(
-        tuple: DynamicTuple,
-        path: Array[String]
-    ): DynamicTuple =
+    def listPathGet(tuple: DynamicTuple, path: Array[String]): DynamicTuple =
       path.foldLeft(tuple)((tuple, field) => tuple.selectDynamic(field))
     end listPathGet
     Try(listPathGet(this, path.split("/").map(_.trim)).tuple).toEither.leftMap(
@@ -128,11 +110,7 @@ final case class DynamicTuple(tuple: Any) extends Dynamic:
     )
   end getValue
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   def get(path: String): Any =
     getValue(path) match
       case Left(error)  => throw Exception(error)
@@ -148,9 +126,9 @@ extension (tuple: Tuple)
     )
   )
   def replace(
-      path: String,
-      value: Any,
-      schema: Option[Schema] = None
+    path: String,
+    value: Any,
+    schema: Option[Schema] = None
   ): Either[String, Tuple] =
     val updatedTuple =
       DynamicTuple(tuple).replace(path, value).map(_.tuple.asInstanceOf[Tuple])

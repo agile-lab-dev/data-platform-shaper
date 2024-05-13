@@ -10,9 +10,8 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Rdf4jKnowledgeGraph,
   Session
 }
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.*
-import it.agilelab.dataplatformshaper.domain.model.l1.Relationship.hasPart
+import it.agilelab.dataplatformshaper.domain.model.*
+import it.agilelab.dataplatformshaper.domain.model.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -31,11 +30,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scala.concurrent.duration.*
 import scala.language.{dynamics, implicitConversions}
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.var"
-  )
-)
+@SuppressWarnings(Array("scalafix:DisableSyntax.var"))
 class DomainSpec extends CommonSpec:
   given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
@@ -52,55 +47,33 @@ class DomainSpec extends CommonSpec:
   private val firstType = EntityType(
     "FirstType",
     Set("MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val secondType = EntityType(
     "SecondType",
     Set("Trait1"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val thirdType = EntityType(
     "ThirdType",
     Set("MappingTarget", "MappingSource"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
   private val fourthType = EntityType(
     "FourthType",
     Set("MappingTarget"),
-    StructType(
-      List(
-        "field1" -> StringType(),
-        "field2" -> StringType()
-      )
-    ): Schema
+    StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
-  private val mapperTuple = (
-    "field1" -> "instance.get('field1')",
-    "field2" -> "instance.get('field2')"
-  )
+  private val mapperTuple =
+    ("field1" -> "source.get('field1')", "field2" -> "source.get('field2')")
 
   def countStatements(
-      logger: Logger[IO],
-      repository: KnowledgeGraph[IO]
+    logger: Logger[IO],
+    repository: KnowledgeGraph[IO]
   ): IO[Either[ManagementServiceError, Int]] =
     val query =
       s"""
@@ -166,29 +139,21 @@ class DomainSpec extends CommonSpec:
         val mservice =
           MappingManagementServiceInterpreter[IO](tservice, iservice)
         (for {
-          _ <- EitherT(trservice.create("Trait1", None))
-          _ <- EitherT(trservice.create("Trait2", Some("Trait1")))
+          _ <- EitherT(trservice.create(Trait("Trait1", None)))
+          _ <- EitherT(trservice.create(Trait("Trait2", Some("Trait1"))))
           _ <- EitherT(trservice.link("Trait1", hasPart, "Trait2"))
           res1 <- EitherT(tservice.create(firstType))
           res2 <- EitherT(tservice.create(secondType))
           res3 <- EitherT(tservice.create(thirdType))
           res4 <- EitherT(tservice.create(fourthType))
           res5 <- EitherT(
-            iservice.create(
-              "FirstType",
-              (
-                "field1" -> "value1",
-                "field2" -> "value2"
-              )
-            )
+            iservice
+              .create("FirstType", ("field1" -> "value1", "field2" -> "value2"))
           )
           res6 <- EitherT(
             iservice.create(
               "SecondType",
-              (
-                "field1" -> "value3",
-                "field2" -> "value4"
-              )
+              ("field1" -> "value3", "field2" -> "value4")
             )
           )
           res7 <- EitherT(

@@ -1,7 +1,6 @@
 package it.agilelab.dataplatformshaper.domain
 
-import it.agilelab.dataplatformshaper.domain.model.l0
-import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
+import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -10,17 +9,10 @@ class EntityTypeSpec extends AnyFlatSpec with Matchers:
 
   behavior of "EntityType"
 
-  val schema0: Schema = StructType(
-    List(
-      "field0" -> StringType()
-    )
-  )
+  val schema0: Schema = StructType(List("field0" -> StringType()))
 
   val schema1: Schema = StructType(
-    List(
-      "field1" -> StringType(),
-      "field3" -> StringType()
-    )
+    List("field1" -> StringType(), "field3" -> StringType())
   )
 
   val schema2: Schema = StructType(
@@ -42,9 +34,9 @@ class EntityTypeSpec extends AnyFlatSpec with Matchers:
 
     val entityType0 = EntityType("EntityType0", schema0)
 
-    val entityType1 = l0.EntityType("EntityType1", schema1, entityType0)
+    val entityType1 = EntityType("EntityType1", schema1, entityType0)
 
-    val entityType2 = l0.EntityType("EntityType2", schema2, entityType1)
+    val entityType2 = EntityType("EntityType2", schema2, entityType1)
 
     entityType2.schema shouldBe StructType(
       List(
@@ -68,15 +60,11 @@ class EntityTypeSpec extends AnyFlatSpec with Matchers:
 
     val entityType0 = EntityType("EntityType0", Set("Trait1"), schema0)
 
-    val entityType1 = l0.EntityType(
-      "EntityType1",
-      Set("Trait1", "Trait2"),
-      schema1,
-      entityType0
-    )
+    val entityType1 =
+      EntityType("EntityType1", Set("Trait1", "Trait2"), schema1, entityType0)
 
     val entityType2 =
-      l0.EntityType("EntityType2", Set("Trait3"), schema2, entityType1)
+      EntityType("EntityType2", Set("Trait3"), schema2, entityType1)
 
     entityType2.traits.shouldBe(Set("Trait1", "Trait2", "Trait3"))
 

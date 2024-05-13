@@ -1,5 +1,7 @@
 package it.agilelab.dataplatformshaper.domain.model.schema
 
+import it.agilelab.dataplatformshaper.domain.model.NS.ns
+import it.agilelab.dataplatformshaper.domain.model.Relationship
 import org.apache.calcite.avatica.util.Casing
 import org.apache.calcite.sql.*
 import org.apache.calcite.sql.parser.SqlParser
@@ -12,12 +14,8 @@ import scala.jdk.CollectionConverters.*
 trait SearchPredicateTerm
 
 given StringToSearchPredicateAttribute
-    : Conversion[String, SearchPredicateAttribute] with
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
+  : Conversion[String, SearchPredicateAttribute] with
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   override def apply(string: String): SearchPredicateAttribute =
     if string.contains('/') then
       throw IllegalArgumentException(s"$string should not contain any '/'")
@@ -27,21 +25,17 @@ given StringToSearchPredicateAttribute
 case class SearchPredicateValue[T](value: T) extends SearchPredicateTerm
 
 given StringToSearchPredicateValue
-    : Conversion[String, SearchPredicateValue[String]] with
+  : Conversion[String, SearchPredicateValue[String]] with
   override def apply(string: String): SearchPredicateValue[String] =
     SearchPredicateValue(string)
 
 given AnyValToSearchPredicateValue
-    : Conversion[AnyVal, SearchPredicateValue[AnyVal]] with
+  : Conversion[AnyVal, SearchPredicateValue[AnyVal]] with
   override def apply(anyVal: AnyVal): SearchPredicateValue[AnyVal] =
     SearchPredicateValue(anyVal)
 
 extension (namedAttribute: SearchPredicateAttribute)
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
   def /(subPath: String): SearchPredicateAttribute =
     if subPath.contains('/') then
       throw IllegalArgumentException(s"$subPath should not contain any '/'")
@@ -58,7 +52,10 @@ case class SearchPredicateAttribute(attributePath: List[String])
     SearchPredicateAttribute(subPath.attributePath ::: this.attributePath)
   end /
 
-  def generateAttributeClauses(filter: Option[String => String]): String =
+  def generateAttributeClauses(
+    i: String,
+    filter: Option[String => String]
+  ): String =
     val attributeRels = attributePath.reverse.inits.toList
       .filter(_.nonEmpty)
       .map(l => s"ns:${l.mkString("\\/")}")
@@ -66,10 +63,10 @@ case class SearchPredicateAttribute(attributePath: List[String])
 
     @tailrec
     def loopOnAttributeRels(
-        i: String,
-        o: String,
-        filter: Option[String => String],
-        attributeRels: List[String]
+      i: String,
+      o: String,
+      filter: Option[String => String],
+      attributeRels: List[String]
     ): Unit =
       attributeRels match
         case head1 :: head2 :: tail =>
@@ -88,126 +85,123 @@ case class SearchPredicateAttribute(attributePath: List[String])
           ()
     end loopOnAttributeRels
 
-    loopOnAttributeRels("i", genId, filter, attributeRels)
+    loopOnAttributeRels(i, genId, filter, attributeRels)
     stringBuffer.toString
   end generateAttributeClauses
 
-  def =:=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    SearchPredicate(
-      {
+  def =:=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate({
         s"""
          |{
          |  ${generateAttributeClauses(
+            i,
             Some(v => s"FILTER (?$v = ${value.value.toString} ) .")
           )}
          |}
          |""".stripMargin
-      }
-    )
+      })
   end =:=
 
-  def =!=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    SearchPredicate(
-      {
+  def =!=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate({
         s"""
            |{
            |  ${generateAttributeClauses(
+            i,
             Some(v => s"FILTER (?$v != ${value.value.toString} ) .")
           )}
            |}
            |""".stripMargin
-      }
-    )
+      })
   end =!=
 
   @targetName("stringEqual")
-  def =:=(value: SearchPredicateValue[String]): SearchPredicate =
-    SearchPredicate(
-      {
+  def =:=(value: SearchPredicateValue[String]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate({
         s"""
            |{
            |  ${generateAttributeClauses(
+            i,
             Some(v => s"""FILTER (?$v = "${value.value}"^^xsd:string ) .""")
           )}
            |}
            |""".stripMargin
-      }
-    )
+      })
   end =:=
 
   @targetName("stringDifferent")
-  def =!=(value: SearchPredicateValue[String]): SearchPredicate =
-    SearchPredicate(
-      {
+  def =!=(value: SearchPredicateValue[String]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate({
         s"""
            |{
            |  ${generateAttributeClauses(
+            i,
             Some(v => s"""FILTER (?$v != "${value.value}"^^xsd:string ) .""")
           )}
            |}
            |""".stripMargin
-      }
-    )
+      })
   end =!=
 
-  def like(value: SearchPredicateValue[String]): SearchPredicate =
-    SearchPredicate(
-      {
+  def like(value: SearchPredicateValue[String]): String ?=> SearchPredicate =
+    (i: String) ?=>
+      SearchPredicate({
         s"""
            |{
            |  ${generateAttributeClauses(
+            i,
             Some(v => s"""FILTER REGEX(?$v, "${value.value}") .""")
           )}
            |}
            |""".stripMargin
-      }
-    )
+      })
   end like
 
   private def generateComparison(
-      comparisonOperator: String,
-      value: AnyVal
-  ): SearchPredicate = SearchPredicate(
-    {
+    comparisonOperator: String,
+    value: AnyVal
+  ): String ?=> SearchPredicate = (i: String) ?=>
+    SearchPredicate({
       s"""
          |{
          |  ${generateAttributeClauses(
+          i,
           Some(v => s"FILTER (?$v $comparisonOperator ${value.toString} ) .")
         )}
          |}
          |""".stripMargin
-    }
-  )
+    })
 
-  def <(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    generateComparison("<", value.value)
+  def <(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=> generateComparison("<", value.value)
 
-  def <=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    generateComparison("<=", value.value)
+  def <=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=> generateComparison("<=", value.value)
 
-  def >(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    generateComparison(">", value.value)
+  def >(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=> generateComparison(">", value.value)
 
-  def >=(value: SearchPredicateValue[AnyVal]): SearchPredicate =
-    generateComparison(">=", value.value)
+  def >=(value: SearchPredicateValue[AnyVal]): String ?=> SearchPredicate =
+    (i: String) ?=> generateComparison(">=", value.value)
 
 end SearchPredicateAttribute
 
 case class SearchPredicate(querySegment: String) extends SearchPredicateTerm:
   def &&(pred: SearchPredicate): SearchPredicate =
-    SearchPredicate(
-      s"""
+    SearchPredicate(s"""
          |{
          |   ${this.querySegment}
          |   ${pred.querySegment}
          |}
-         |""".stripMargin
-    )
+         |""".stripMargin)
   end &&
 
   def ||(pred: SearchPredicate): SearchPredicate =
-    SearchPredicate(
-      s"""
+    SearchPredicate(s"""
          |{
          |   {
          |     ${this.querySegment}
@@ -215,17 +209,15 @@ case class SearchPredicate(querySegment: String) extends SearchPredicateTerm:
          |     ${pred.querySegment}
          |   }
          |}
-         |""".stripMargin
-    )
+         |""".stripMargin)
   end ||
 end SearchPredicate
 
-@SuppressWarnings(
-  Array(
-    "scalafix:DisableSyntax.asInstanceOf"
-  )
-)
-def generateSearchPredicate(query: String): SearchPredicate =
+@SuppressWarnings(Array("scalafix:DisableSyntax.asInstanceOf"))
+def generateSearchPredicate(
+  instancePlaceHolder: String,
+  query: String
+): SearchPredicate =
 
   val sqlParserConfig = SqlParser
     .config()
@@ -236,12 +228,14 @@ def generateSearchPredicate(query: String): SearchPredicate =
 
   val node = SqlParser.create(query, sqlParserConfig).parseExpression()
 
-  @SuppressWarnings(
-    Array(
-      "scalafix:DisableSyntax.throw"
-    )
-  )
-  def generateCode(node: SqlNode): SearchPredicateTerm =
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
+  def generateCode(
+    instancePlaceHolder: String,
+    node: SqlNode
+  ): SearchPredicateTerm =
+
+    given i: String = instancePlaceHolder
+
     node match
       case call: SqlCall =>
         val operator = call.getOperator
@@ -250,8 +244,8 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operandList = call.getOperandList.asScala.toList
             val head = operandList.head
             val tail = operandList.tail
-            tail.foldRight(generateCode(head))((n1, n2) =>
-              generateCode(n1)
+            tail.foldRight(generateCode(instancePlaceHolder, head))((n1, n2) =>
+              generateCode(instancePlaceHolder, n1)
                 .asInstanceOf[SearchPredicate]
                 .&&(n2.asInstanceOf[SearchPredicate])
             )
@@ -259,8 +253,8 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operandList = call.getOperandList.asScala.toList
             val head = operandList.head
             val tail = operandList.tail
-            tail.foldRight(generateCode(head))((n1, n2) =>
-              generateCode(n1)
+            tail.foldRight(generateCode(instancePlaceHolder, head))((n1, n2) =>
+              generateCode(instancePlaceHolder, n1)
                 .asInstanceOf[SearchPredicate]
                 .||(n2.asInstanceOf[SearchPredicate])
             )
@@ -270,13 +264,15 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operand2 = operandList.tail.head
             operand2 match
               case _: SqlCharStringLiteral =>
-                generateCode(operand1)
+                generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =:= generateCode(
+                  instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[String]]
               case _: SqlNumericLiteral =>
-                generateCode(operand1)
+                generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =:= generateCode(
+                  instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[AnyVal]]
             end match
@@ -286,13 +282,15 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operand2 = operandList.tail.head
             operand2 match
               case _: SqlCharStringLiteral =>
-                generateCode(operand1)
+                generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =!= generateCode(
+                  instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[String]]
               case _: SqlNumericLiteral =>
-                generateCode(operand1)
+                generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =!= generateCode(
+                  instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[AnyVal]]
             end match
@@ -300,36 +298,49 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
-              .asInstanceOf[SearchPredicateAttribute] < generateCode(operand2)
+            generateCode(instancePlaceHolder, operand1)
+              .asInstanceOf[SearchPredicateAttribute] < generateCode(
+              instancePlaceHolder,
+              operand2
+            )
               .asInstanceOf[SearchPredicateValue[AnyVal]]
           case SqlKind.LESS_THAN_OR_EQUAL =>
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
-              .asInstanceOf[SearchPredicateAttribute] <= generateCode(operand2)
+            generateCode(instancePlaceHolder, operand1)
+              .asInstanceOf[SearchPredicateAttribute] <= generateCode(
+              instancePlaceHolder,
+              operand2
+            )
               .asInstanceOf[SearchPredicateValue[AnyVal]]
           case SqlKind.GREATER_THAN =>
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
-              .asInstanceOf[SearchPredicateAttribute] > generateCode(operand2)
+            generateCode(instancePlaceHolder, operand1)
+              .asInstanceOf[SearchPredicateAttribute] > generateCode(
+              instancePlaceHolder,
+              operand2
+            )
               .asInstanceOf[SearchPredicateValue[AnyVal]]
           case SqlKind.GREATER_THAN_OR_EQUAL =>
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
-              .asInstanceOf[SearchPredicateAttribute] >= generateCode(operand2)
+            generateCode(instancePlaceHolder, operand1)
+              .asInstanceOf[SearchPredicateAttribute] >= generateCode(
+              instancePlaceHolder,
+              operand2
+            )
               .asInstanceOf[SearchPredicateValue[AnyVal]]
           case SqlKind.LIKE =>
             val operandList = call.getOperandList.asScala.toList
             val operand1 = operandList.head
             val operand2 = operandList.tail.head
-            generateCode(operand1)
+            generateCode(instancePlaceHolder, operand1)
               .asInstanceOf[SearchPredicateAttribute] `like` generateCode(
+              instancePlaceHolder,
               operand2
             )
               .asInstanceOf[SearchPredicateValue[String]]
@@ -337,8 +348,8 @@ def generateSearchPredicate(query: String): SearchPredicate =
             val operandList = call.getOperandList.asScala.toList.reverse
             val head = operandList.head
             val tail = operandList.tail
-            tail.foldRight(generateCode(head))((n1, n2) =>
-              generateCode(n1)
+            tail.foldRight(generateCode(instancePlaceHolder, head))((n1, n2) =>
+              generateCode(instancePlaceHolder, n1)
                 .asInstanceOf[SearchPredicateAttribute]
                 ./(n2.asInstanceOf[SearchPredicateAttribute])
             )
@@ -361,5 +372,225 @@ def generateSearchPredicate(query: String): SearchPredicate =
     end match
   end generateCode
 
-  generateCode(node).asInstanceOf[SearchPredicate]
+  generateCode(instancePlaceHolder, node).asInstanceOf[SearchPredicate]
 end generateSearchPredicate
+
+private enum PathElementType:
+  case Source, Start, Relationship, EntityType
+
+private def getSinglePathElementType(pathElement: String): PathElementType =
+  pathElement match
+    case p: String if p.contains("source") => PathElementType.Source
+    case p: String if Relationship.isRelationship(p) =>
+      PathElementType.Relationship
+    case _ => PathElementType.EntityType
+end getSinglePathElementType
+
+@SuppressWarnings(
+  Array(
+    "scalafix:DisableSyntax.defaultArgs",
+    "scalafix:DisableSyntax.var",
+    "scalafix:DisableSyntax.throw"
+  )
+)
+def getPathQuery(
+  splitPath: List[String],
+  initialInstanceId: String,
+  previousID: String = "",
+  previousPathElementType: PathElementType = PathElementType.Start
+): (String, String) =
+  var finalInstanceID: String = ""
+  def loop(
+    innerSplitPath: List[String],
+    innerPreviousPathElementType: PathElementType,
+    innerInitialInstanceId: String,
+    previousID: String = ""
+  ): String =
+    val firstPathElement = innerSplitPath.head
+    val firstPathElementType = getSinglePathElementType(firstPathElement)
+    innerSplitPath match
+      case Nil => ""
+      case head :: Nil =>
+        val entityTypeName = head
+        val finalPathElementType = getSinglePathElementType(entityTypeName)
+        if (finalPathElementType.equals(
+            PathElementType.EntityType
+          ) && innerPreviousPathElementType.equals(
+            PathElementType.Relationship
+          )) || (finalPathElementType.equals(
+            PathElementType.Source
+          ) && finalPathElementType.equals(PathElementType.Start))
+        then
+          val splitPathElement = head.split("\\.find\\(\"").toList
+          finalInstanceID = previousID
+          splitPathElement.length match
+            case 2 =>
+              val entityTypeName = splitPathElement.head
+              val searchString = splitPathElement(1).stripSuffix("\")")
+              val searchPredicate =
+                generateSearchPredicate(s"$previousID", searchString)
+              val entityTypeQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
+                   |""".stripMargin
+              searchPredicate.querySegment + entityTypeQuery
+            case 1 =>
+              val entityTypeName = splitPathElement.head
+              val entityTypeQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
+                   |""".stripMargin
+              entityTypeQuery
+            case _ =>
+              throw IllegalArgumentException("Expected only one find clause")
+        else
+          throw IllegalArgumentException(
+            "Expected Relationship/EntityType or source at the end of the path"
+          )
+      case head :: tail
+          if firstPathElementType.equals(PathElementType.Source) =>
+        if innerPreviousPathElementType.equals(PathElementType.Start) then
+          val instanceID = UUID.randomUUID().toString.replace("-", "")
+          val entityID = UUID.randomUUID().toString.replace("-", "")
+          val sourceQuery =
+            s"""
+               | ?$instanceID ns:isClassifiedBy ?$entityID .
+               | ?$entityID rdf:type ns:EntityType .
+               | FILTER(?$instanceID = <${ns.getName}$innerInitialInstanceId>)
+               |""".stripMargin
+          val nextPathQuery =
+            loop(tail, firstPathElementType, innerInitialInstanceId, instanceID)
+          sourceQuery + nextPathQuery
+        else
+          throw IllegalArgumentException(
+            "Expected source to be at the start of the path"
+          )
+      case head :: tail
+          if firstPathElementType.equals(PathElementType.Relationship) =>
+        if innerPreviousPathElementType.equals(
+            PathElementType.EntityType
+          ) || innerPreviousPathElementType.equals(PathElementType.Source)
+        then
+          head match
+            case head if head.equals("mappedTo") =>
+              val relationshipID = UUID.randomUUID().toString.replace("-", "")
+              val firstEntityID = UUID.randomUUID().toString.replace("-", "")
+              val relationshipQuery =
+                s"""
+                   | ?$previousID ?$relationshipID ?$firstEntityID .
+                   | ?$firstEntityID rdf:type ns:Entity .
+                   | FILTER(STRSTARTS(STR(?$relationshipID), "${ns.getName}mappedTo#"))
+                   |""".stripMargin
+              val nextPathQuery =
+                loop(
+                  tail,
+                  firstPathElementType,
+                  innerInitialInstanceId,
+                  firstEntityID
+                )
+              relationshipQuery + nextPathQuery
+            case head if head.equals("hasPart") =>
+              val firstEntityTypeID =
+                UUID.randomUUID().toString.replace("-", "")
+              val secondEntityTypeID =
+                UUID.randomUUID().toString.replace("-", "")
+              val instanceID = UUID.randomUUID().toString.replace("-", "")
+              val relationshipID = UUID.randomUUID().toString.replace("-", "")
+              val firstTraitID = UUID.randomUUID().toString.replace("-", "")
+              val secondTraitID = UUID.randomUUID().toString.replace("-", "")
+              val relationshipQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ?$firstEntityTypeID .
+                   | ?$firstEntityTypeID rdf:type ns:EntityType .
+                   | ?$firstEntityTypeID ns:hasTrait ?$firstTraitID .
+                   | ?$firstTraitID ?$relationshipID ?$secondTraitID .
+                   | ?$secondEntityTypeID ns:hasTrait ?$secondTraitID .
+                   | ?$secondEntityTypeID rdf:type ns:EntityType .
+                   | ?i$instanceID ns:isClassifiedBy ?$secondEntityTypeID .
+                   | FILTER(?$relationshipID = <${Relationship.hasPart.getNamespace}hasPart>) .
+                   |""".stripMargin
+              val nextPathQuery =
+                loop(
+                  tail,
+                  firstPathElementType,
+                  innerInitialInstanceId,
+                  instanceID
+                )
+              relationshipQuery + nextPathQuery
+            case _ =>
+              val firstEntityTypeID =
+                UUID.randomUUID().toString.replace("-", "")
+              val secondEntityTypeID =
+                UUID.randomUUID().toString.replace("-", "")
+              val instanceID = UUID.randomUUID().toString.replace("-", "")
+              val firstTraitID = UUID.randomUUID().toString.replace("-", "")
+              val secondTraitID = UUID.randomUUID().toString.replace("-", "")
+              val relationshipQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ?$firstEntityTypeID .
+                   | ?$firstEntityTypeID rdf:type ns:EntityType .
+                   | ?$firstEntityTypeID ns:hasTrait ?$firstTraitID .
+                   | ?$firstTraitID ns:$head ?$secondTraitID .
+                   | ?$secondEntityTypeID ns:hasTrait ?$secondTraitID .
+                   | ?$secondEntityTypeID rdf:type ns:EntityType .
+                   | ?i$instanceID ns:isClassifiedBy ?$secondEntityTypeID .
+                   |""".stripMargin
+              val nextPathQuery =
+                loop(
+                  tail,
+                  firstPathElementType,
+                  innerInitialInstanceId,
+                  instanceID
+                )
+              relationshipQuery + nextPathQuery
+        else
+          throw IllegalArgumentException(
+            "Expected Source or EntityType before Relationship in path"
+          )
+      case head :: tail
+          if firstPathElementType.equals(PathElementType.EntityType) =>
+        if innerPreviousPathElementType.equals(PathElementType.Relationship)
+        then
+          val splitPathElement = head.split("\\.find\\(\"").toList
+          splitPathElement.length match
+            case 2 =>
+              val entityTypeName = splitPathElement.head
+              val searchString = splitPathElement(1).stripSuffix("\")")
+              val searchPredicate =
+                generateSearchPredicate(s"$previousID", searchString)
+              val entityTypeQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
+                   |""".stripMargin
+              val nextPathQuery = loop(
+                tail,
+                firstPathElementType,
+                innerInitialInstanceId,
+                previousID
+              )
+              searchPredicate.querySegment + entityTypeQuery + nextPathQuery
+            case 1 =>
+              val entityTypeName = splitPathElement.head
+              val entityTypeQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
+                   |""".stripMargin
+              val nextPathQuery = loop(
+                tail,
+                firstPathElementType,
+                innerInitialInstanceId,
+                previousID
+              )
+              entityTypeQuery + nextPathQuery
+            case _ =>
+              throw IllegalArgumentException("Expected only one find clause")
+        else
+          throw IllegalArgumentException(
+            "Expected Relationship before an EntityType"
+          )
+      case _ => throw IllegalArgumentException("Unexpected element in path")
+  end loop
+  val result =
+    loop(splitPath, previousPathElementType, initialInstanceId, previousID)
+  (result, finalInstanceID)
+end getPathQuery

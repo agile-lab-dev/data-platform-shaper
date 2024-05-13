@@ -1,6 +1,6 @@
 package it.agilelab.dataplatformshaper.uservice.api.intepreter
 
-import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
+import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
@@ -32,7 +32,7 @@ given ModeToOpenApiMode: Conversion[Mode, OpenApiMode] with
   end apply
 
 given OpenApiAttributeTypeToAttributeType
-    : Conversion[OpenApiAttributeType, (String, DataType)] with
+  : Conversion[OpenApiAttributeType, (String, DataType)] with
   def apply(oaAttributeType: OpenApiAttributeType): (String, DataType) =
     oaAttributeType.typeName match
       case AttributeTypeName.members.String =>
@@ -102,9 +102,7 @@ given OpenApiAttributeTypeToAttributeType
       case AttributeTypeName.members.Json =>
         (
           oaAttributeType.name,
-          JsonType(
-            oaAttributeType.mode.getOrElse(OpenApiMode.members.Required)
-          )
+          JsonType(oaAttributeType.mode.getOrElse(OpenApiMode.members.Required))
         )
       case AttributeTypeName.members.Struct =>
         (
@@ -121,7 +119,7 @@ given OpenApiAttributeTypeToAttributeType
   end apply
 
 given AttributeTypeToOpenApiAttributeType
-    : Conversion[(String, DataType), OpenApiAttributeType] with
+  : Conversion[(String, DataType), OpenApiAttributeType] with
   def apply(pair: (String, DataType)): OpenApiAttributeType =
     val name = pair(0)
     val oaAttributeType =

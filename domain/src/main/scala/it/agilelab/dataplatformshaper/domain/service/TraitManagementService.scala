@@ -1,44 +1,47 @@
 package it.agilelab.dataplatformshaper.domain.service
 
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.l1.Relationship
+import it.agilelab.dataplatformshaper.domain.model.{
+  BulkTraitsCreationRequest,
+  Relationship,
+  Trait
+}
 
 trait TraitManagementService[F[_]]:
 
   val repository: KnowledgeGraph[F]
 
+  def create(traitDefinition: Trait): F[Either[ManagementServiceError, Unit]]
+
   def create(
-      traitName: String,
-      inheritsFrom: Option[String]
+    bulkTraitsCreationRequest: BulkTraitsCreationRequest
   ): F[Either[ManagementServiceError, Unit]]
 
   def delete(traitName: String): F[Either[ManagementServiceError, Unit]]
 
-  def exist(
-      traitName: String
-  ): F[Either[ManagementServiceError, Boolean]]
+  def exist(traitName: String): F[Either[ManagementServiceError, Boolean]]
 
   def list(): F[Either[ManagementServiceError, List[String]]]
 
   def exist(
-      traitNames: Set[String]
+    traitNames: Set[String]
   ): F[Either[ManagementServiceError, Set[(String, Boolean)]]]
 
   def link(
-      trait1Name: String,
-      linkType: Relationship,
-      traitName2: String
+    trait1Name: String,
+    linkType: Relationship,
+    traitName2: String
   ): F[Either[ManagementServiceError, Unit]]
 
   def unlink(
-      trait1Name: String,
-      linkType: Relationship,
-      trait2Name: String
+    trait1Name: String,
+    linkType: Relationship,
+    trait2Name: String
   ): F[Either[ManagementServiceError, Unit]]
 
   def linked(
-      traitName: String,
-      linkType: Relationship
+    traitName: String,
+    linkType: Relationship
   ): F[Either[ManagementServiceError, List[String]]]
 
 end TraitManagementService

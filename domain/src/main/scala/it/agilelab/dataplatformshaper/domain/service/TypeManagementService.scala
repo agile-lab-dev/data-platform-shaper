@@ -1,7 +1,7 @@
 package it.agilelab.dataplatformshaper.domain.service
 
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.l0.EntityType
+import it.agilelab.dataplatformshaper.domain.model.EntityType
 
 trait TypeManagementService[F[_]]:
 
@@ -10,22 +10,22 @@ trait TypeManagementService[F[_]]:
   def create(entityType: EntityType): F[Either[ManagementServiceError, Unit]]
 
   def create(
-      entityType: EntityType,
-      inheritsFrom: String
+    entityType: EntityType,
+    inheritsFrom: String
   ): F[Either[ManagementServiceError, Unit]]
 
   def read(
-      instanceTypeName: String
+    instanceTypeName: String
   ): F[Either[ManagementServiceError, EntityType]]
 
   def updateConstraints(
-      entityType: EntityType
+    entityType: EntityType
   ): F[Either[ManagementServiceError, Unit]]
 
   def delete(instanceTypeName: String): F[Either[ManagementServiceError, Unit]]
 
   def exist(
-      instanceTypeName: String
+    instanceTypeName: String
   ): F[Either[ManagementServiceError, Boolean]]
 
   def list(): F[Either[ManagementServiceError, List[EntityType]]]
