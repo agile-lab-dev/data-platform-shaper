@@ -643,20 +643,17 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
               ).leftMap(e =>
                 ManagementServiceError(s"The mapper instance is invalid: $e")
               )
-            summon[Functor[F]].map(
-              tuple
-                .map(
-                  updateInstanceNoCheck(
-                    logger,
-                    typeManagementService,
-                    instanceManagementService,
-                    mapping(3).entityId,
-                    _
-                  )
+            tuple
+              .map(
+                updateInstanceNoCheck(
+                  logger,
+                  typeManagementService,
+                  instanceManagementService,
+                  mapping(3).entityId,
+                  _
                 )
-                .sequence
-            )(x => x.flatten)
-
+              )
+              .sequence.map(x => x.flatten)
           )).map(_.sequence)
         )
         _ <- traceT(s"Instances to update: $ids")
