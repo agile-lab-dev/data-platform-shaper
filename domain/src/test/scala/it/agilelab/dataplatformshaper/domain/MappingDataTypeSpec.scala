@@ -72,7 +72,8 @@ class MappingDataTypeSpec extends AnyFlatSpec with Matchers:
       dataCollectionTypeInstance.values,
       schema1,
       mappingTuple,
-      schema2
+      schema2,
+      Map.empty[String, Tuple]
     )
     res should matchPattern {
       case Right(

@@ -1,5 +1,8 @@
 package it.agilelab.dataplatformshaper.domain.model.schema
 
+import it.agilelab.dataplatformshaper.domain.model.NS.ns
+import it.agilelab.dataplatformshaper.domain.model.Relationship
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import org.apache.calcite.avatica.util.Casing
 import org.apache.calcite.sql.*
 import org.apache.calcite.sql.parser.SqlParser
@@ -372,3 +375,227 @@ def generateSearchPredicate(
 
   generateCode(instancePlaceHolder, node).asInstanceOf[SearchPredicate]
 end generateSearchPredicate
+
+private enum PathElementType:
+  case Source, Start, Relationship, EntityType
+
+private def getSinglePathElementType(pathElement: String): PathElementType =
+  pathElement match
+    case p: String if p.contains("source") => PathElementType.Source
+    case p: String if Relationship.isRelationship(p) =>
+      PathElementType.Relationship
+    case _ => PathElementType.EntityType
+end getSinglePathElementType
+
+@SuppressWarnings(
+  Array("scalafix:DisableSyntax.defaultArgs", "scalafix:DisableSyntax.var")
+)
+def getPathQuery(
+  splitPath: List[String],
+  initialInstanceId: String,
+  previousID: String = "",
+  previousPathElementType: PathElementType = PathElementType.Start
+): Either[ManagementServiceError, (String, String)] =
+  var finalInstanceID: String = ""
+  def loop(
+    innerSplitPath: List[String],
+    innerPreviousPathElementType: PathElementType,
+    innerInitialInstanceId: String,
+    previousID: String = ""
+  ): Either[ManagementServiceError, String] =
+    val firstPathElement = innerSplitPath.head
+    val firstPathElementType = getSinglePathElementType(firstPathElement)
+    innerSplitPath match
+      case Nil => Right("")
+      case head :: Nil =>
+        val entityTypeName = head
+        val finalPathElementType = getSinglePathElementType(entityTypeName)
+        if (finalPathElementType.equals(
+            PathElementType.EntityType
+          ) && innerPreviousPathElementType.equals(
+            PathElementType.Relationship
+          )) || (finalPathElementType.equals(
+            PathElementType.Source
+          ) && finalPathElementType.equals(PathElementType.Start))
+        then
+          val splitPathElement = head.split("\\.find\\(\"").toList
+          finalInstanceID = previousID
+          splitPathElement.length match
+            case 2 =>
+              val entityTypeName = splitPathElement.head
+              val searchString = splitPathElement(1).stripSuffix("\")")
+              val searchPredicate =
+                generateSearchPredicate(s"$previousID", searchString)
+              val entityTypeQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
+                   |""".stripMargin
+              Right(searchPredicate.querySegment + entityTypeQuery)
+            case 1 =>
+              val entityTypeName = splitPathElement.head
+              val entityTypeQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
+                   |""".stripMargin
+              Right(entityTypeQuery)
+            case _ =>
+              Left(ManagementServiceError("Expected only one find clause"))
+        else
+          Left(
+            ManagementServiceError(
+              "Expected Relationship/EntityType or source at the end of the path"
+            )
+          )
+      case head :: tail
+          if firstPathElementType.equals(PathElementType.Source) =>
+        if innerPreviousPathElementType.equals(PathElementType.Start) then
+          val instanceID = UUID.randomUUID().toString.replace("-", "")
+          val entityID = UUID.randomUUID().toString.replace("-", "")
+          val sourceQuery =
+            s"""
+               | ?$instanceID ns:isClassifiedBy ?$entityID .
+               | ?$entityID rdf:type ns:EntityType .
+               | FILTER(?$instanceID = <${ns.getName}$innerInitialInstanceId>)
+               |""".stripMargin
+          val nextPathQuery =
+            loop(tail, firstPathElementType, innerInitialInstanceId, instanceID)
+          nextPathQuery.map(sourceQuery + _)
+        else
+          Left(
+            ManagementServiceError(
+              "Expected source to be at the start of the path"
+            )
+          )
+      case head :: tail
+          if firstPathElementType.equals(PathElementType.Relationship) =>
+        if innerPreviousPathElementType.equals(
+            PathElementType.EntityType
+          ) || innerPreviousPathElementType.equals(PathElementType.Source)
+        then
+          head match
+            case head if head.equals("mappedTo") =>
+              val relationshipID = UUID.randomUUID().toString.replace("-", "")
+              val firstEntityID = UUID.randomUUID().toString.replace("-", "")
+              val relationshipQuery =
+                s"""
+                   | ?$previousID ?$relationshipID ?$firstEntityID .
+                   | ?$firstEntityID rdf:type ns:Entity .
+                   | FILTER(STRSTARTS(STR(?$relationshipID), "${ns.getName}mappedTo#"))
+                   |""".stripMargin
+              val nextPathQuery =
+                loop(
+                  tail,
+                  firstPathElementType,
+                  innerInitialInstanceId,
+                  firstEntityID
+                )
+              nextPathQuery.map(relationshipQuery + _)
+            case head if head.equals("hasPart") =>
+              val firstEntityTypeID =
+                UUID.randomUUID().toString.replace("-", "")
+              val secondEntityTypeID =
+                UUID.randomUUID().toString.replace("-", "")
+              val instanceID = UUID.randomUUID().toString.replace("-", "")
+              val relationshipID = UUID.randomUUID().toString.replace("-", "")
+              val firstTraitID = UUID.randomUUID().toString.replace("-", "")
+              val secondTraitID = UUID.randomUUID().toString.replace("-", "")
+              val relationshipQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ?$firstEntityTypeID .
+                   | ?$firstEntityTypeID rdf:type ns:EntityType .
+                   | ?$firstEntityTypeID ns:hasTrait ?$firstTraitID .
+                   | ?$firstTraitID ?$relationshipID ?$secondTraitID .
+                   | ?$secondEntityTypeID ns:hasTrait ?$secondTraitID .
+                   | ?$secondEntityTypeID rdf:type ns:EntityType .
+                   | ?i$instanceID ns:isClassifiedBy ?$secondEntityTypeID .
+                   | FILTER(?$relationshipID = <${Relationship.hasPart.getNamespace}hasPart>) .
+                   |""".stripMargin
+              val nextPathQuery =
+                loop(
+                  tail,
+                  firstPathElementType,
+                  innerInitialInstanceId,
+                  instanceID
+                )
+              nextPathQuery.map(relationshipQuery + _)
+            case _ =>
+              val firstEntityTypeID =
+                UUID.randomUUID().toString.replace("-", "")
+              val secondEntityTypeID =
+                UUID.randomUUID().toString.replace("-", "")
+              val instanceID = UUID.randomUUID().toString.replace("-", "")
+              val firstTraitID = UUID.randomUUID().toString.replace("-", "")
+              val secondTraitID = UUID.randomUUID().toString.replace("-", "")
+              val relationshipQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ?$firstEntityTypeID .
+                   | ?$firstEntityTypeID rdf:type ns:EntityType .
+                   | ?$firstEntityTypeID ns:hasTrait ?$firstTraitID .
+                   | ?$firstTraitID ns:$head ?$secondTraitID .
+                   | ?$secondEntityTypeID ns:hasTrait ?$secondTraitID .
+                   | ?$secondEntityTypeID rdf:type ns:EntityType .
+                   | ?i$instanceID ns:isClassifiedBy ?$secondEntityTypeID .
+                   |""".stripMargin
+              val nextPathQuery =
+                loop(
+                  tail,
+                  firstPathElementType,
+                  innerInitialInstanceId,
+                  instanceID
+                )
+              nextPathQuery.map(relationshipQuery + _)
+        else
+          Left(
+            ManagementServiceError(
+              "Expected Source or EntityType before Relationship in path"
+            )
+          )
+      case head :: tail
+          if firstPathElementType.equals(PathElementType.EntityType) =>
+        if innerPreviousPathElementType.equals(PathElementType.Relationship)
+        then
+          val splitPathElement = head.split("\\.find\\(\"").toList
+          splitPathElement.length match
+            case 2 =>
+              val entityTypeName = splitPathElement.head
+              val searchString = splitPathElement(1).stripSuffix("\")")
+              val searchPredicate =
+                generateSearchPredicate(s"$previousID", searchString)
+              val entityTypeQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
+                   |""".stripMargin
+              val nextPathQuery = loop(
+                tail,
+                firstPathElementType,
+                innerInitialInstanceId,
+                previousID
+              )
+              nextPathQuery.map(
+                searchPredicate.querySegment + entityTypeQuery + _
+              )
+            case 1 =>
+              val entityTypeName = splitPathElement.head
+              val entityTypeQuery =
+                s"""
+                   | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
+                   |""".stripMargin
+              val nextPathQuery = loop(
+                tail,
+                firstPathElementType,
+                innerInitialInstanceId,
+                previousID
+              )
+              nextPathQuery.map(entityTypeQuery + _)
+            case _ =>
+              Left(ManagementServiceError("Expected only one find clause"))
+        else
+          Left(
+            ManagementServiceError("Expected Relationship before an EntityType")
+          )
+      case _ => Left(ManagementServiceError("Unexpected element in path"))
+  end loop
+  val result =
+    loop(splitPath, previousPathElementType, initialInstanceId, previousID)
+  result.map((_, finalInstanceID))
+end getPathQuery

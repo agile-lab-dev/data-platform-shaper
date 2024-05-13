@@ -64,7 +64,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     given Logger[F] = logger
 
     val getSchema: F[Either[ManagementServiceError, Schema]] =
-      typeManagementService.read(instanceTypeName).map(_.map(_.schema))
+      Functor[F].map(typeManagementService.read(instanceTypeName))(
+        _.map(_.schema)
+      )
 
     (for {
       schema <- EitherT[F, ManagementServiceError, Schema](getSchema)
@@ -749,11 +751,23 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                 Right[ManagementServiceError, List[(String, String)]](t(1))
               )
             )
+            mappedInstancesReferenceExpressions: Map[String, String] <- EitherT(
+              Functor[F].map(
+                getMappedInstancesReferenceExpressions(
+                  logger,
+                  typeManagementService,
+                  mappingName,
+                  sourceEntityTypeName
+                )
+              )(t => Right[ManagementServiceError, Map[String, String]](t))
+            )
+            listInstanceReferenceExpressions =
+              mappedInstancesReferenceExpressions.toList
             tuple <- EitherT(
               fieldsToTuple(
                 logger,
                 typeManagementService.repository,
-                fields,
+                fields ++ listInstanceReferenceExpressions,
                 schemaToMapperSchema(targetEntityType.schema)
               ).map(Right[ManagementServiceError, Tuple])
             )
@@ -769,6 +783,44 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     )
     res1.map(_.sequence)
   end getMappingsForEntityType
+
+  def getMappedInstancesReferenceExpressions(
+    logger: Logger[F],
+    typeManagementService: TypeManagementService[F],
+    mappingName: String,
+    sourceEntityTypeName: String
+  ): F[Map[String, String]] =
+    val query =
+      s"""
+         |PREFIX ns:   <${ns.getName}>
+         |PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         |SELECT DISTINCT ?name ?path WHERE {
+         |   ?e1 ?map ?e2 .
+         |   ?map ?pred ?mapId .
+         |   ?mapId ?pred2 ?name .
+         |   ?mapId ?pred3 ?path .
+         |   FILTER(?e1 = <${ns.getName}${sourceEntityTypeName}>) .
+         |   FILTER(?map = <${ns.getName}mappedTo#$mappingName>) .
+         |   FILTER(?pred = <${ns.getName}withNamedInstanceReferenceExpression>) .
+         |   FILTER(?pred2 = <${ns.getName}instanceReferenceName>) .
+         |   FILTER(?pred3 = <${ns.getName}instanceReferenceExpression>) .
+         |}
+         |""".stripMargin
+
+    typeManagementService.repository
+      .evaluateQuery(query)
+      .flatMap { queryResults =>
+        queryResults.toList
+          .traverse { bs =>
+            val name = bs.getValue("name").stringValue()
+            val path = bs.getValue("path").stringValue()
+            (name, path).pure[F]
+          }
+          .map(_.toMap)
+      }
+  end getMappedInstancesReferenceExpressions
 
   def queryMappedInstances(
     logger: Logger[F],

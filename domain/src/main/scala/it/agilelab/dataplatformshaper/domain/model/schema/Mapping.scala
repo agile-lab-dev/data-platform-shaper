@@ -36,7 +36,7 @@ def tupleToMappedTuple(
   sourceTupleSchema: Schema,
   mappingTuple: Tuple,
   mappedTupleSchema: Schema,
-  additionalSourceTuples: Map[String, Tuple] = Map.empty[String, Tuple]
+  additionalSourceTuples: Map[String, Tuple]
 ): Either[String, Tuple] =
   val elProcessor = ELProcessor()
   val exFactory = ExpressionFactoryImpl()

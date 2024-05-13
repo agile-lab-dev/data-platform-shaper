@@ -2,7 +2,8 @@ package it.agilelab.dataplatformshaper.domain.model
 
 import it.agilelab.dataplatformshaper.domain.common.{
   stringEnumDecoder,
-  stringEnumEncoder
+  stringEnumEncoder,
+  stringIsEnum
 }
 
 enum Relationship:
@@ -35,6 +36,14 @@ enum Relationship:
       case Relationship.dependencyOf =>
         Some(Relationship.dependsOn)
     end match
+  end getInverse
+
+end Relationship
+
+object Relationship:
+  def isRelationship(rel: String): Boolean =
+    stringIsEnum[Relationship](rel)
+  end isRelationship
 end Relationship
 
 given Conversion[String, Relationship] with

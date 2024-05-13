@@ -234,6 +234,78 @@ class MappingSpec extends CommonSpec:
     StructType(List("field1" -> StringType(), "field2" -> StringType())): Schema
   )
 
+  private val fileBasedOutputPortType = EntityType(
+    "FileBasedOutputPortType",
+    Set("MappingSource", "FileBasedOutputPort"),
+    StructType(
+      List("name" -> StringType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
+  private val tableBasedOutputPortType = EntityType(
+    "TableBasedOutputPortType",
+    Set("MappingSource", "TableBasedOutputPort"),
+    StructType(List("name" -> StringType())): Schema
+  )
+
+  private val athenaTableType = EntityType(
+    "AthenaTableType",
+    Set("MappingTarget"),
+    StructType(
+      List("name" -> StringType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
+  private val s3Folder = EntityType(
+    "S3Folder",
+    Set("MappingTarget"),
+    StructType(
+      List("name" -> StringType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
+  private val nestTargetType = EntityType(
+    "NestTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List("age" -> IntType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
+  private val nestSourceType = EntityType(
+    "NestSourceType",
+    Set("MappingSource", "NestSource"),
+    StructType(List("age" -> IntType())): Schema
+  )
+
+  private val nestLinkedType = EntityType(
+    "NestLinkedType",
+    Set("NestLinked"),
+    StructType(
+      List(
+        "name" -> StringType(),
+        "parameterToGet" -> StringType(),
+        "nestedAttribute" -> StructType(
+          List("nest" -> StringType(), "surplusParam" -> StringType())
+        )
+      )
+    ): Schema
+  )
+
+  private val wrongPathSourceType = EntityType(
+    "WrongPathSourceType",
+    Set("MappingSource"),
+    StructType(List("age" -> IntType())): Schema
+  )
+
+  private val wrongPathTargetType = EntityType(
+    "WrongPathTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List("age" -> IntType(), "additionalParameter" -> StringType())
+    ): Schema
+  )
+
   private val mapperTuple =
     ("field1" -> "source.get('field1')", "field2" -> "source.get('field2')")
 
@@ -1197,6 +1269,306 @@ class MappingSpec extends CommonSpec:
           case Right(numberOfElements) => numberOfElements shouldEqual 0
           case _ =>
             fail("Expected the creation of mapped instances to be idempotent")
+        }
+    }
+  }
+  // TODO: Solve repeated mapping
+  /*"Creating a mapping between two EntityTypes with  a repeated attribute" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val mappingKey = MappingKey(
+        "repeated_attribute_map",
+        "RepeatedAttributeSourceType",
+        "RepeatedAttributeTargetType"
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(tservice.create(repeatedAttributeSourceType))
+            _ <- EitherT(tservice.create(repeatedAttributeTargetType))
+            res <- EitherT(
+              mservice.create(
+                MappingDefinition(mappingKey, repeatedMapperTuple)
+              )
+            )
+            sourceId <- EitherT(
+              iservice.create(
+                "RepeatedAttributeSourceType",
+                Tuple1(("field1", List("test")))
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+          } yield res).value
+        }
+        .asserting {
+          case Right(()) => succeed
+          case Left(ex) =>
+            fail(
+              "Expected a successful created mapping but found an error"
+            )
+        }
+    }
+  }*/
+
+  "Injecting additional references in mapping" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val tableBasedMappingDefinition = MappingDefinition(
+        MappingKey(
+          "tableBasedMapping",
+          "TableBasedOutputPortType",
+          "AthenaTableType"
+        ),
+        (
+          "name" -> "source.get('name')",
+          "additionalParameter" -> "fileBasedOutputPort.get('additionalParameter')"
+        ),
+        Map(
+          "fileBasedOutputPort" -> "source/dependsOn/FileBasedOutputPortType.find(\"name = 'test'\")/mappedTo/S3Folder"
+        )
+      )
+
+      val fileBasedMappingDefinition = MappingDefinition(
+        MappingKey("fileBasedMapping", "FileBasedOutputPortType", "S3Folder"),
+        (
+          "name" -> "source.get('name')",
+          "additionalParameter" -> "source.get('additionalParameter')"
+        ),
+        Map()
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("FileBasedOutputPort", None)))
+            _ <- EitherT(trservice.create(Trait("TableBasedOutputPort", None)))
+            _ <- EitherT(
+              trservice.link(
+                "TableBasedOutputPort",
+                Relationship.dependsOn,
+                "FileBasedOutputPort"
+              )
+            )
+
+            _ <- EitherT(tservice.create(fileBasedOutputPortType))
+            _ <- EitherT(tservice.create(tableBasedOutputPortType))
+            _ <- EitherT(tservice.create(athenaTableType))
+            _ <- EitherT(tservice.create(s3Folder))
+
+            _ <- EitherT(mservice.create(fileBasedMappingDefinition))
+            _ <- EitherT(mservice.create(tableBasedMappingDefinition))
+
+            fileBasedSourceId <- EitherT(
+              iservice
+                .create(
+                  "FileBasedOutputPortType",
+                  (("name", "test"), ("additionalParameter", "addTest"))
+                )
+            )
+            tableBasedSourceId <- EitherT(
+              iservice
+                .create("TableBasedOutputPortType", Tuple1("name", "test"))
+            )
+            _ <- EitherT(mservice.createMappedInstances(fileBasedSourceId))
+            _ <- EitherT(mservice.createMappedInstances(tableBasedSourceId))
+            tableMappedInstances <- EitherT(
+              mservice.readMappedInstances(tableBasedSourceId)
+            )
+            targetEntity = tableMappedInstances.head._3._2
+            fileMappedInstances <- EitherT(
+              mservice.readMappedInstances(fileBasedSourceId)
+            )
+            expectedEntity = fileMappedInstances.head._3._2
+          } yield (targetEntity, expectedEntity)).value
+        }
+        .asserting {
+          case Right((targetEntity, expectedEntity))
+              if targetEntity.values.equals(expectedEntity.values) =>
+            succeed
+          case _ =>
+            fail(
+              "Expected a successful creation of mapped instances but found an error"
+            )
+        }
+    }
+  }
+
+  "Injecting additional source references when there are multiple instances" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "nestedMappingDefinition",
+          "NestSourceType",
+          "NestTargetType"
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "nestLinkedType.get('nestedAttribute/nest')"
+        ),
+        Map(
+          "nestLinkedType" -> "source/hasPart/NestLinkedType.find(\"nestedAttribute/nest = 'testNest'\")"
+        )
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("NestSource", None)))
+            _ <- EitherT(trservice.create(Trait("NestLinked", None)))
+            _ <- EitherT(
+              trservice.link("NestSource", Relationship.hasPart, "NestLinked")
+            )
+
+            _ <- EitherT(tservice.create(nestSourceType))
+            _ <- EitherT(tservice.create(nestTargetType))
+            _ <- EitherT(tservice.create(nestLinkedType))
+
+            _ <- EitherT(mservice.create(mappingDefinition))
+
+            nestedSourceId <- EitherT(
+              iservice
+                .create("NestSourceType", Tuple1("age", 23))
+            )
+            nestLinkedId <- EitherT(
+              iservice
+                .create(
+                  "NestLinkedType",
+                  (
+                    "name" -> "test",
+                    "parameterToGet" -> "getTest",
+                    "nestedAttribute" -> (
+                      "nest" -> "testNest",
+                      "surplusParam" -> "surplusValue"
+                    )
+                  )
+                )
+            )
+            _ <- EitherT(
+              iservice
+                .create(
+                  "NestLinkedType",
+                  (
+                    "name" -> "secondTest",
+                    "parameterToGet" -> "secondGetTest",
+                    "nestedAttribute" -> (
+                      "nest" -> "secondTestNest",
+                      "surplusParam" -> "secondSurplusValue"
+                    )
+                  )
+                )
+            )
+            res <- EitherT(mservice.createMappedInstances(nestedSourceId))
+          } yield res).value
+        }
+        .asserting {
+          case Right(()) => succeed
+          case _ =>
+            fail(
+              "Expected a successful creation of mapped instances but found an error"
+            )
+        }
+    }
+  }
+
+  "Injecting additional source references with a wrong path" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "wrongMappingDefinition",
+          "WrongPathSourceType",
+          "WrongPathTargetType"
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "wrongType.get('nestedAttribute/nest')"
+        ),
+        Map("wrongType" -> "source/WrongType")
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(tservice.create(wrongPathSourceType))
+            _ <- EitherT(tservice.create(wrongPathTargetType))
+            _ <- EitherT(mservice.create(mappingDefinition))
+
+            nestedSourceId <- EitherT(
+              iservice
+                .create("WrongPathSourceType", Tuple1("age", 23))
+            )
+            res <- EitherT(mservice.createMappedInstances(nestedSourceId))
+          } yield res).value
+        }
+        .asserting {
+          case Left(_) => succeed
+          case _ =>
+            fail("Expected an error during the creation of the mapping")
         }
     }
   }

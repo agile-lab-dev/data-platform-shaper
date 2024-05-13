@@ -13,6 +13,7 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.{
+  getPathQuery,
   schemaToMapperSchema,
   tupleToMappedTuple,
   validateMappingTuple
@@ -71,31 +72,33 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       mapperIri
     )
 
-    // TODO
-    val _ = mappingDefinition.additionalSourcesReferences.map(pair =>
-      val nieIri = iri(ns, UUID.randomUUID().toString)
-      List(
-        statement(
-          triple(nieIri, NS.INSTANCEREFERENCENAME, literal(pair(0))),
-          L2
-        ),
-        statement(
-          triple(nieIri, NS.INSTANCEREFERENCEEXPRESSION, literal(pair(1))),
-          L2
-        ),
-        statement(
-          triple(
-            iri(
-              mappedTo.getNamespace,
-              s"${mappedTo: String}#${key.mappingName}"
+    val additionalSourcesReferencesStatements =
+      mappingDefinition.additionalSourcesReferences
+        .flatMap(pair =>
+          val nieIri = iri(ns, UUID.randomUUID().toString)
+          List(
+            statement(
+              triple(nieIri, NS.INSTANCEREFERENCENAME, literal(pair(0))),
+              L2
             ),
-            NS.WITHNAMEDINSTANCEREFERENCEEXPRESSION,
-            nieIri
-          ),
-          L2
+            statement(
+              triple(nieIri, NS.INSTANCEREFERENCEEXPRESSION, literal(pair(1))),
+              L2
+            ),
+            statement(
+              triple(
+                iri(
+                  mappedTo.getNamespace,
+                  s"${mappedTo: String}#${key.mappingName}"
+                ),
+                NS.WITHNAMEDINSTANCEREFERENCEEXPRESSION,
+                nieIri
+              ),
+              L2
+            )
+          )
         )
-      )
-    )
+        .toList
 
     val initialStatements = List(
       statement(mappedToTriple1, L2),
@@ -188,7 +191,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       res <- EitherT(
         repository
           .removeAndInsertStatements(
-            initialStatements ::: stmts,
+            initialStatements ::: stmts ::: additionalSourcesReferencesStatements,
             List.empty[Statement]
           )
           .map(Right[ManagementServiceError, Unit])
@@ -244,6 +247,62 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           )
     )
   end read
+
+  private enum PathElementType:
+    case Source, Start, Relationship, EntityType
+  private def prepareReferenceTuple(
+    splitPath: List[String],
+    initialInstanceId: String
+  ): F[Either[ManagementServiceError, Tuple]] =
+    val queryBody = getPathQuery(splitPath, initialInstanceId)
+    val finalQuery = queryBody.map((query, trueFinalInstanceId) => s"""
+         | PREFIX ns:   <${ns.getName}>
+         | PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         | PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+         | PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+         | SELECT DISTINCT ?$trueFinalInstanceId WHERE {
+         | $query
+         | }
+         |""".stripMargin)
+    finalQuery.fold(
+      l =>
+        val res: Either[ManagementServiceError, Tuple] = Left(l)
+        summon[Applicative[F]].pure(res)
+      ,
+      query =>
+        (for {
+          res <- EitherT.liftF(repository.evaluateQuery(query))
+          listOfInstanceIds <- EitherT.fromEither(
+            queryBody.map((_, finalInstanceId) =>
+              res
+                .map(bs =>
+                  iri(
+                    ns,
+                    bs.getValue(finalInstanceId).stringValue()
+                  ).getLocalName
+                )
+                .toList
+            )
+          )
+          tupleEither <-
+            if listOfInstanceIds.length.equals(1) then
+              for {
+                entity <- EitherT(
+                  instanceManagementService.read(listOfInstanceIds.head)
+                )
+                entityValues = entity.values
+              } yield entityValues
+            else
+              val res: EitherT[F, ManagementServiceError, Tuple] =
+                EitherT.leftT(
+                  ManagementServiceError(
+                    "Found a number of instances different from one"
+                  )
+                )
+              res
+        } yield tupleEither).value
+    )
+  end prepareReferenceTuple
 
   def update(
     mappingKey: MappingKey,
@@ -411,6 +470,19 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     )
   end exist
 
+  private def splitPath(path: String): List[String] =
+    def loop(listPaths: List[String]): List[String] =
+      listPaths match
+        case head1 :: head2 :: tail
+            if head1.contains(".find(") && !head1.contains(")") =>
+          head1 + "/" + head2 :: loop(tail)
+        case head :: tail => head :: loop(tail)
+        case Nil          => Nil
+    end loop
+    val splitPath = path.split("/").toList
+    loop(splitPath)
+  end splitPath
+
   override def createMappedInstances(
     sourceInstanceId: String
   ): F[Either[ManagementServiceError, Unit]] =
@@ -433,16 +505,25 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         // format: off
         ids <- EitherT(
           Traverse[List].sequence(mappings.map(mapping =>
-            val tuple: Either[ManagementServiceError, Tuple] =
-              tupleToMappedTuple(
-                sourceInstance.values,
-                mapping(1).schema,
-                mapping(3),
-                mapping(2).schema,
-                Map.empty[String, Tuple] // TODO
-              ).leftMap(e =>
-                ManagementServiceError(s"The mapper instance is invalid: $e")
-              )
+            val tempTuple: EitherT[F, ManagementServiceError, Tuple] =
+              for {
+                mappedInstances <- EitherT.liftF(getMappedInstancesReferenceExpressions(logger, typeManagementService, mapping._1, mapping._2.name))
+                mappedQueries <- EitherT.liftF(Applicative[F].pure(mappedInstances.map { case (name, path) =>
+                  val paths = splitPath(path)
+                  val preparedQuery = prepareReferenceTuple(paths, sourceInstanceId)
+                  preparedQuery.map(_.map((name, _)))
+                }.toList.sequence))
+                tuplesMapped <- EitherT.liftF(mappedQueries)
+                finalTuplesMapped <- EitherT.fromEither(tuplesMapped.traverse(identity).map(_.toMap))
+                tupleResult <- EitherT(tupleToMappedTuple(
+                  sourceInstance.values,
+                  mapping(1).schema,
+                  mapping(3),
+                  mapping(2).schema,
+                  finalTuplesMapped
+                ).leftMap(e => ManagementServiceError(s"The mapper instance is invalid: $e")).pure[F])
+              } yield tupleResult
+            val tuple = tempTuple.value
             val targetInstanceId = UUID.randomUUID().toString
             val sourceEntityIri = iri(ns, sourceInstanceId)
             val targetEntityIri = iri(ns, targetInstanceId)
@@ -485,22 +566,21 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
                       Applicative[F]
                         .pure(completedOperations.push(true))
                     )
-                    createdInstance <- EitherT(
-                      tuple
-                        .map(
-                          createInstanceNoCheck(
+                    tmpCreatedInstance <- EitherT(
+                      tuple.map(
+                        bs => bs.map(
+                          cs => createInstanceNoCheck(
                             logger,
                             typeManagementService,
                             targetInstanceId,
                             mapping(2).name,
-                              _,
+                            cs,
                             initialStatements,
-                            List.empty
-                          )
+                            List.empty)
                         )
-                        .sequence
-                      .map(_.flatten)
+                      )
                     )
+                    createdInstance <- EitherT(tmpCreatedInstance)
                   } yield createdInstance
             } yield result).value
           )).map(_.sequence)
