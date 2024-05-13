@@ -45,7 +45,8 @@ class MappingSpec extends CommonSpec:
       b match
         case bDef: MappingDefinition =>
           a.mappingKey == bDef.mappingKey &&
-          a.mapper.productIterator.toSet == bDef.mapper.productIterator.toSet
+          a.mapper.toArray.toSet == bDef.mapper.toArray.toSet &&
+          a.additionalSourcesReferences.toSet == bDef.additionalSourcesReferences.toSet
         case _ => false
     end areEqual
   end given
@@ -290,6 +291,36 @@ class MappingSpec extends CommonSpec:
         )
       )
     ): Schema
+  )
+
+  private val readMapSourceType = EntityType(
+    "ReadMapSourceType",
+    Set("MappingSource", "ReadSource"),
+    StructType(List("age" -> IntType())): Schema
+  )
+
+  private val readMapTargetType = EntityType(
+    "ReadMapTargetType",
+    Set("MappingTarget"),
+    StructType(
+      List(
+        "age" -> IntType(),
+        "additionalParameter" -> StringType(),
+        "secondAdditionalParameter" -> StringType()
+      )
+    ): Schema
+  )
+
+  private val firstReadMapLinkedType = EntityType(
+    "FirstReadMapLinkedType",
+    Set("FirstReadLinked"),
+    StructType(List("name" -> StringType())): Schema
+  )
+
+  private val secondReadMapLinkedType = EntityType(
+    "SecondReadMapLinkedType",
+    Set("SecondReadLinked"),
+    StructType(List("surname" -> StringType())): Schema
   )
 
   private val wrongPathSourceType = EntityType(
@@ -1507,13 +1538,95 @@ class MappingSpec extends CommonSpec:
                 )
             )
             res <- EitherT(mservice.createMappedInstances(nestedSourceId))
-          } yield res).value
+            nestSourceInstances <- EitherT(
+              mservice.readMappedInstances(nestedSourceId)
+            )
+            targetEntity = nestSourceInstances.head._3._2
+            expectedEntity <- EitherT(iservice.read(nestLinkedId))
+          } yield targetEntity).value
         }
         .asserting {
-          case Right(()) => succeed
+          case Right(targetEntity) =>
+            if targetEntity.values.toArray.toSet
+                .contains(("additionalParameter", "testNest"))
+            then succeed
+            else
+              fail(
+                "Expected the created type to have 'additionalParameter' with value 'testNest'"
+              )
           case _ =>
             fail(
               "Expected a successful creation of mapped instances but found an error"
+            )
+        }
+    }
+  }
+
+  "Reading a mapping definition after injecting additional references" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "readMappingDefinition",
+          "ReadMapSourceType",
+          "ReadMapTargetType"
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "readLinkedType.get('name')",
+          "secondAdditionalParameter" -> "secondReadLinkedType.get('surname')"
+        ),
+        Map(
+          "readLinkedType" -> "source/dependsOn/FirstReadMapLinkedType",
+          "secondReadLinkedType" -> "source/hasPart/SecondReadMapLinkedType"
+        )
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("ReadSource", None)))
+            _ <- EitherT(trservice.create(Trait("FirstReadLinked", None)))
+            _ <- EitherT(trservice.create(Trait("SecondReadLinked", None)))
+            _ <- EitherT(
+              trservice
+                .link("ReadSource", Relationship.dependsOn, "FirstReadLinked")
+            )
+            _ <- EitherT(
+              trservice
+                .link("ReadSource", Relationship.hasPart, "SecondReadLinked")
+            )
+
+            _ <- EitherT(tservice.create(readMapSourceType))
+            _ <- EitherT(tservice.create(readMapTargetType))
+            _ <- EitherT(tservice.create(firstReadMapLinkedType))
+            _ <- EitherT(tservice.create(secondReadMapLinkedType))
+
+            _ <- EitherT(mservice.create(mappingDefinition))
+            res <- EitherT(mservice.read(mappingDefinition.mappingKey))
+          } yield res).value
+        }
+        .asserting {
+          case Right(m) => m shouldEqual mappingDefinition
+          case _ =>
+            fail(
+              "The MappingDefinition read is not equal to the starting MappingDefinition"
             )
         }
     }

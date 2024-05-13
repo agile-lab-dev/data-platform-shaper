@@ -909,7 +909,8 @@ class OntologyManagerHandler[F[_]: Async](
                   mappingDefinition.mappingKey.sourceEntityTypeName,
                   mappingDefinition.mappingKey.targetEntityTypeName
                 ),
-                _
+                _,
+                mappingDefinition.additionalSourcesReferences
               )
             )
         )
@@ -1066,7 +1067,8 @@ class OntologyManagerHandler[F[_]: Async](
                 body.mappingKey.sourceEntityTypeName,
                 body.mappingKey.targetEntityTypeName
               ),
-              tuple
+              tuple,
+              body.additionalSourcesReferences
             )
           )
           .map(_.leftMap { case err: ManagementServiceError =>

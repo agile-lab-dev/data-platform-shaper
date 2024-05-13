@@ -33,6 +33,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.util.UUID
 import scala.collection.mutable
+import scala.util.Try
 
 class MappingManagementServiceInterpreter[F[_]: Sync](
   typeManagementService: TypeManagementService[F],
@@ -199,6 +200,32 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end create
 
+  private def readAdditionalReferences(
+    mappingKey: MappingKey
+  ): F[Map[String, String]] =
+    val query =
+      s"""
+         | PREFIX ns: <${ns.getName}>
+         | PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         | SELECT DISTINCT ?referenceName ?referenceExpression WHERE {
+         | <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:withNamedInstanceReferenceExpression ?referenceId .
+         | ?referenceId ns:instanceReferenceName ?referenceName .
+         | ?referenceId ns:instanceReferenceExpression ?referenceExpression
+         | }
+         |""".stripMargin
+    val res = logger.trace(
+      s"Reading the additional references of mapping with name ${mappingKey.mappingName}"
+    ) *> repository.evaluateQuery(query)
+    res
+      .map(_.map(bs =>
+        val referenceName = bs.getValue("referenceName").stringValue()
+        val referenceExpression =
+          bs.getValue("referenceExpression").stringValue()
+        referenceName -> referenceExpression
+      ))
+      .map(_.toMap)
+  end readAdditionalReferences
+
   def read(
     mappingKey: MappingKey
   ): F[Either[ManagementServiceError, MappingDefinition]] =
@@ -217,8 +244,30 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     val res = logger.trace(
       s"Reading the mapping with name ${mappingKey.mappingName} with the query:\n$query"
     ) *> repository.evaluateQuery(query)
-
-    res.map(result =>
+    for {
+      iteratorBs <- res
+      pairs = iteratorBs
+        .map(bs =>
+          val obj =
+            Option(bs.getValue("object")).map(_.stringValue).getOrElse("")
+          val pred =
+            Option(bs.getValue("predicate")).map(_.stringValue).getOrElse("")
+          (iri(pred).getLocalName, obj)
+        )
+        .filter { case (pred, obj) => pred.nonEmpty && obj.nonEmpty }
+        .toList
+      additionalReferences <- readAdditionalReferences(mappingKey)
+      res = Tuple.fromArray(pairs.toArray) match
+        case tuple if tuple.toArray.length > 0 =>
+          Right(MappingDefinition(mappingKey, tuple, additionalReferences))
+        case _ =>
+          Left(
+            ManagementServiceError(
+              s"Mapping with name ${mappingKey.mappingName} has not been found"
+            )
+          )
+    } yield res
+    /*res.map(result =>
       val pairs = Iterator
         .continually(result)
         .takeWhile(_.hasNext)
@@ -235,26 +284,26 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         }
         .filter { case (pred, obj) => pred.nonEmpty && obj.nonEmpty }
         .toList
-
-      pairs match
-        case List(tuple1, tuple2) =>
-          Right(MappingDefinition(mappingKey, (tuple1, tuple2)))
-        case _ =>
+      Tuple.fromArray(pairs.toArray) match
+        case tuple =>
+          Right(MappingDefinition(mappingKey, tuple))
+        case null =>
           Left(
             ManagementServiceError(
-              s"Mapping with name ${mappingKey.mappingName} has not been found or does not have exactly two pairs"
+              s"Mapping with name ${mappingKey.mappingName} has not been found "
             )
           )
-    )
+    )*/
   end read
 
-  private enum PathElementType:
-    case Source, Start, Relationship, EntityType
   private def prepareReferenceTuple(
     splitPath: List[String],
     initialInstanceId: String
   ): F[Either[ManagementServiceError, Tuple]] =
-    val queryBody = getPathQuery(splitPath, initialInstanceId)
+    val queryBody =
+      Try(getPathQuery(splitPath, initialInstanceId)).toEither.leftMap(t =>
+        ManagementServiceError(t.getMessage)
+      )
     val finalQuery = queryBody.map((query, trueFinalInstanceId) => s"""
          | PREFIX ns:   <${ns.getName}>
          | PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>

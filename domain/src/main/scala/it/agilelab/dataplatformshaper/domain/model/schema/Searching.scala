@@ -2,7 +2,6 @@ package it.agilelab.dataplatformshaper.domain.model.schema
 
 import it.agilelab.dataplatformshaper.domain.model.NS.ns
 import it.agilelab.dataplatformshaper.domain.model.Relationship
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import org.apache.calcite.avatica.util.Casing
 import org.apache.calcite.sql.*
 import org.apache.calcite.sql.parser.SqlParser
@@ -388,25 +387,29 @@ private def getSinglePathElementType(pathElement: String): PathElementType =
 end getSinglePathElementType
 
 @SuppressWarnings(
-  Array("scalafix:DisableSyntax.defaultArgs", "scalafix:DisableSyntax.var")
+  Array(
+    "scalafix:DisableSyntax.defaultArgs",
+    "scalafix:DisableSyntax.var",
+    "scalafix:DisableSyntax.throw"
+  )
 )
 def getPathQuery(
   splitPath: List[String],
   initialInstanceId: String,
   previousID: String = "",
   previousPathElementType: PathElementType = PathElementType.Start
-): Either[ManagementServiceError, (String, String)] =
+): (String, String) =
   var finalInstanceID: String = ""
   def loop(
     innerSplitPath: List[String],
     innerPreviousPathElementType: PathElementType,
     innerInitialInstanceId: String,
     previousID: String = ""
-  ): Either[ManagementServiceError, String] =
+  ): String =
     val firstPathElement = innerSplitPath.head
     val firstPathElementType = getSinglePathElementType(firstPathElement)
     innerSplitPath match
-      case Nil => Right("")
+      case Nil => ""
       case head :: Nil =>
         val entityTypeName = head
         val finalPathElementType = getSinglePathElementType(entityTypeName)
@@ -430,21 +433,19 @@ def getPathQuery(
                 s"""
                    | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
                    |""".stripMargin
-              Right(searchPredicate.querySegment + entityTypeQuery)
+              searchPredicate.querySegment + entityTypeQuery
             case 1 =>
               val entityTypeName = splitPathElement.head
               val entityTypeQuery =
                 s"""
                    | ?$previousID ns:isClassifiedBy ns:$entityTypeName .
                    |""".stripMargin
-              Right(entityTypeQuery)
+              entityTypeQuery
             case _ =>
-              Left(ManagementServiceError("Expected only one find clause"))
+              throw IllegalArgumentException("Expected only one find clause")
         else
-          Left(
-            ManagementServiceError(
-              "Expected Relationship/EntityType or source at the end of the path"
-            )
+          throw IllegalArgumentException(
+            "Expected Relationship/EntityType or source at the end of the path"
           )
       case head :: tail
           if firstPathElementType.equals(PathElementType.Source) =>
@@ -459,12 +460,10 @@ def getPathQuery(
                |""".stripMargin
           val nextPathQuery =
             loop(tail, firstPathElementType, innerInitialInstanceId, instanceID)
-          nextPathQuery.map(sourceQuery + _)
+          sourceQuery + nextPathQuery
         else
-          Left(
-            ManagementServiceError(
-              "Expected source to be at the start of the path"
-            )
+          throw IllegalArgumentException(
+            "Expected source to be at the start of the path"
           )
       case head :: tail
           if firstPathElementType.equals(PathElementType.Relationship) =>
@@ -489,7 +488,7 @@ def getPathQuery(
                   innerInitialInstanceId,
                   firstEntityID
                 )
-              nextPathQuery.map(relationshipQuery + _)
+              relationshipQuery + nextPathQuery
             case head if head.equals("hasPart") =>
               val firstEntityTypeID =
                 UUID.randomUUID().toString.replace("-", "")
@@ -517,7 +516,7 @@ def getPathQuery(
                   innerInitialInstanceId,
                   instanceID
                 )
-              nextPathQuery.map(relationshipQuery + _)
+              relationshipQuery + nextPathQuery
             case _ =>
               val firstEntityTypeID =
                 UUID.randomUUID().toString.replace("-", "")
@@ -543,12 +542,10 @@ def getPathQuery(
                   innerInitialInstanceId,
                   instanceID
                 )
-              nextPathQuery.map(relationshipQuery + _)
+              relationshipQuery + nextPathQuery
         else
-          Left(
-            ManagementServiceError(
-              "Expected Source or EntityType before Relationship in path"
-            )
+          throw IllegalArgumentException(
+            "Expected Source or EntityType before Relationship in path"
           )
       case head :: tail
           if firstPathElementType.equals(PathElementType.EntityType) =>
@@ -571,9 +568,7 @@ def getPathQuery(
                 innerInitialInstanceId,
                 previousID
               )
-              nextPathQuery.map(
-                searchPredicate.querySegment + entityTypeQuery + _
-              )
+              searchPredicate.querySegment + entityTypeQuery + nextPathQuery
             case 1 =>
               val entityTypeName = splitPathElement.head
               val entityTypeQuery =
@@ -586,16 +581,16 @@ def getPathQuery(
                 innerInitialInstanceId,
                 previousID
               )
-              nextPathQuery.map(entityTypeQuery + _)
+              entityTypeQuery + nextPathQuery
             case _ =>
-              Left(ManagementServiceError("Expected only one find clause"))
+              throw IllegalArgumentException("Expected only one find clause")
         else
-          Left(
-            ManagementServiceError("Expected Relationship before an EntityType")
+          throw IllegalArgumentException(
+            "Expected Relationship before an EntityType"
           )
-      case _ => Left(ManagementServiceError("Unexpected element in path"))
+      case _ => throw IllegalArgumentException("Unexpected element in path")
   end loop
   val result =
     loop(splitPath, previousPathElementType, initialInstanceId, previousID)
-  result.map((_, finalInstanceID))
+  (result, finalInstanceID)
 end getPathQuery
