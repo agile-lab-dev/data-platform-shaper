@@ -30,7 +30,6 @@ def schemaToMapperSchema(schema: Schema): Schema =
   )
 end schemaToMapperSchema
 
-@SuppressWarnings(Array("scalafix:DisableSyntax.defaultArgs"))
 def tupleToMappedTuple(
   sourceTuple: Tuple,
   sourceTupleSchema: Schema,

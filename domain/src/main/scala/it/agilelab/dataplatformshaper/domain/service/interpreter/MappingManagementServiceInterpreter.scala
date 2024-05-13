@@ -267,33 +267,6 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             )
           )
     } yield res
-    /*res.map(result =>
-      val pairs = Iterator
-        .continually(result)
-        .takeWhile(_.hasNext)
-        .map(_.next())
-        .map { bindingSet =>
-          val obj = Option(bindingSet.getValue("object"))
-            .map(_.stringValue())
-            .getOrElse("")
-          val pred = Option(bindingSet.getValue("predicate"))
-            .map(_.stringValue())
-            .getOrElse("")
-
-          (iri(pred).getLocalName, obj)
-        }
-        .filter { case (pred, obj) => pred.nonEmpty && obj.nonEmpty }
-        .toList
-      Tuple.fromArray(pairs.toArray) match
-        case tuple =>
-          Right(MappingDefinition(mappingKey, tuple))
-        case null =>
-          Left(
-            ManagementServiceError(
-              s"Mapping with name ${mappingKey.mappingName} has not been found "
-            )
-          )
-    )*/
   end read
 
   private def prepareReferenceTuple(
