@@ -735,27 +735,42 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         _ <- traceT(s"Retrieved mappings: $mappings")
         ids <- EitherT(
           Traverse[List].sequence(mappings.map(mapping =>
-            val tuple: Either[ManagementServiceError, Tuple] =
-              tupleToMappedTuple(
-                mapping(1).values,
-                mapping(0).schema,
-                mapping(4),
-                mapping(2).schema,
-                Map.empty[String, Tuple] // TODO
-              ).leftMap(e =>
-                ManagementServiceError(s"The mapper instance is invalid: $e")
-              )
-            tuple
-              .map(
-                updateInstanceNoCheck(
-                  logger,
-                  typeManagementService,
-                  instanceManagementService,
-                  mapping(3).entityId,
-                  _
+            val mappingNameSplit = mapping._6.split("#")
+            val mappingName = if mappingNameSplit.length.equals(2) then mappingNameSplit(1) else ""
+            val resIds = for {
+                mappedInstances <- EitherT.liftF(
+                  getMappedInstancesReferenceExpressions(
+                    logger, 
+                    typeManagementService,
+                    mappingName, 
+                    mapping(0).name
+                  )
                 )
-              )
-              .sequence.map(x => x.flatten)
+                mappedQueries <- EitherT.liftF(Applicative[F].pure(mappedInstances.map { case (name, path) =>
+                  val paths = splitPath(path)
+                  val preparedQuery = prepareReferenceTuple(paths, sourceInstanceId)
+                  preparedQuery.map(_.map((name, _)))
+                }.toList.sequence))
+                tuplesMapped <- EitherT.liftF(mappedQueries)
+                finalTuplesMapped <- EitherT.fromEither(tuplesMapped.traverse(identity).map(_.toMap))
+                tupleResult <- EitherT(tupleToMappedTuple(
+                  mapping(1).values,
+                  mapping(0).schema,
+                  mapping(4),
+                  mapping(2).schema,
+                  finalTuplesMapped
+                ).leftMap(e => ManagementServiceError(s"The mapper instance is invalid: $e")).pure[F])
+                res <- EitherT(
+                  updateInstanceNoCheck(
+                    logger, 
+                    typeManagementService, 
+                    instanceManagementService, 
+                    mapping(3).entityId, 
+                    tupleResult
+                  )
+                )
+              } yield res
+            resIds.value
           )).map(_.sequence)
         )
         _ <- traceT(s"Instances to update: $ids")
