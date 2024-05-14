@@ -1542,7 +1542,6 @@ class MappingSpec extends CommonSpec:
               mservice.readMappedInstances(nestedSourceId)
             )
             targetEntity = nestSourceInstances.head._3._2
-            expectedEntity <- EitherT(iservice.read(nestLinkedId))
           } yield targetEntity).value
         }
         .asserting {
@@ -1553,6 +1552,118 @@ class MappingSpec extends CommonSpec:
             else
               fail(
                 "Expected the created type to have 'additionalParameter' with value 'testNest'"
+              )
+          case _ =>
+            fail(
+              "Expected a successful creation of mapped instances but found an error"
+            )
+        }
+    }
+  }
+
+  "Updating mapped instances with additional references" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val updateMapSourceType = EntityType(
+        "UpdateMapSourceType",
+        Set("MappingSource", "UpdateSource"),
+        StructType(List("age" -> IntType())): Schema
+      )
+
+      val updateMapTargetType = EntityType(
+        "UpdateMapTargetType",
+        Set("MappingTarget"),
+        StructType(
+          List("age" -> IntType(), "additionalParameter" -> IntType())
+        ): Schema
+      )
+
+      val updateMapLinkedType = EntityType(
+        "UpdateMapLinkedType",
+        Set("UpdateLinked"),
+        StructType(
+          List("age" -> IntType(), "additionalParameter" -> IntType())
+        ): Schema
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "updateLinkedMappingDefinition",
+          "UpdateMapSourceType",
+          "UpdateMapTargetType"
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "updateLinkedType.get('additionalParameter')"
+        ),
+        Map("updateLinkedType" -> "source/dependsOn/UpdateMapLinkedType")
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("UpdateSource", None)))
+            _ <- EitherT(trservice.create(Trait("UpdateLinked", None)))
+            _ <- EitherT(
+              trservice
+                .link("UpdateSource", Relationship.dependsOn, "UpdateLinked")
+            )
+
+            _ <- EitherT(tservice.create(updateMapSourceType))
+            _ <- EitherT(tservice.create(updateMapTargetType))
+            _ <- EitherT(tservice.create(updateMapLinkedType))
+
+            _ <- EitherT(mservice.create(mappingDefinition))
+
+            updateSourceId <- EitherT(
+              iservice
+                .create(updateMapSourceType.name, Tuple1("age", 23))
+            )
+            updateLinkedId <- EitherT(
+              iservice
+                .create(
+                  updateMapLinkedType.name,
+                  ("age" -> 23, "additionalParameter" -> 99)
+                )
+            )
+            res <- EitherT(mservice.createMappedInstances(updateSourceId))
+            _ <- EitherT(
+              iservice.update(
+                updateLinkedId,
+                ("age" -> 23, "additionalParameter" -> 1)
+              )
+            )
+            _ <- EitherT(mservice.updateMappedInstances(updateSourceId))
+            updateSourceInstances <- EitherT(
+              mservice.readMappedInstances(updateSourceId)
+            )
+            targetEntity = updateSourceInstances.head._3._2
+          } yield targetEntity).value
+        }
+        .asserting {
+          case Right(targetEntity) =>
+            if targetEntity.values.toArray.toSet
+                .contains(("additionalParameter", 1))
+            then succeed
+            else
+              fail(
+                "Expected the created type to have 'additionalParameter' with value 1"
               )
           case _ =>
             fail(
