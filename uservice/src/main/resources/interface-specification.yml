@@ -939,6 +939,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/trait/bulk:
+    post:
+      tags:
+        - OntologyManager
+      summary: Bulk creation of user-defined traits and their relationships
+      operationId: createTraitBulk
+      requestBody:
+        description: A BulkTraitsCreationRequest spec
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkTraitsCreationRequest'
+        required: true
+      responses:
+        200:
+          description: If successful returns a BulkTraitsCreationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkTraitsCreationResponse'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+  /ontology/trait/bulk/yaml:
+    post:
+      tags:
+        - OntologyManager
+      summary: Bulk creation of user-defined traits using YAML file
+      operationId: createTraitBulkByYaml
+      requestBody:
+        description: A YAML file containing a BulkTraitsCreationRequest spec
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: If successful returns a BulkTraitsCreationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkTraitsCreationResponse'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/mapping:
     post:
       tags:
@@ -1341,6 +1406,74 @@ components:
           type: string
         inheritsFrom:
           type: string
+    BulkTraitsCreationRequest:
+      required:
+        - traits
+        - relationships
+      type: object
+      properties:
+        traits:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trait'
+        relationships:
+          type: array
+          items:
+            type: object
+            required:
+              - subject
+              - relationship
+              - object
+            properties:
+              subject:
+                type: string
+              relationship:
+                type: string
+              object:
+                type: string
+    BulkTraitsCreationResponse:
+      required:
+        - traits
+        - relationships
+      type: object
+      properties:
+        traits:
+          type: array
+          items:
+            required:
+              - first
+              - second
+            type: object
+            properties:
+              first:
+                $ref: '#/components/schemas/Trait'
+              second:
+                type: string
+        relationships:
+          type: array
+          items:
+            required:
+              - first
+              - second
+            type: object
+            properties:
+              first:
+                required:
+                  - subject
+                  - relationship
+                  - object
+                type: object
+                properties:
+                  subject:
+                    type: string
+                  relationship:
+                    type: string
+                  object:
+                    type: string
+                  second:
+                    type: string
+              second:
+                type: string
     AttributeType:
       type: object
       required:

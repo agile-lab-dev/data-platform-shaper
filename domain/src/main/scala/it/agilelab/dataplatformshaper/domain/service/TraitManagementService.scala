@@ -3,6 +3,7 @@ package it.agilelab.dataplatformshaper.domain.service
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.{
   BulkTraitsCreationRequest,
+  BulkTraitsCreationResponse,
   Relationship,
   Trait
 }
@@ -15,7 +16,7 @@ trait TraitManagementService[F[_]]:
 
   def create(
     bulkTraitsCreationRequest: BulkTraitsCreationRequest
-  ): F[Either[ManagementServiceError, Unit]]
+  ): F[BulkTraitsCreationResponse]
 
   def delete(traitName: String): F[Either[ManagementServiceError, Unit]]
 
