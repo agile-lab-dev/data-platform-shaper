@@ -561,12 +561,19 @@ class OntologyManagerHandler[F[_]: Async](
   override def createTraitBulk(respond: Resource.CreateTraitBulkResponse.type)(
     body: OpenApiBulkTraitsCreationRequest
   ): F[CreateTraitBulkResponse] =
-    
-    println(OpenApiBulkTraitsCreationRequest.encodeBulkTraitsCreationRequest(body).asYaml.spaces2)
-    
+
+    println(
+      OpenApiBulkTraitsCreationRequest
+        .encodeBulkTraitsCreationRequest(body)
+        .asYaml
+        .spaces2
+    )
+
     val request = BulkTraitsCreationRequest(
       body.traits.map(tr => Trait(tr.name, tr.inheritsFrom)).toList,
-      body.relationships.map(re => (re.subject, re.relationship: Relationship, re.`object`)).toList
+      body.relationships
+        .map(re => (re.subject, re.relationship: Relationship, re.`object`))
+        .toList
     )
     trms
       .create(request)
