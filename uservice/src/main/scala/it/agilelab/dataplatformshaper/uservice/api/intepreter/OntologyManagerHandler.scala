@@ -10,20 +10,12 @@ import fs2.{Stream, text}
 import io.circe.Json
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
+import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.model.given
-import it.agilelab.dataplatformshaper.domain.model.{
-  BulkTraitsCreationRequest,
-  Entity,
-  EntityType,
-  Relationship,
-  Trait,
-  given_Conversion_String_Relationship
-}
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
@@ -73,7 +65,7 @@ class OntologyManagerHandler[F[_]: Async](
     val fatherName = body.fatherName
 
     val traits =
-      summon[Applicative[F]].pure(
+      Applicative[F].pure(
         Try(
           body.traits
             .fold(Set.empty[String])(x => x.map(str => str).toSet)
@@ -106,7 +98,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(_)     => respond.Ok("OK")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createType
 
@@ -123,7 +115,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(successMessage) => respond.Ok(successMessage)
       }
       .onError { t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       }
   end deleteType
 
@@ -153,7 +145,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(_)     => respond.Ok("OK")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end updateTypeConstraints
 
@@ -200,7 +192,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(_)    => respond.Ok("OK")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createTypeByYaml
 
@@ -238,7 +230,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(_)    => respond.Ok("OK")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end updateTypeConstraintsByYaml
 
@@ -258,7 +250,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(entityType) => respond.Ok(entityType)
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end readType
 
@@ -272,10 +264,10 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(_.errors.head))
       )
       stream <- EitherT(
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           Right(
             readInputStream(
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 ByteArrayInputStream(
                   OpenApiEntityType
                     .encodeEntityType(et)
@@ -297,7 +289,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(stream) => respond.Ok(stream)
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end readTypeAsYaml
 
@@ -312,7 +304,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(
             jsonToTuple(body.values, schema).leftMap(l => Vector(l.getMessage))
           )
@@ -331,7 +323,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(entityId) => respond.Ok(entityId)
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createEntity
 
@@ -346,7 +338,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(_) => respond.Ok("Entity deleted successfully")
       }
       .onError { t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       }
   end deleteEntity
 
@@ -361,7 +353,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(
             jsonToTuple(body.values, schema).leftMap(l => Vector(l.getMessage))
           )
@@ -381,7 +373,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(entityId) => respond.Ok(entityId)
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end updateEntity
 
@@ -413,7 +405,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(_.errors.head))
       )
       tuple <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
       )
       _ <- EitherT(ims.update(id, tuple).map(_.leftMap(_.errors.head)))
@@ -425,7 +417,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(updatedId) => respond.Ok(updatedId)
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}}"))
       )
   }
 
@@ -454,7 +446,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(_.errors.head))
       )
       tuple <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
       )
       entityId <- EitherT(
@@ -468,7 +460,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(entityId) => respond.Ok(entityId)
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createEntityByYaml
 
@@ -481,11 +473,11 @@ class OntologyManagerHandler[F[_]: Async](
         tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.errors.head))
       )
       values <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(tupleToJson(et.values, schema).leftMap(_.getMessage))
       )
       oaEntity <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(Right(OpenApiEntity(et.entityId, et.entityTypeName, values)))
       )
     } yield oaEntity).value
@@ -496,7 +488,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(oaEntity) => respond.Ok(oaEntity)
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end readEntity
 
@@ -509,14 +501,14 @@ class OntologyManagerHandler[F[_]: Async](
         tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.errors.head))
       )
       values <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(tupleToJson(et.values, schema).leftMap(_.getMessage))
       )
       oaEntity <- EitherT(
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           Right(
             readInputStream(
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 ByteArrayInputStream(
                   OpenApiEntity
                     .encodeEntity(
@@ -540,7 +532,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(stream) => respond.Ok(stream)
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end readEntityAsYaml
 
@@ -599,6 +591,63 @@ class OntologyManagerHandler[F[_]: Async](
       )
       .map(res => respond.Ok(res))
   end createTraitBulk
+
+  override def createTraitBulkByYaml(
+    respond: Resource.CreateTraitBulkByYamlResponse.type
+  )(body: Stream[F, Byte]): F[CreateTraitBulkByYamlResponse] =
+    val eitherRequest: F[Either[String, OpenApiBulkTraitsCreationRequest]] =
+      body
+        .through(text.utf8.decode)
+        .fold("")(_ + _)
+        .compile
+        .toList
+        .map(_.head)
+        .map(parser.parse(_).leftMap(_.getMessage))
+        .map(
+          _.flatMap(json =>
+            OpenApiBulkTraitsCreationRequest
+              .decodeBulkTraitsCreationRequest(json.hcursor)
+              .leftMap(_.getMessage)
+          )
+        )
+
+    eitherRequest.flatMap {
+      case Left(error) =>
+        Applicative[F].pure(respond.BadRequest(ValidationError(Vector(error))))
+      case Right(openApiRequest) =>
+        val request = BulkTraitsCreationRequest(
+          openApiRequest.traits
+            .map(tr => Trait(tr.name, tr.inheritsFrom))
+            .toList,
+          openApiRequest.relationships
+            .map(re => (re.subject, re.relationship: Relationship, re.`object`))
+            .toList
+        )
+        trms
+          .create(request)
+          .map(res =>
+            OpenApiBulkTraitsCreationResponse(
+              res._1
+                .map(p =>
+                  Traits(
+                    OpenApiTrait(p._1.traitName, p._1.inheritsFrom),
+                    p._2.getOrElse("OK")
+                  )
+                )
+                .toVector,
+              res._2
+                .map(t =>
+                  Relationships(
+                    First(t._1._1, t._1._2: String, t._1._3),
+                    t._2.getOrElse("OK")
+                  )
+                )
+                .toVector
+            )
+          )
+          .map(res => respond.Ok(res))
+    }
+  end createTraitBulkByYaml
 
   override def deleteTrait(respond: Resource.DeleteTraitResponse.type)(
     traitName: String
@@ -887,9 +936,9 @@ class OntologyManagerHandler[F[_]: Async](
 
     result.value.flatMap {
       case Right(entityTypes) =>
-        summon[Applicative[F]].pure(respond.Ok(entityTypes))
+        Applicative[F].pure(respond.Ok(entityTypes))
       case Left(error) =>
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           respond.BadRequest(ValidationError(error.errors.toVector))
         )
     }
@@ -904,9 +953,9 @@ class OntologyManagerHandler[F[_]: Async](
 
     result.value.flatMap {
       case Right(traitNames) =>
-        summon[Applicative[F]].pure(respond.Ok(traitNames))
+        Applicative[F].pure(respond.Ok(traitNames))
       case Left(error) =>
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           respond.BadRequest(ValidationError(error.errors.toVector))
         )
     }
@@ -950,7 +999,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.map(t => schemaToMapperSchema(t.schema)))
       )
       res <- EitherT(
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           tupleToJson(mappingDefinition.mapper, mapperSchema)
             .leftMap(e => ManagementServiceError(e.getMessage))
             .map(
@@ -992,7 +1041,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.map(t => schemaToMapperSchema(t.schema)))
       )
       openApiMappingDefinition <- EitherT(
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           tupleToJson(mappingDefinition.mapper, mapperSchema)
             .leftMap(e => ManagementServiceError(e.getMessage))
             .map(
@@ -1008,10 +1057,10 @@ class OntologyManagerHandler[F[_]: Async](
         )
       )
       res <- EitherT(
-        summon[Applicative[F]].pure(
+        Applicative[F].pure(
           Right(
             readInputStream(
-              summon[Applicative[F]].pure(
+              Applicative[F].pure(
                 ByteArrayInputStream(
                   OpenApiMappingDefinition
                     .encodeMappingDefinition(openApiMappingDefinition)
@@ -1048,7 +1097,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(()) => respond.Ok("Mapping deleted successfully")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end deleteMapping
 
@@ -1063,7 +1112,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(
             jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
               Vector(l.getMessage)
@@ -1087,7 +1136,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(())    => respond.Ok("Mapping updated successfully")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end updateMapping
 
@@ -1102,7 +1151,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(
             jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
               Vector(l.getMessage)
@@ -1133,7 +1182,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(())    => respond.Ok("Mapping created successfully")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createMapping
 
@@ -1164,7 +1213,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        summon[Applicative[F]]
+        Applicative[F]
           .pure(
             jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
               Vector(l.getMessage)
@@ -1192,7 +1241,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(())    => respond.Ok("Mapping created successfully")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createMappingByYaml
 
@@ -1208,7 +1257,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(())    => respond.Ok("Mapping created successfully")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createMappedInstances
 
@@ -1224,7 +1273,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(())    => respond.Ok("Mapping created successfully")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end updateMappedInstances
 
@@ -1240,7 +1289,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(())    => respond.Ok("Mapping deleted successfully")
       }
       .onError(t =>
-        summon[Applicative[F]].pure(logger.error(s"Error: ${t.getMessage}"))
+        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end deleteMappedInstances
 

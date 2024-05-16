@@ -971,6 +971,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/trait/bulk/yaml:
+    post:
+      tags:
+        - OntologyManager
+      summary: Bulk creation of user-defined traits using YAML file
+      operationId: createTraitBulkByYaml
+      requestBody:
+        description: A YAML file containing a BulkTraitsCreationRequest spec
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: If successful returns a BulkTraitsCreationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkTraitsCreationResponse'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/mapping:
     post:
       tags:
