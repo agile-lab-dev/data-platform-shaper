@@ -15,7 +15,9 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.model.given
 import it.agilelab.dataplatformshaper.domain.model.{
+  BulkTraitsCreationRequest,
   Entity,
   EntityType,
   Relationship,
@@ -32,14 +34,21 @@ import it.agilelab.dataplatformshaper.domain.service.{
   MappingManagementService
 }
 import it.agilelab.dataplatformshaper.uservice.Resource.*
+import it.agilelab.dataplatformshaper.uservice.definitions.BulkTraitsCreationResponse.Relationships.First
+import it.agilelab.dataplatformshaper.uservice.definitions.BulkTraitsCreationResponse.{
+  Relationships,
+  Traits
+}
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   MappedInstancesItem,
-  Trait => OpenApiTrait,
   ValidationError,
+  BulkTraitsCreationRequest as OpenApiBulkTraitsCreationRequest,
+  BulkTraitsCreationResponse as OpenApiBulkTraitsCreationResponse,
   Entity as OpenApiEntity,
   EntityType as OpenApiEntityType,
   MappingDefinition as OpenApiMappingDefinition,
-  MappingKey as OpenApiMappingKey
+  MappingKey as OpenApiMappingKey,
+  Trait as OpenApiTrait
 }
 import it.agilelab.dataplatformshaper.uservice.{Handler, Resource}
 
@@ -548,6 +557,41 @@ class OntologyManagerHandler[F[_]: Async](
         respond.Ok("Trait created successfully")
     }
   end createTrait
+
+  override def createTraitBulk(respond: Resource.CreateTraitBulkResponse.type)(
+    body: OpenApiBulkTraitsCreationRequest
+  ): F[CreateTraitBulkResponse] =
+    
+    println(OpenApiBulkTraitsCreationRequest.encodeBulkTraitsCreationRequest(body).asYaml.spaces2)
+    
+    val request = BulkTraitsCreationRequest(
+      body.traits.map(tr => Trait(tr.name, tr.inheritsFrom)).toList,
+      body.relationships.map(re => (re.subject, re.relationship: Relationship, re.`object`)).toList
+    )
+    trms
+      .create(request)
+      .map(res =>
+        OpenApiBulkTraitsCreationResponse(
+          res._1
+            .map(p =>
+              Traits(
+                OpenApiTrait(p._1.traitName, p._1.inheritsFrom),
+                p._2.getOrElse("OK")
+              )
+            )
+            .toVector,
+          res._2
+            .map(t =>
+              Relationships(
+                First(t._1._1, t._1._2: String, t._1._3),
+                t._2.getOrElse("OK")
+              )
+            )
+            .toVector
+        )
+      )
+      .map(res => respond.Ok(res))
+  end createTraitBulk
 
   override def deleteTrait(respond: Resource.DeleteTraitResponse.type)(
     traitName: String
@@ -1243,5 +1287,4 @@ class OntologyManagerHandler[F[_]: Async](
           respond.Ok(entities)
       })
   end readMappedInstances
-
 end OntologyManagerHandler
