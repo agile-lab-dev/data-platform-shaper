@@ -75,6 +75,68 @@ class OntologyL1Spec extends CommonSpec:
     }
   }
 
+  "Bulk creation of traits and their relationships" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+
+        val request = BulkTraitsCreationRequest(
+          List(Trait("A", None), Trait("B", Some("A")), Trait("C", None)),
+          List(("B", hasPart, "C"))
+        )
+        trms.create(request)
+      } asserting (res =>
+        res should matchPattern {
+          case BulkTraitsCreationResponse(
+                List((_, None), (_, None), (_, None)),
+                List((_, None))
+              ) =>
+        }
+      )
+    }
+  }
+
+  "Bulk creation of traits and their relationships with a wrong request" - {
+    "fails" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+
+        val request = BulkTraitsCreationRequest(
+          List(Trait("D", None), Trait("E", Some("G")), Trait("F", None)),
+          List(("E", hasPart, "F"))
+        )
+        trms.create(request)
+      } asserting (res =>
+        res should matchPattern {
+          case BulkTraitsCreationResponse(
+                List((_, None), (_, Some(_)), (_, None)),
+                List((_, Some(_)))
+              ) =>
+        }
+      )
+    }
+  }
+
   "Creating a trait with a missing father" - {
     "fails" in {
       val session = Session[IO](

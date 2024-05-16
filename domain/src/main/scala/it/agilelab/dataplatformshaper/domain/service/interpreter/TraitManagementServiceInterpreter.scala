@@ -95,19 +95,41 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
 
   def create(
     bulkTraitsCreationRequest: BulkTraitsCreationRequest
-  ): F[Either[ManagementServiceError, Unit]] =
+  ): F[BulkTraitsCreationResponse] =
+
+    val x: F[List[(Trait, Option[String])]] = bulkTraitsCreationRequest.traits
+      .map(traitDefinition =>
+        this
+          .create(traitDefinition)
+          .map((traitDefinition, _))
+      )
+      .sequence
+      .map(_.map {
+        case (traitDefinition, Left(error)) =>
+          (traitDefinition, Some(error.errors.mkString(",")))
+        case (traitDefinition, Right(_)) =>
+          (traitDefinition, None)
+      })
+
+    val y: F[List[((String, Relationship, String), Option[String])]] =
+      bulkTraitsCreationRequest.relationships
+        .map(rel =>
+          this
+            .link(rel(0), rel(1), rel(2))
+            .map(((rel(0), rel(1): Relationship, rel(2)), _))
+        )
+        .sequence
+        .map(_.map {
+          case (linkDefinition, Left(error)) =>
+            (linkDefinition, Some(error.errors.mkString(",")))
+          case (linkDefinition, Right(_)) =>
+            (linkDefinition, None)
+        })
+
     for {
-      _ <- bulkTraitsCreationRequest.traits
-        .map(traitDefinition => this.create(traitDefinition))
-        .sequence
-        .map(_.sequence)
-        .map(_.map(_ => ()))
-      res <- bulkTraitsCreationRequest.relationships
-        .map(rel => this.link(rel(0), rel(1), rel(2)))
-        .sequence
-        .map(_.sequence)
-        .map(_.map(_ => ()))
-    } yield res
+      xr <- x
+      yr <- y
+    } yield BulkTraitsCreationResponse(xr, yr)
   end create
 
   override def delete(
