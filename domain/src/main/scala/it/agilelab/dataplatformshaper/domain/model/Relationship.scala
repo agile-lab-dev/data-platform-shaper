@@ -8,6 +8,7 @@ import it.agilelab.dataplatformshaper.domain.common.{
 
 enum Relationship:
   case hasPart
+  case partOf
   case mappedTo
   case dependsOn
   case dependencyOf
@@ -15,6 +16,8 @@ enum Relationship:
   def getNamespace: String =
     this match
       case Relationship.hasPart =>
+        "http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl#"
+      case Relationship.partOf =>
         "http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl#"
       case Relationship.mappedTo =>
         "https://w3id.org/agile-dm/ontology/"
@@ -28,7 +31,9 @@ enum Relationship:
   def getInverse: Option[Relationship] =
     this match
       case Relationship.hasPart =>
-        None
+        Some(Relationship.partOf)
+      case Relationship.partOf =>
+        Some(Relationship.hasPart)
       case Relationship.mappedTo =>
         None
       case Relationship.dependsOn =>

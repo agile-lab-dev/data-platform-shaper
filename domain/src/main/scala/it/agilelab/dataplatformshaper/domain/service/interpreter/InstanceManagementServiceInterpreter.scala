@@ -191,7 +191,7 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
          |PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
          |PREFIX owl: <http://www.w3.org/2002/07/owl#>
          |SELECT (count(*) as ?count) WHERE {
-         |        BIND(iri("${ns.getName}$instanceId") as ?instanceId)
+         |        BIND(iri("${ns.getName}$instanceId") as ?instanceId1)
          |        ?instanceId1 ?rel ?instanceId2 . 
          |        ?instanceId1 ns:isClassifiedBy ?type1 .
          |        ?instanceId2 ns:isClassifiedBy ?type2 .

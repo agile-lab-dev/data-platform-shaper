@@ -357,7 +357,19 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         ),
         L1
       )
+    ) ::: linkType.getInverse.fold(Nil: List[Statement])(inverse =>
+      List(
+        statement(
+          triple(
+            iri(ns, traitName2),
+            iri(linkType.getNamespace, inverse),
+            iri(ns, traitName1)
+          ),
+          L1
+        )
+      )
     )
+
     (for {
       _ <- traceT(
         s"About to link $traitName1 with $traitName2 using the relationship $linkType"
@@ -443,7 +455,19 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         ),
         L1
       )
+    ) ::: linkType.getInverse.fold(Nil: List[Statement])(inverse =>
+      List(
+        statement(
+          triple(
+            iri(ns, traitName2),
+            iri(linkType.getNamespace, inverse),
+            iri(ns, traitName1)
+          ),
+          L1
+        )
+      )
     )
+
     (for {
       _ <- traceT(
         s"About to unlink $traitName1 with $traitName2 using the relationship $linkType"
