@@ -20,6 +20,10 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.model.schema.Mode.{
+  Nullable,
+  Repeated
+}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
@@ -1303,8 +1307,7 @@ class MappingSpec extends CommonSpec:
         }
     }
   }
-  // TODO: Solve repeated mapping
-  /*"Creating a mapping between two EntityTypes with  a repeated attribute" - {
+  "Creating a mapping between two EntityTypes with a repeated attribute" - {
     "works" in {
       val session = Session[IO](
         graphdbType,
@@ -1315,11 +1318,41 @@ class MappingSpec extends CommonSpec:
         "repo1",
         false
       )
+      val repeatedAttributeSourceType = EntityType(
+        "RepeatedAttributeSourceType",
+        Set("MappingSource"),
+        StructType(
+          List(
+            "age" -> IntType(),
+            "name" -> StringType(),
+            "anotherNumber" -> IntType()
+          )
+        ): Schema
+      )
+
+      val repeatedAttributeTargetType = EntityType(
+        "RepeatedAttributeTargetType",
+        Set("MappingTarget"),
+        StructType(
+          List("age" -> IntType(Repeated), "name" -> StringType())
+        ): Schema
+      )
+
       val mappingKey = MappingKey(
         "repeated_attribute_map",
-        "RepeatedAttributeSourceType",
-        "RepeatedAttributeTargetType"
+        repeatedAttributeSourceType.name,
+        repeatedAttributeTargetType.name
       )
+
+      val mappingDefinition =
+        MappingDefinition(
+          mappingKey,
+          (
+            "age" -> List("source.get('age')", "source.get('anotherNumber')"),
+            "name" -> "source.get('name')"
+          ),
+          Map()
+        )
 
       session
         .use { session =>
@@ -1333,29 +1366,104 @@ class MappingSpec extends CommonSpec:
           (for {
             _ <- EitherT(tservice.create(repeatedAttributeSourceType))
             _ <- EitherT(tservice.create(repeatedAttributeTargetType))
-            res <- EitherT(
-              mservice.create(
-                MappingDefinition(mappingKey, repeatedMapperTuple)
-              )
-            )
+            _ <- EitherT(mservice.create(mappingDefinition))
             sourceId <- EitherT(
               iservice.create(
                 "RepeatedAttributeSourceType",
-                Tuple1(("field1", List("test")))
+                ("age" -> 19, "name" -> "Thomas", "anotherNumber" -> 23)
               )
             )
             _ <- EitherT(mservice.createMappedInstances(sourceId))
-          } yield res).value
+            mappedInstances <- EitherT(mservice.readMappedInstances(sourceId))
+            mappedInstance = mappedInstances.head._3._2
+          } yield mappedInstance).value
         }
         .asserting {
-          case Right(()) => succeed
+          case Right(entity) =>
+            val contained = entity.values.toArray.toSet.exists {
+              case ("age", list: List[_]) if list.toSet.equals(Set(19, 23)) =>
+                true
+              case _ => false
+            }
+            if contained then succeed
+            else fail("Expected field 'age' to have a list with 23 and 19")
           case Left(ex) =>
-            fail(
-              "Expected a successful created mapping but found an error"
-            )
+            fail("Expected a successful created mapping but found an error")
         }
     }
-  }*/
+  }
+
+  "Creating a mapping between two EntityTypes with a nullable attribute" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      val nullableAttributeSourceType = EntityType(
+        "NullableAttributeSourceType",
+        Set("MappingSource"),
+        StructType(List("age" -> IntType(), "name" -> StringType())): Schema
+      )
+
+      val nullableAttributeTargetType = EntityType(
+        "NullableAttributeTargetType",
+        Set("MappingTarget"),
+        StructType(
+          List("age" -> IntType(Nullable), "name" -> StringType())
+        ): Schema
+      )
+
+      val mappingKey = MappingKey(
+        "nullable_attribute_map",
+        nullableAttributeSourceType.name,
+        nullableAttributeTargetType.name
+      )
+
+      val mappingDefinition =
+        MappingDefinition(
+          mappingKey,
+          ("age" -> Some("source.get('age')"), "name" -> "source.get('name')"),
+          Map()
+        )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(tservice.create(nullableAttributeSourceType))
+            _ <- EitherT(tservice.create(nullableAttributeTargetType))
+            _ <- EitherT(mservice.create(mappingDefinition))
+            sourceId <- EitherT(
+              iservice.create(
+                nullableAttributeSourceType.name,
+                ("age" -> 19, "name" -> "Thomas")
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(sourceId))
+            mappedInstances <- EitherT(mservice.readMappedInstances(sourceId))
+            mappedInstance = mappedInstances.head._3._2
+          } yield mappedInstance).value
+        }
+        .asserting {
+          case Right(entity) =>
+            if entity.values.toArray.contains(("age", Some(19))) then succeed
+            else fail("Expected field 'age' to contain Some(19)")
+          case Left(ex) =>
+            fail("Expected a successful created mapping but found an error")
+        }
+    }
+  }
 
   "Injecting additional references in mapping" - {
     "works" in {
