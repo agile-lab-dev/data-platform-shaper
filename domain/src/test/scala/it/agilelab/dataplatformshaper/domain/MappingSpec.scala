@@ -1669,6 +1669,125 @@ class MappingSpec extends CommonSpec:
     }
   }
 
+  "Injecting additional source references using the mapping name in the path" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val mapNameSourceType = EntityType(
+        "MapNameSourceType",
+        Set("MappingSource", "MapNameSource"),
+        StructType(List("age" -> IntType())): Schema
+      )
+
+      val mapNameTargetType = EntityType(
+        "MapNameTargetType",
+        Set("MappingTarget"),
+        StructType(
+          List("age" -> IntType(), "additionalParameter" -> StringType())
+        ): Schema
+      )
+
+      val otherMapNameSourceType = EntityType(
+        "OtherMapNameSourceType",
+        Set("MappingSource", "OtherMapNameSource"),
+        StructType(
+          List("name" -> StringType(), "surname" -> StringType())
+        ): Schema
+      )
+
+      val otherMapNameTargetType = EntityType(
+        "OtherMapNameTargetType",
+        Set("MappingTarget"),
+        StructType(
+          List("name" -> StringType(), "surname" -> StringType())
+        ): Schema
+      )
+
+      val otherMappingDefinition = MappingDefinition(
+        MappingKey(
+          "otherMappingNameMappingDefinition",
+          otherMapNameSourceType.name,
+          otherMapNameTargetType.name
+        ),
+        ("name" -> "source.get('name')", "surname" -> "source.get('surname')"),
+        Map()
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "mappingNameMappingDefinition",
+          mapNameSourceType.name,
+          mapNameTargetType.name
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "target.get('name')"
+        ),
+        Map(
+          "target" -> "source/hasPart/OtherMapNameSourceType/mappedTo#otherMappingNameMappingDefinition/OtherMapNameTargetType"
+        )
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("MapNameSource", None)))
+            _ <- EitherT(trservice.create(Trait("OtherMapNameSource", None)))
+            _ <- EitherT(
+              trservice.link(
+                "MapNameSource",
+                Relationship.hasPart,
+                "OtherMapNameSource"
+              )
+            )
+
+            _ <- EitherT(tservice.create(mapNameSourceType))
+            _ <- EitherT(tservice.create(mapNameTargetType))
+            _ <- EitherT(tservice.create(otherMapNameSourceType))
+            _ <- EitherT(tservice.create(otherMapNameTargetType))
+
+            _ <- EitherT(mservice.create(otherMappingDefinition))
+            _ <- EitherT(mservice.create(mappingDefinition))
+
+            mapNameSourceId <- EitherT(
+              iservice
+                .create(mapNameSourceType.name, Tuple1("age", 23))
+            )
+            otherMapNameSourceId <- EitherT(
+              iservice.create(
+                otherMapNameSourceType.name,
+                ("name" -> "John", "surname" -> "Marston")
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(otherMapNameSourceId))
+            _ <- EitherT(mservice.createMappedInstances(mapNameSourceId))
+          } yield ()).value
+        }
+        .asserting {
+          case Right(()) => succeed
+          case _ =>
+            fail(
+              "Expected a successful creation of mapped instances but found an error"
+            )
+        }
+    }
+  }
+
   "Updating mapped instances with additional references" - {
     "works" in {
       val session = Session[IO](
