@@ -1776,10 +1776,17 @@ class MappingSpec extends CommonSpec:
             )
             _ <- EitherT(mservice.createMappedInstances(otherMapNameSourceId))
             _ <- EitherT(mservice.createMappedInstances(mapNameSourceId))
-          } yield ()).value
+            mappedInstances <- EitherT(
+              mservice.readMappedInstances(mapNameSourceId)
+            )
+            res = mappedInstances.head._3._2
+          } yield res).value
         }
         .asserting {
-          case Right(()) => succeed
+          case Right(entity) =>
+            if entity.values.toArray.contains(("additionalParameter", "John"))
+            then succeed
+            else fail("Expected additionalParameter with value 'John'")
           case _ =>
             fail(
               "Expected a successful creation of mapped instances but found an error"
