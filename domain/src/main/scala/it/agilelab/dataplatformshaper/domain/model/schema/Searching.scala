@@ -381,6 +381,9 @@ private enum PathElementType:
 private def getSinglePathElementType(pathElement: String): PathElementType =
   pathElement match
     case p: String if p.contains("source") => PathElementType.Source
+    case p: String
+        if p.contains("#") && Relationship.isRelationship(p.split("#")(0)) =>
+      PathElementType.Relationship
     case p: String if Relationship.isRelationship(p) =>
       PathElementType.Relationship
     case _ => PathElementType.EntityType
@@ -472,7 +475,7 @@ def getPathQuery(
           ) || innerPreviousPathElementType.equals(PathElementType.Source)
         then
           head match
-            case head if head.equals("mappedTo") =>
+            case head if head.startsWith("mappedTo") =>
               val relationshipID = UUID.randomUUID().toString.replace("-", "")
               val firstEntityID = UUID.randomUUID().toString.replace("-", "")
               val relationshipQuery =
