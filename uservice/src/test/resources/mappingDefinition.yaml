@@ -1,0 +1,9 @@
+mappingKey:
+  mappingName: "yamlMappingDefinition"
+  sourceEntityTypeName: "yamlMapSourceType"
+  targetEntityTypeName: "yamlMapTargetType"
+mapper:
+  name: "source.get('name')"
+  additionalParameter: "target.get('name')"
+additionalSourcesReferences:
+  target: "source/hasPart/yamlMapLinkedType"
