@@ -492,7 +492,7 @@ def getPathQuery(
                   firstEntityID
                 )
               relationshipQuery + nextPathQuery
-            case head if head.equals("hasPart") =>
+            case head if head.equals("hasPart") || head.equals("partOf") =>
               val firstEntityTypeID =
                 UUID.randomUUID().toString.replace("-", "")
               val secondEntityTypeID =
@@ -510,7 +510,7 @@ def getPathQuery(
                    | ?$secondEntityTypeID ns:hasTrait ?$secondTraitID .
                    | ?$secondEntityTypeID rdf:type ns:EntityType .
                    | ?i$instanceID ns:isClassifiedBy ?$secondEntityTypeID .
-                   | FILTER(?$relationshipID = <${Relationship.hasPart.getNamespace}hasPart>) .
+                   | FILTER(?$relationshipID = <${Relationship.hasPart.getNamespace}$head>) .
                    |""".stripMargin
               val nextPathQuery =
                 loop(
