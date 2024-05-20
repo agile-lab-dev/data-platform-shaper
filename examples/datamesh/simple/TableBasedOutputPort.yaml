@@ -1,0 +1,4 @@
+entityId: ""
+entityTypeName: "TableBasedOutputPortType"
+values:
+  name: "tableExampleName"

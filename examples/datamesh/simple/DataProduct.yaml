@@ -1,0 +1,5 @@
+entityId: ""
+entityTypeName: "DataProductType"
+values:
+  name: "example"
+  domain: "exampleDomain"

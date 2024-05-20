@@ -578,7 +578,6 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     repository: KnowledgeGraph[F],
     instanceId: String
   ): F[List[Statement]] =
-    // TODO add a filter to avoid to remove any relationships with other instances
     val query: String =
       s"""
          |PREFIX ns:  <${ns.getName}>

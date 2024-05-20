@@ -1,0 +1,4 @@
+entityId: ""
+entityTypeName: "FileBasedOutputPortType"
+values:
+  name: "exampleName"
