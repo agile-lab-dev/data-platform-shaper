@@ -27,6 +27,7 @@ import it.agilelab.dataplatformshaper.domain.model.{
   Entity,
   EntityType,
   NS,
+  Relationship,
   given
 }
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
@@ -602,7 +603,9 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                 val ob = bs.getBinding("o")
                 val s = iri(sb.getValue.stringValue)
                 val p = iri(pb.getValue.stringValue)
-                if ob.getValue.isLiteral then
+                if Relationship.isRelationship(p.getLocalName) then
+                  Applicative[F].pure(List.empty[Statement])
+                else if ob.getValue.isLiteral then
                   Applicative[F].pure(
                     List(
                       statement(

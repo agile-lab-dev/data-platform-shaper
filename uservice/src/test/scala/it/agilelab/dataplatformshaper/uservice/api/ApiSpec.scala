@@ -755,12 +755,16 @@ class ApiSpec
             OpenApiEntity("", sourceEntityType.name, sourceEntityJson)
           )
         )
-        _ <- Resource.liftK(
+        createLinkedEntityResp <- Resource.liftK(
           client.createEntity(
             OpenApiEntity("", linkedEntityType.name, linkedEntityJson)
           )
         )
         sourceId = createEntityResp.fold(identity, _ => "", _ => "")
+        linkedSourceId = createLinkedEntityResp.fold(identity, _ => "", _ => "")
+        _ <- Resource.liftK(
+          client.linkEntity(sourceId, "hasPart", linkedSourceId)
+        )
         res <- Resource.liftK(client.createMappedInstances(sourceId))
         mappedInstances <- Resource.liftK(client.readMappedInstances(sourceId))
         instanceJson = mappedInstances.fold(
