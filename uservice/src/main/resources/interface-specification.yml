@@ -260,6 +260,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/entity-type/bulk:
+    post:
+      tags:
+        - OntologyManager
+      summary: Bulk creation of user-defined types
+      operationId: createTypeBulk
+      requestBody:
+        description: A BulkTraitsCreationRequest spec
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkEntityTypesCreationRequest'
+        required: true
+      responses:
+        200:
+          description: If successful returns a BulkTraitsCreationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkEntityTypesCreationResponse'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/entity:
     post:
       tags:
@@ -1406,6 +1438,32 @@ components:
           type: string
         inheritsFrom:
           type: string
+    BulkEntityTypesCreationRequest:
+      required:
+        - entityTypes
+      type: object
+      properties:
+        entityTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityType'
+    BulkEntityTypesCreationResponse:
+      required:
+        - entityTypes
+      type: object
+      properties:
+        entityTypes:
+          type: array
+          items:
+            required:
+              - first
+              - second
+            type: object
+            properties:
+              first:
+                $ref: '#/components/schemas/EntityType'
+              second:
+                type: string
     BulkTraitsCreationRequest:
       required:
         - traits

@@ -588,25 +588,6 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     createOrDelete(entityType, true)
   end create
 
-  override def create(
-    bulkEntityTypesCreationRequest: BulkEntityTypesCreationRequest
-  ): F[BulkEntityTypesCreationResponse] =
-    bulkEntityTypesCreationRequest.entityTypes
-      .map(entityType =>
-        this
-          .create(entityType)
-          .map((entityType, _))
-      )
-      .sequence
-      .map(_.map {
-        case (entityType, Left(error)) =>
-          (entityType, Some(error.errors.mkString(",")))
-        case (entityType, Right(_)) =>
-          (entityType, None)
-      })
-      .map(BulkEntityTypesCreationResponse.apply)
-  end create
-
   override def read(
     instanceTypeName: String
   ): F[Either[ManagementServiceError, EntityType]] =

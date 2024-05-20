@@ -50,9 +50,3 @@ object EntityType:
   def apply(name: String, initialSchema: Schema): EntityType =
     EntityType(name, Set.empty[String], initialSchema, None)
 end EntityType
-
-case class BulkEntityTypesCreationRequest(entityTypes: List[EntityType])
-
-case class BulkEntityTypesCreationResponse(
-  entityTypes: List[(EntityType, Option[String])]
-)

@@ -10,12 +10,12 @@ import fs2.{Stream, text}
 import io.circe.Json
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
-import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.interpreter.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
@@ -34,6 +34,8 @@ import it.agilelab.dataplatformshaper.uservice.definitions.BulkTraitsCreationRes
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   MappedInstancesItem,
   ValidationError,
+  BulkEntityTypesCreationRequest as OpenApiBulkEntityTypesCreationRequest,
+  BulkEntityTypesCreationResponse as OpenApiBulkEntityTypesCreationResponse,
   BulkTraitsCreationRequest as OpenApiBulkTraitsCreationRequest,
   BulkTraitsCreationResponse as OpenApiBulkTraitsCreationResponse,
   Entity as OpenApiEntity,
@@ -47,7 +49,6 @@ import it.agilelab.dataplatformshaper.uservice.{Handler, Resource}
 import java.io.ByteArrayInputStream
 import scala.Tuple.*
 import scala.language.implicitConversions
-import scala.util.Try
 
 class OntologyManagerHandler[F[_]: Async](
   tms: TypeManagementServiceInterpreter[F],
@@ -61,28 +62,18 @@ class OntologyManagerHandler[F[_]: Async](
     body: OpenApiEntityType
   ): F[CreateTypeResponse] =
     val schema: Schema = body.schema
-
     val fatherName = body.fatherName
-
     val traits =
-      Applicative[F].pure(
-        Try(
-          body.traits
-            .fold(Set.empty[String])(x => x.map(str => str).toSet)
-        ).toEither
-          .leftMap(t => Vector("Trait ${t.getMessage} is not a Trait"))
-      )
-
+      body.traits.fold(Set.empty[String])(x => x.map(str => str).toSet)
     val res = (for {
-      ts <- EitherT(traits)
       _ <- EitherT(
         fatherName
           .fold(
             tms
-              .create(EntityType(body.name, ts, schema, None))
+              .create(EntityType(body.name, traits, schema, None))
           )(fn =>
             tms
-              .create(EntityType(body.name, ts, schema, None), fn)
+              .create(EntityType(body.name, traits, schema, None), fn)
           )
           .map {
             _.leftMap { case ManagementServiceError(errors) =>
@@ -101,6 +92,47 @@ class OntologyManagerHandler[F[_]: Async](
         Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
       )
   end createType
+
+  override def createTypeBulk(
+    respond: Resource.CreateTypeBulkResponse.type
+  )(body: OpenApiBulkEntityTypesCreationRequest): F[CreateTypeBulkResponse] =
+    body.entityTypes
+      .map(tp =>
+        tp.fatherName
+          .fold(
+            tms
+              .create(
+                EntityType(
+                  tp.name,
+                  tp.traits.fold(Set.empty[String])(_.toSet),
+                  tp.schema: Schema,
+                  None
+                )
+              )
+              .map(et => (tp, et.fold(_.errors.mkString(", "), _ => "OK")))
+          )(fn =>
+            tms
+              .create(
+                EntityType(
+                  tp.name,
+                  tp.traits.fold(Set.empty[String])(_.toSet),
+                  tp.schema: Schema,
+                  None
+                ),
+                fn
+              )
+              .map(et => (tp, et.fold(_.errors.mkString(", "), _ => "OK")))
+          )
+      )
+      .sequence
+      .map(
+        _.map(p =>
+          OpenApiBulkEntityTypesCreationResponse.EntityTypes(p(0), p(1))
+        )
+      )
+      .map(OpenApiBulkEntityTypesCreationResponse.apply)
+      .map(res => respond.Ok(res))
+  end createTypeBulk
 
   override def deleteType(respond: Resource.DeleteTypeResponse.type)(
     name: String
@@ -553,14 +585,6 @@ class OntologyManagerHandler[F[_]: Async](
   override def createTraitBulk(respond: Resource.CreateTraitBulkResponse.type)(
     body: OpenApiBulkTraitsCreationRequest
   ): F[CreateTraitBulkResponse] =
-
-    println(
-      OpenApiBulkTraitsCreationRequest
-        .encodeBulkTraitsCreationRequest(body)
-        .asYaml
-        .spaces2
-    )
-
     val request = BulkTraitsCreationRequest(
       body.traits.map(tr => Trait(tr.name, tr.inheritsFrom)).toList,
       body.relationships
@@ -1343,4 +1367,5 @@ class OntologyManagerHandler[F[_]: Async](
           respond.Ok(entities)
       })
   end readMappedInstances
+
 end OntologyManagerHandler
