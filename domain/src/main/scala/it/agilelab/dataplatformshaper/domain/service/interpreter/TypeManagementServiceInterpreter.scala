@@ -12,11 +12,7 @@ import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.service.{
-  ManagementServiceError,
-  TraitManagementService,
-  TypeManagementService
-}
+import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, TraitManagementService, TypeManagementService}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.{OWL, RDF, RDFS}
@@ -586,6 +582,25 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     entityType: EntityType
   ): F[Either[ManagementServiceError, Unit]] =
     createOrDelete(entityType, true)
+  end create
+
+  override def create(
+              bulkEntityTypesCreationRequest: BulkEntityTypesCreationRequest
+            ): F[BulkEntityTypesCreationResponse] =
+    bulkEntityTypesCreationRequest.entityTypes
+      .map(entityType =>
+        this
+          .create(entityType)
+          .map((entityType, _))
+      )
+      .sequence
+      .map(_.map {
+        case (entityType, Left(error)) =>
+          (entityType, Some(error.errors.mkString(",")))
+        case (entityType, Right(_)) =>
+          (entityType, None)
+      })
+      .map(BulkEntityTypesCreationResponse.apply)
   end create
 
   override def read(
