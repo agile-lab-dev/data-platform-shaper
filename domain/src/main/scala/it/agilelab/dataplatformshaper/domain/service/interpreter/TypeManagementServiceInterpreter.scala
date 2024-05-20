@@ -12,7 +12,11 @@ import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, TraitManagementService, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{
+  ManagementServiceError,
+  TraitManagementService,
+  TypeManagementService
+}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.{OWL, RDF, RDFS}
@@ -585,8 +589,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
   end create
 
   override def create(
-              bulkEntityTypesCreationRequest: BulkEntityTypesCreationRequest
-            ): F[BulkEntityTypesCreationResponse] =
+    bulkEntityTypesCreationRequest: BulkEntityTypesCreationRequest
+  ): F[BulkEntityTypesCreationResponse] =
     bulkEntityTypesCreationRequest.entityTypes
       .map(entityType =>
         this

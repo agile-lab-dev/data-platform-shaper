@@ -1,7 +1,11 @@
 package it.agilelab.dataplatformshaper.domain.service
 
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.model.{BulkEntityTypesCreationRequest, BulkEntityTypesCreationResponse, EntityType}
+import it.agilelab.dataplatformshaper.domain.model.{
+  BulkEntityTypesCreationRequest,
+  BulkEntityTypesCreationResponse,
+  EntityType
+}
 
 trait TypeManagementService[F[_]]:
 
@@ -15,9 +19,9 @@ trait TypeManagementService[F[_]]:
   ): F[Either[ManagementServiceError, Unit]]
 
   def create(
-              bulkTraitsCreationRequest: BulkEntityTypesCreationRequest
-            ): F[BulkEntityTypesCreationResponse]
-  
+    bulkTraitsCreationRequest: BulkEntityTypesCreationRequest
+  ): F[BulkEntityTypesCreationResponse]
+
   def read(
     instanceTypeName: String
   ): F[Either[ManagementServiceError, EntityType]]

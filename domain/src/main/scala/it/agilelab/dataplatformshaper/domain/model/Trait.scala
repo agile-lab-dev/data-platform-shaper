@@ -11,4 +11,3 @@ case class BulkTraitsCreationResponse(
   traits: List[(Trait, Option[String])],
   relationships: List[((String, Relationship, String), Option[String])]
 )
-
