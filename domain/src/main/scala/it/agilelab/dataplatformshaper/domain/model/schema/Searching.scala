@@ -493,23 +493,11 @@ def getPathQuery(
                 )
               relationshipQuery + nextPathQuery
             case head if head.equals("hasPart") || head.equals("partOf") =>
-              val firstEntityTypeID =
-                UUID.randomUUID().toString.replace("-", "")
-              val secondEntityTypeID =
-                UUID.randomUUID().toString.replace("-", "")
               val instanceID = UUID.randomUUID().toString.replace("-", "")
               val relationshipID = UUID.randomUUID().toString.replace("-", "")
-              val firstTraitID = UUID.randomUUID().toString.replace("-", "")
-              val secondTraitID = UUID.randomUUID().toString.replace("-", "")
               val relationshipQuery =
                 s"""
-                   | ?$previousID ns:isClassifiedBy ?$firstEntityTypeID .
-                   | ?$firstEntityTypeID rdf:type ns:EntityType .
-                   | ?$firstEntityTypeID ns:hasTrait ?$firstTraitID .
-                   | ?$firstTraitID ?$relationshipID ?$secondTraitID .
-                   | ?$secondEntityTypeID ns:hasTrait ?$secondTraitID .
-                   | ?$secondEntityTypeID rdf:type ns:EntityType .
-                   | ?i$instanceID ns:isClassifiedBy ?$secondEntityTypeID .
+                   | ?$previousID ?$relationshipID ?$instanceID .
                    | FILTER(?$relationshipID = <${Relationship.hasPart.getNamespace}$head>) .
                    |""".stripMargin
               val nextPathQuery =
@@ -521,22 +509,10 @@ def getPathQuery(
                 )
               relationshipQuery + nextPathQuery
             case _ =>
-              val firstEntityTypeID =
-                UUID.randomUUID().toString.replace("-", "")
-              val secondEntityTypeID =
-                UUID.randomUUID().toString.replace("-", "")
               val instanceID = UUID.randomUUID().toString.replace("-", "")
-              val firstTraitID = UUID.randomUUID().toString.replace("-", "")
-              val secondTraitID = UUID.randomUUID().toString.replace("-", "")
               val relationshipQuery =
                 s"""
-                   | ?$previousID ns:isClassifiedBy ?$firstEntityTypeID .
-                   | ?$firstEntityTypeID rdf:type ns:EntityType .
-                   | ?$firstEntityTypeID ns:hasTrait ?$firstTraitID .
-                   | ?$firstTraitID ns:$head ?$secondTraitID .
-                   | ?$secondEntityTypeID ns:hasTrait ?$secondTraitID .
-                   | ?$secondEntityTypeID rdf:type ns:EntityType .
-                   | ?i$instanceID ns:isClassifiedBy ?$secondEntityTypeID .
+                   | ?$previousID ns:$head ?$instanceID .
                    |""".stripMargin
               val nextPathQuery =
                 loop(

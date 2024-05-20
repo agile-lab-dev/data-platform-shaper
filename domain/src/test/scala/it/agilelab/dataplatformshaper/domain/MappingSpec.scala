@@ -1540,6 +1540,13 @@ class MappingSpec extends CommonSpec:
               iservice
                 .create("TableBasedOutputPortType", Tuple1("name", "test"))
             )
+            _ <- EitherT(
+              iservice.link(
+                tableBasedSourceId,
+                Relationship.dependsOn,
+                fileBasedSourceId
+              )
+            )
             _ <- EitherT(mservice.createMappedInstances(fileBasedSourceId))
             _ <- EitherT(mservice.createMappedInstances(tableBasedSourceId))
             tableMappedInstances <- EitherT(
@@ -1630,6 +1637,9 @@ class MappingSpec extends CommonSpec:
                     )
                   )
                 )
+            )
+            _ <- EitherT(
+              iservice.link(nestedSourceId, Relationship.hasPart, nestLinkedId)
             )
             _ <- EitherT(
               iservice
@@ -1774,6 +1784,13 @@ class MappingSpec extends CommonSpec:
                 ("name" -> "John", "surname" -> "Marston")
               )
             )
+            _ <- EitherT(
+              iservice.link(
+                mapNameSourceId,
+                Relationship.hasPart,
+                otherMapNameSourceId
+              )
+            )
             _ <- EitherT(mservice.createMappedInstances(otherMapNameSourceId))
             _ <- EitherT(mservice.createMappedInstances(mapNameSourceId))
             mappedInstances <- EitherT(
@@ -1869,6 +1886,10 @@ class MappingSpec extends CommonSpec:
             )
             hasPartsSourceId <- EitherT(
               iservice.create(isPartLinkedType.name, Tuple1("name", "Jim"))
+            )
+            _ <- EitherT(
+              iservice
+                .link(hasPartsSourceId, Relationship.hasPart, isPartSourceId)
             )
             _ <- EitherT(mservice.createMappedInstances(isPartSourceId))
             mappedInstances <- EitherT(
@@ -1971,7 +1992,11 @@ class MappingSpec extends CommonSpec:
                   ("age" -> 23, "additionalParameter" -> 99)
                 )
             )
-            res <- EitherT(mservice.createMappedInstances(updateSourceId))
+            _ <- EitherT(
+              iservice
+                .link(updateSourceId, Relationship.dependsOn, updateLinkedId)
+            )
+            _ <- EitherT(mservice.createMappedInstances(updateSourceId))
             _ <- EitherT(
               iservice.update(
                 updateLinkedId,
