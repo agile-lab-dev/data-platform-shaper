@@ -1,4 +1,4 @@
 entityId: ""
 entityTypeName: "TableBasedOutputPortType"
 values:
-  name: "CustomerTableOutput"
+  name: "CustomerTableOutputPort"
