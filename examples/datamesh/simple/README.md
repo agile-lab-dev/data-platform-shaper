@@ -193,7 +193,7 @@ curl -X 'POST' \
   -H 'Content-Type: application/text' \
   -d '772bb3a1-a812-4452-8be6-55deb60d9d4c'
 ```
-These last two curls complete the example by creating the Entities of the [Physical Layer](#physical-layer).
+These last two curls complete the example by creating the Entities of the [physical layer](#physical-layer).
 
 ### Creating everything in one go
 Should you want to create the entire example, the folder contains a bash script called setup.sh that performa all the curls shown above.
