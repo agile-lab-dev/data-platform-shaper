@@ -109,7 +109,7 @@ class OntologyManagerHandler[F[_]: Async](
                   None
                 )
               )
-              .map(et => (tp, et.fold(_.errors.mkString(", "), _ => "OK")))
+              .map(et => (tp, et.fold(_.errors.mkString(","), _ => "OK")))
           )(fn =>
             tms
               .create(
@@ -121,7 +121,7 @@ class OntologyManagerHandler[F[_]: Async](
                 ),
                 fn
               )
-              .map(et => (tp, et.fold(_.errors.mkString(", "), _ => "OK")))
+              .map(et => (tp, et.fold(_.errors.mkString(","), _ => "OK")))
           )
       )
       .sequence
@@ -133,6 +133,12 @@ class OntologyManagerHandler[F[_]: Async](
       .map(OpenApiBulkEntityTypesCreationResponse.apply)
       .map(res => respond.Ok(res))
   end createTypeBulk
+
+  override def createTypeBulkByYaml(
+    respond: Resource.CreateTypeBulkByYamlResponse.type
+  )(body: Stream[F, Byte]): F[CreateTypeBulkByYamlResponse] =
+    ???
+  end createTypeBulkByYaml
 
   override def deleteType(respond: Resource.DeleteTypeResponse.type)(
     name: String
