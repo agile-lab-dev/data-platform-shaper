@@ -94,7 +94,7 @@ curl -X 'POST' \
 ```
 
 ### Creating the mappings
-As we can see from [Structure of the example](structure-of-the-example), there are two mappings in the example: these mappings aim to create the attributes of **S3FolderType** and **AthenaTableType** as a function of some attributes present in other EntityTypes. As we can see from "TableBasedMapping.yaml" we can specify an additional reference using a path that allows me to get to the EntityType that contains the attribute I need, for example S3FolderType can be reached from AthenaTableType using:
+As we can see from [Structure of the example](#structure-of-the-example), there are two mappings in the example: these mappings aim to create the attributes of **S3FolderType** and **AthenaTableType** as a function of some attributes present in other EntityTypes. As we can see from "TableBasedMapping.yaml" we can specify an additional reference using a path that allows me to get to the EntityType that contains the attribute I need, for example S3FolderType can be reached from AthenaTableType using:
 ```
 source/dependsOn/FileBasedOutputPortType/mappedTo/S3FolderType
 ```
