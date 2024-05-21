@@ -1,0 +1,21 @@
+entityTypes:
+  - name: bulk_first_entity
+    traits: []
+    schema:
+      - name: name
+        typeName: String
+        mode: Required
+      - name: surname
+        typeName: String
+        mode: Required
+    fatherName: null
+  - name: bulk_second_entity
+    traits: []
+    schema:
+      - name: age
+        typeName: Integer
+        mode: Required
+      - name: address
+        typeName: String
+        mode: Required
+    fatherName: null

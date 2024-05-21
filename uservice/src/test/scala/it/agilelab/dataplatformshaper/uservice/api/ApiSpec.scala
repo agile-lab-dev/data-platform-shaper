@@ -791,6 +791,65 @@ class ApiSpec
     }
   }
 
+  "Bulk creation of EntityTypes using a YAML file" - {
+    "works" in {
+      val stream = fs2.io.readClassLoaderResource[IO]("bulk_entity_types.yaml")
+
+      val resp: Resource[IO, (ReadTypeResponse, ReadTypeResponse)] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createTypeBulkByYaml(stream))
+        firstType <- Resource.liftK(client.readType("bulk_first_entity"))
+        secondType <- Resource.liftK(client.readType("bulk_second_entity"))
+      } yield (firstType, secondType)
+
+      resp
+        .use { case (response1, response2) =>
+          IO {
+            (response1, response2) match {
+              case (ReadTypeResponse.Ok(_), ReadTypeResponse.Ok(_)) =>
+                succeed
+              case _ =>
+                fail("Both responses should be Ok")
+            }
+          }
+        }
+    }
+  }
+
+  "Bulk creation of three EntityTypes where one is wrong using a YAML file" - {
+    "works" in {
+      val stream =
+        fs2.io.readClassLoaderResource[IO]("wrong_bulk_entity_types.yaml")
+
+      val resp: Resource[IO, (ReadTypeResponse, ReadTypeResponse)] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        createResp <- Resource.liftK(client.createTypeBulkByYaml(stream))
+        firstType <- Resource.liftK(client.readType("wrong_bulk_first_entity"))
+        secondType <- Resource.liftK(
+          client.readType("wrong_bulk_second_entity")
+        )
+      } yield (firstType, secondType)
+
+      resp
+        .use { case (response1, response2) =>
+          IO {
+            (response1, response2) match {
+              case (ReadTypeResponse.Ok(_), ReadTypeResponse.Ok(_)) =>
+                succeed
+              case _ =>
+                fail("Both responses should be Ok")
+            }
+          }
+        }
+    }
+  }
+
   "Updating a user defined type constraints using a YAML file" - {
     "works" in {
 

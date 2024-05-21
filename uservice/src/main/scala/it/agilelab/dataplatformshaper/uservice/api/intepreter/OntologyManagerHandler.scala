@@ -137,7 +137,63 @@ class OntologyManagerHandler[F[_]: Async](
   override def createTypeBulkByYaml(
     respond: Resource.CreateTypeBulkByYamlResponse.type
   )(body: Stream[F, Byte]): F[CreateTypeBulkByYamlResponse] =
-    ???
+    val eitherRequest
+      : F[Either[String, OpenApiBulkEntityTypesCreationRequest]] =
+      body
+        .through(text.utf8.decode)
+        .fold("")(_ + _)
+        .compile
+        .toList
+        .map(_.head)
+        .map(parser.parse(_).leftMap(_.getMessage))
+        .map(
+          _.flatMap(json =>
+            OpenApiBulkEntityTypesCreationRequest
+              .decodeBulkEntityTypesCreationRequest(json.hcursor)
+              .leftMap(_.getMessage)
+          )
+        )
+    eitherRequest.flatMap {
+      case Left(error) =>
+        Applicative[F].pure(respond.BadRequest(ValidationError(Vector(error))))
+      case Right(openApiRequest) =>
+        openApiRequest.entityTypes
+          .map(tp =>
+            tp.fatherName
+              .fold(
+                tms
+                  .create(
+                    EntityType(
+                      tp.name,
+                      tp.traits.fold(Set.empty[String])(_.toSet),
+                      tp.schema: Schema,
+                      None
+                    )
+                  )
+                  .map(et => (tp, et.fold(_.errors.mkString(","), _ => "OK")))
+              )(fn =>
+                tms
+                  .create(
+                    EntityType(
+                      tp.name,
+                      tp.traits.fold(Set.empty[String])(_.toSet),
+                      tp.schema: Schema,
+                      None
+                    ),
+                    fn
+                  )
+                  .map(et => (tp, et.fold(_.errors.mkString(","), _ => "OK")))
+              )
+          )
+          .sequence
+          .map(
+            _.map(p =>
+              OpenApiBulkEntityTypesCreationResponse.EntityTypes(p(0), p(1))
+            )
+          )
+          .map(OpenApiBulkEntityTypesCreationResponse.apply)
+          .map(res => respond.Ok(res))
+    }
   end createTypeBulkByYaml
 
   override def deleteType(respond: Resource.DeleteTypeResponse.type)(
