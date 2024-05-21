@@ -2,9 +2,8 @@
 
 ## Structure of the example
 The diagram of a simple data mesh is shown below:
-<div align="center">
-  <img src="https://github.com/agile-lab-dev/data-platform-shaper/assets/92328763/4a9c258a-a2d7-4c57-9f37-ecd2c3e32fb1" alt="MappingExample">
-</div>
+
+![](MappingExample.drawio.png)
 
 ### Conceptual Layer
 * **DataProduct**: represents a high-level data product. It has a relationship indicating that it has as a part (*hasPart*) an **OutputPort**;
