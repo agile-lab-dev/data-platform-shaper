@@ -1,0 +1,14 @@
+name: AthenaTableType
+traits: [MappingTarget]
+schema:
+  - name: dataPath
+    typeName: String
+    mode: Required
+  - name: database
+    typeName: String
+    mode: Required
+  - name: table
+    typeName: String
+    mode: Required
+fatherName: null
+

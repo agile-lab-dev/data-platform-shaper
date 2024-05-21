@@ -1,0 +1,8 @@
+mappingKey:
+  mappingName: "fileBasedMapping"
+  sourceEntityTypeName: "FileBasedOutputPortType"
+  targetEntityTypeName: "S3FolderType"
+mapper: 
+  path: "dataproduct.get('domain') += '/' += dataproduct.get('name')"
+additionalSourcesReferences:
+  dataproduct: "source/partOf/DataProductType"

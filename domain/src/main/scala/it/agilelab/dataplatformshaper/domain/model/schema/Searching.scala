@@ -381,6 +381,9 @@ private enum PathElementType:
 private def getSinglePathElementType(pathElement: String): PathElementType =
   pathElement match
     case p: String if p.contains("source") => PathElementType.Source
+    case p: String
+        if p.contains("#") && Relationship.isRelationship(p.split("#")(0)) =>
+      PathElementType.Relationship
     case p: String if Relationship.isRelationship(p) =>
       PathElementType.Relationship
     case _ => PathElementType.EntityType
@@ -472,7 +475,7 @@ def getPathQuery(
           ) || innerPreviousPathElementType.equals(PathElementType.Source)
         then
           head match
-            case head if head.equals("mappedTo") =>
+            case head if head.startsWith("mappedTo") =>
               val relationshipID = UUID.randomUUID().toString.replace("-", "")
               val firstEntityID = UUID.randomUUID().toString.replace("-", "")
               val relationshipQuery =
@@ -489,25 +492,13 @@ def getPathQuery(
                   firstEntityID
                 )
               relationshipQuery + nextPathQuery
-            case head if head.equals("hasPart") =>
-              val firstEntityTypeID =
-                UUID.randomUUID().toString.replace("-", "")
-              val secondEntityTypeID =
-                UUID.randomUUID().toString.replace("-", "")
+            case head if head.equals("hasPart") || head.equals("partOf") =>
               val instanceID = UUID.randomUUID().toString.replace("-", "")
               val relationshipID = UUID.randomUUID().toString.replace("-", "")
-              val firstTraitID = UUID.randomUUID().toString.replace("-", "")
-              val secondTraitID = UUID.randomUUID().toString.replace("-", "")
               val relationshipQuery =
                 s"""
-                   | ?$previousID ns:isClassifiedBy ?$firstEntityTypeID .
-                   | ?$firstEntityTypeID rdf:type ns:EntityType .
-                   | ?$firstEntityTypeID ns:hasTrait ?$firstTraitID .
-                   | ?$firstTraitID ?$relationshipID ?$secondTraitID .
-                   | ?$secondEntityTypeID ns:hasTrait ?$secondTraitID .
-                   | ?$secondEntityTypeID rdf:type ns:EntityType .
-                   | ?i$instanceID ns:isClassifiedBy ?$secondEntityTypeID .
-                   | FILTER(?$relationshipID = <${Relationship.hasPart.getNamespace}hasPart>) .
+                   | ?$previousID ?$relationshipID ?$instanceID .
+                   | FILTER(?$relationshipID = <${Relationship.hasPart.getNamespace}$head>) .
                    |""".stripMargin
               val nextPathQuery =
                 loop(
@@ -518,22 +509,10 @@ def getPathQuery(
                 )
               relationshipQuery + nextPathQuery
             case _ =>
-              val firstEntityTypeID =
-                UUID.randomUUID().toString.replace("-", "")
-              val secondEntityTypeID =
-                UUID.randomUUID().toString.replace("-", "")
               val instanceID = UUID.randomUUID().toString.replace("-", "")
-              val firstTraitID = UUID.randomUUID().toString.replace("-", "")
-              val secondTraitID = UUID.randomUUID().toString.replace("-", "")
               val relationshipQuery =
                 s"""
-                   | ?$previousID ns:isClassifiedBy ?$firstEntityTypeID .
-                   | ?$firstEntityTypeID rdf:type ns:EntityType .
-                   | ?$firstEntityTypeID ns:hasTrait ?$firstTraitID .
-                   | ?$firstTraitID ns:$head ?$secondTraitID .
-                   | ?$secondEntityTypeID ns:hasTrait ?$secondTraitID .
-                   | ?$secondEntityTypeID rdf:type ns:EntityType .
-                   | ?i$instanceID ns:isClassifiedBy ?$secondEntityTypeID .
+                   | ?$previousID ns:$head ?$instanceID .
                    |""".stripMargin
               val nextPathQuery =
                 loop(

@@ -29,13 +29,13 @@ import it.agilelab.dataplatformshaper.uservice.{
   ListTraitsResponse,
   ListTypesResponse,
   ReadEntityResponse,
+  ReadMappingResponse,
   ReadTypeResponse,
   UnlinkEntityResponse,
   UnlinkTraitResponse,
   UpdateEntityByYamlResponse,
   UpdateEntityResponse,
-  UpdateTypeConstraintsResponse,
-  ReadMappingResponse
+  UpdateTypeConstraintsResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
@@ -655,6 +655,139 @@ class ApiSpec
         .asserting(resp =>
           resp should be(ReadTypeResponse.Ok(childrenEntityType))
         )
+    }
+  }
+
+  "Creating a mapping using a YAML file" - {
+    "works" in {
+
+      val sourceEntityType = OpenApiEntityType(
+        name = "yamlMapSourceType",
+        Some(Vector("MappingSource", "yamlSource")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val targetEntityType = OpenApiEntityType(
+        name = "yamlMapTargetType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "additionalParameter",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val linkedEntityType = OpenApiEntityType(
+        name = "yamlMapLinkedType",
+        Some(Vector("yamlLinked")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val sourceRawJson: String =
+        """
+          {
+            "name": "Jim"
+          }
+        """
+
+      val sourceEntityJson = parse(sourceRawJson).getOrElse(Json.Null)
+
+      val linkedRawJson: String =
+        """
+          {
+            "name": "Milton"
+          }
+        """
+
+      val linkedEntityJson = parse(linkedRawJson).getOrElse(Json.Null)
+
+      val stream = fs2.io.readClassLoaderResource[IO]("mappingDefinition.yaml")
+
+      val resp: Resource[IO, Json] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+
+        _ <- Resource.liftK(
+          client.createTrait(OpenApiTrait("yamlSource", None))
+        )
+        _ <- Resource.liftK(
+          client.createTrait(OpenApiTrait("yamlLinked", None))
+        )
+        _ <- Resource.liftK(
+          client.linkTrait("yamlSource", "hasPart", "yamlLinked")
+        )
+
+        _ <- Resource.liftK(client.createType(sourceEntityType))
+        _ <- Resource.liftK(client.createType(targetEntityType))
+        _ <- Resource.liftK(client.createType(linkedEntityType))
+
+        resp <- Resource.liftK(client.createMappingByYaml(stream))
+        createEntityResp <- Resource.liftK(
+          client.createEntity(
+            OpenApiEntity("", sourceEntityType.name, sourceEntityJson)
+          )
+        )
+        createLinkedEntityResp <- Resource.liftK(
+          client.createEntity(
+            OpenApiEntity("", linkedEntityType.name, linkedEntityJson)
+          )
+        )
+        sourceId = createEntityResp.fold(identity, _ => "", _ => "")
+        linkedSourceId = createLinkedEntityResp.fold(identity, _ => "", _ => "")
+        _ <- Resource.liftK(
+          client.linkEntity(sourceId, "hasPart", linkedSourceId)
+        )
+        res <- Resource.liftK(client.createMappedInstances(sourceId))
+        mappedInstances <- Resource.liftK(client.readMappedInstances(sourceId))
+        instanceJson = mappedInstances.fold(
+          mi => mi.head.targetEntity.values,
+          _ => Json.Null,
+          _ => Json.Null
+        )
+      } yield instanceJson
+
+      resp
+        .use(resp => IO.pure(resp))
+        .asserting {
+          case instanceJson
+              if instanceJson.hcursor
+                .downField("additionalParameter")
+                .focus
+                .contains(Json.fromString("Milton")) =>
+            succeed
+          case _ =>
+            fail(
+              "Expected the target instance to have 'additionalParameter' with value 'Milton'"
+            )
+        }
     }
   }
 

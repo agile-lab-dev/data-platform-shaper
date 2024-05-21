@@ -1253,7 +1253,8 @@ class OntologyManagerHandler[F[_]: Async](
                 body.mappingKey.sourceEntityTypeName,
                 body.mappingKey.targetEntityTypeName
               ),
-              tuple
+              tuple,
+              body.additionalSourcesReferences
             )
           )
           .map(_.leftMap(err => Vector(err.errors.head)))
@@ -1278,7 +1279,7 @@ class OntologyManagerHandler[F[_]: Async](
     res
       .map {
         case Left(errors) => respond.BadRequest(ValidationError(errors))
-        case Right(())    => respond.Ok("Mapping created successfully")
+        case Right(())    => respond.Ok("Mapped instances created successfully")
       }
       .onError(t =>
         Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))

@@ -1540,6 +1540,13 @@ class MappingSpec extends CommonSpec:
               iservice
                 .create("TableBasedOutputPortType", Tuple1("name", "test"))
             )
+            _ <- EitherT(
+              iservice.link(
+                tableBasedSourceId,
+                Relationship.dependsOn,
+                fileBasedSourceId
+              )
+            )
             _ <- EitherT(mservice.createMappedInstances(fileBasedSourceId))
             _ <- EitherT(mservice.createMappedInstances(tableBasedSourceId))
             tableMappedInstances <- EitherT(
@@ -1632,6 +1639,9 @@ class MappingSpec extends CommonSpec:
                 )
             )
             _ <- EitherT(
+              iservice.link(nestedSourceId, Relationship.hasPart, nestLinkedId)
+            )
+            _ <- EitherT(
               iservice
                 .create(
                   "NestLinkedType",
@@ -1661,6 +1671,238 @@ class MappingSpec extends CommonSpec:
               fail(
                 "Expected the created type to have 'additionalParameter' with value 'testNest'"
               )
+          case _ =>
+            fail(
+              "Expected a successful creation of mapped instances but found an error"
+            )
+        }
+    }
+  }
+
+  "Injecting additional source references using the mapping name in the path" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val mapNameSourceType = EntityType(
+        "MapNameSourceType",
+        Set("MappingSource", "MapNameSource"),
+        StructType(List("age" -> IntType())): Schema
+      )
+
+      val mapNameTargetType = EntityType(
+        "MapNameTargetType",
+        Set("MappingTarget"),
+        StructType(
+          List("age" -> IntType(), "additionalParameter" -> StringType())
+        ): Schema
+      )
+
+      val otherMapNameSourceType = EntityType(
+        "OtherMapNameSourceType",
+        Set("MappingSource", "OtherMapNameSource"),
+        StructType(
+          List("name" -> StringType(), "surname" -> StringType())
+        ): Schema
+      )
+
+      val otherMapNameTargetType = EntityType(
+        "OtherMapNameTargetType",
+        Set("MappingTarget"),
+        StructType(
+          List("name" -> StringType(), "surname" -> StringType())
+        ): Schema
+      )
+
+      val otherMappingDefinition = MappingDefinition(
+        MappingKey(
+          "otherMappingNameMappingDefinition",
+          otherMapNameSourceType.name,
+          otherMapNameTargetType.name
+        ),
+        ("name" -> "source.get('name')", "surname" -> "source.get('surname')"),
+        Map()
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "mappingNameMappingDefinition",
+          mapNameSourceType.name,
+          mapNameTargetType.name
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "target.get('name')"
+        ),
+        Map(
+          "target" -> "source/hasPart/OtherMapNameSourceType/mappedTo#otherMappingNameMappingDefinition/OtherMapNameTargetType"
+        )
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("MapNameSource", None)))
+            _ <- EitherT(trservice.create(Trait("OtherMapNameSource", None)))
+            _ <- EitherT(
+              trservice.link(
+                "MapNameSource",
+                Relationship.hasPart,
+                "OtherMapNameSource"
+              )
+            )
+
+            _ <- EitherT(tservice.create(mapNameSourceType))
+            _ <- EitherT(tservice.create(mapNameTargetType))
+            _ <- EitherT(tservice.create(otherMapNameSourceType))
+            _ <- EitherT(tservice.create(otherMapNameTargetType))
+
+            _ <- EitherT(mservice.create(otherMappingDefinition))
+            _ <- EitherT(mservice.create(mappingDefinition))
+
+            mapNameSourceId <- EitherT(
+              iservice
+                .create(mapNameSourceType.name, Tuple1("age", 23))
+            )
+            otherMapNameSourceId <- EitherT(
+              iservice.create(
+                otherMapNameSourceType.name,
+                ("name" -> "John", "surname" -> "Marston")
+              )
+            )
+            _ <- EitherT(
+              iservice.link(
+                mapNameSourceId,
+                Relationship.hasPart,
+                otherMapNameSourceId
+              )
+            )
+            _ <- EitherT(mservice.createMappedInstances(otherMapNameSourceId))
+            _ <- EitherT(mservice.createMappedInstances(mapNameSourceId))
+            mappedInstances <- EitherT(
+              mservice.readMappedInstances(mapNameSourceId)
+            )
+            res = mappedInstances.head._3._2
+          } yield res).value
+        }
+        .asserting {
+          case Right(entity) =>
+            if entity.values.toArray.contains(("additionalParameter", "John"))
+            then succeed
+            else fail("Expected additionalParameter with value 'John'")
+          case _ =>
+            fail(
+              "Expected a successful creation of mapped instances but found an error"
+            )
+        }
+    }
+  }
+
+  "Injecting additional source references using the partOf relationship" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      val isPartSourceType = EntityType(
+        "IsPartSourceType",
+        Set("MappingSource", "IsPartSource"),
+        StructType(List("age" -> IntType())): Schema
+      )
+
+      val isPartTargetType = EntityType(
+        "IsPartTargetType",
+        Set("MappingTarget"),
+        StructType(
+          List("age" -> IntType(), "additionalParameter" -> StringType())
+        ): Schema
+      )
+
+      val isPartLinkedType = EntityType(
+        "IsPartLinkedType",
+        Set("IsPartLinked"),
+        StructType(List("name" -> StringType())): Schema
+      )
+
+      val mappingDefinition = MappingDefinition(
+        MappingKey(
+          "partOfMappingDefinition",
+          isPartSourceType.name,
+          isPartTargetType.name
+        ),
+        (
+          "age" -> "source.get('age')",
+          "additionalParameter" -> "target.get('name')"
+        ),
+        Map("target" -> "source/partOf/IsPartLinkedType")
+      )
+
+      session
+        .use { session =>
+          val repository: Rdf4jKnowledgeGraph[IO] =
+            Rdf4jKnowledgeGraph[IO](session)
+          val trservice = TraitManagementServiceInterpreter[IO](repository)
+          val tservice = TypeManagementServiceInterpreter[IO](trservice)
+          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val mservice =
+            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          (for {
+            _ <- EitherT(trservice.create(Trait("IsPartSource", None)))
+            _ <- EitherT(trservice.create(Trait("IsPartLinked", None)))
+            _ <- EitherT(
+              trservice
+                .link("IsPartLinked", Relationship.hasPart, "IsPartSource")
+            )
+
+            _ <- EitherT(tservice.create(isPartSourceType))
+            _ <- EitherT(tservice.create(isPartTargetType))
+            _ <- EitherT(tservice.create(isPartLinkedType))
+
+            _ <- EitherT(mservice.create(mappingDefinition))
+
+            isPartSourceId <- EitherT(
+              iservice
+                .create(isPartSourceType.name, Tuple1("age", 33))
+            )
+            hasPartsSourceId <- EitherT(
+              iservice.create(isPartLinkedType.name, Tuple1("name", "Jim"))
+            )
+            _ <- EitherT(
+              iservice
+                .link(hasPartsSourceId, Relationship.hasPart, isPartSourceId)
+            )
+            _ <- EitherT(mservice.createMappedInstances(isPartSourceId))
+            mappedInstances <- EitherT(
+              mservice.readMappedInstances(isPartSourceId)
+            )
+            res = mappedInstances.head._3._2
+          } yield res).value
+        }
+        .asserting {
+          case Right(entity) =>
+            if entity.values.toArray.contains(("additionalParameter", "Jim"))
+            then succeed
+            else fail("Expected additionalParameter with value 'Jim'")
           case _ =>
             fail(
               "Expected a successful creation of mapped instances but found an error"
@@ -1750,7 +1992,11 @@ class MappingSpec extends CommonSpec:
                   ("age" -> 23, "additionalParameter" -> 99)
                 )
             )
-            res <- EitherT(mservice.createMappedInstances(updateSourceId))
+            _ <- EitherT(
+              iservice
+                .link(updateSourceId, Relationship.dependsOn, updateLinkedId)
+            )
+            _ <- EitherT(mservice.createMappedInstances(updateSourceId))
             _ <- EitherT(
               iservice.update(
                 updateLinkedId,

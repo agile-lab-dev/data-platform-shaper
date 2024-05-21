@@ -1,0 +1,11 @@
+name: DataProductType
+traits: [DataProduct]
+schema:
+  - name: name
+    typeName: String
+    mode: Required
+  - name: domain
+    typeName: String
+    mode: Required
+fatherName: null
+

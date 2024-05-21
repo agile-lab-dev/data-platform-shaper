@@ -1,0 +1,16 @@
+traits:
+  - name: DataProduct
+    inheritsFrom: null
+  - name: OutputPort
+    inheritsFrom: null
+  - name: FileBasedOutputPort
+    inheritsFrom: OutputPort
+  - name: TableBasedOutputPort
+    inheritsFrom: OutputPort
+relationships:
+  - subject: DataProduct
+    relationship: hasPart
+    object: OutputPort
+  - subject: TableBasedOutputPort
+    relationship: dependsOn
+    object: FileBasedOutputPort
