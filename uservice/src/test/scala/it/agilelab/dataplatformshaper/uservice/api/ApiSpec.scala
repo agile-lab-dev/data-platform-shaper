@@ -39,6 +39,7 @@ import it.agilelab.dataplatformshaper.uservice.{
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
+  BulkMappingsCreationRequest,
   MappingDefinition,
   MappingKey,
   ValidationError,
@@ -816,6 +817,177 @@ class ApiSpec
             }
           }
         }
+    }
+  }
+
+  "Bulk creation of mappings" - {
+    "works" in {
+      val sourceEntityType = OpenApiEntityType(
+        name = "BulkSourceEntityType",
+        Some(Vector("MappingSource", "FirstBulkSource")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "surname",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val targetEntityType = OpenApiEntityType(
+        name = "BulkTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "surname",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "additionalParameter",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val secondSourceEntityType = OpenApiEntityType(
+        name = "BulkSecondSourceEntityType",
+        Some(Vector("MappingSource", "SecondBulkSource")),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Integer,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "address",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val secondTargetEntityType = OpenApiEntityType(
+        name = "BulkSecondTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Integer,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "address",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val mapperTuple: String =
+        """
+          {
+            "name": "source.get('name')",
+            "surname": "source.get('surname')",
+            "additionalParameter": "target.get('address')"
+          }
+        """
+      val secondMapperTuple: String =
+        """
+          {
+            "age": "source.get('age')",
+            "address": "source.get('address')"
+          }
+        """
+
+      val resp: Resource[IO, (ReadMappingResponse, ReadMappingResponse)] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        jsonMapperTuple <- Resource.eval(IO.fromEither(parse(mapperTuple)))
+        secondJsonMapperTuple <- Resource.eval(
+          IO.fromEither(parse(secondMapperTuple))
+        )
+        mappingDefinition = MappingDefinition(
+          MappingKey(
+            "bulkCreateMapping",
+            sourceEntityType.name,
+            targetEntityType.name
+          ),
+          jsonMapperTuple,
+          Map("target" -> "source/dependsOn/BulkSecondSourceEntityType")
+        )
+        secondMappingDefinition = MappingDefinition(
+          MappingKey(
+            "bulkSecondCreateMapping",
+            secondSourceEntityType.name,
+            secondTargetEntityType.name
+          ),
+          secondJsonMapperTuple
+        )
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait("FirstBulkSource")))
+        _ <- Resource.liftK(
+          client.createTrait(OpenApiTrait("SecondBulkSource"))
+        )
+        _ <- Resource.liftK(
+          client.linkTrait("FirstBulkSource", "dependsOn", "SecondBulkSource")
+        )
+        _ <- Resource.liftK(client.createType(sourceEntityType))
+        _ <- Resource.liftK(client.createType(targetEntityType))
+        _ <- Resource.liftK(client.createType(secondSourceEntityType))
+        _ <- Resource.liftK(client.createType(secondTargetEntityType))
+        //We insert two times the first mapping so the first one should succeed and the second should fail
+        res <- Resource.liftK(
+          client.createMappingBulk(
+            BulkMappingsCreationRequest(
+              Vector(mappingDefinition, mappingDefinition, secondMappingDefinition)
+            )
+          )
+        )
+        firstMapping <- Resource.liftK(
+          client.readMapping(
+            mappingDefinition.mappingKey.mappingName,
+            mappingDefinition.mappingKey.sourceEntityTypeName,
+            mappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+        secondMapping <- Resource.liftK(
+          client.readMapping(
+            secondMappingDefinition.mappingKey.mappingName,
+            secondMappingDefinition.mappingKey.sourceEntityTypeName,
+            secondMappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+      } yield (firstMapping, secondMapping)
+      resp.use(resp => IO.pure(resp)).asserting {
+        case (ReadMappingResponse.Ok(_), ReadMappingResponse.Ok(_)) => succeed
+        case _                               => fail("Expected the two mappings to be created successfully")
+      }
     }
   }
 
