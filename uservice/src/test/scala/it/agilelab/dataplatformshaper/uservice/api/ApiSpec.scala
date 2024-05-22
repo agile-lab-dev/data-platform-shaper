@@ -961,11 +961,15 @@ class ApiSpec
         _ <- Resource.liftK(client.createType(targetEntityType))
         _ <- Resource.liftK(client.createType(secondSourceEntityType))
         _ <- Resource.liftK(client.createType(secondTargetEntityType))
-        //We insert two times the first mapping so the first one should succeed and the second should fail
+        // We insert two times the first mapping so the first one should succeed and the second should fail
         res <- Resource.liftK(
           client.createMappingBulk(
             BulkMappingsCreationRequest(
-              Vector(mappingDefinition, mappingDefinition, secondMappingDefinition)
+              Vector(
+                mappingDefinition,
+                mappingDefinition,
+                secondMappingDefinition
+              )
             )
           )
         )
@@ -986,7 +990,138 @@ class ApiSpec
       } yield (firstMapping, secondMapping)
       resp.use(resp => IO.pure(resp)).asserting {
         case (ReadMappingResponse.Ok(_), ReadMappingResponse.Ok(_)) => succeed
-        case _                               => fail("Expected the two mappings to be created successfully")
+        case _ => fail("Expected the two mappings to be created successfully")
+      }
+    }
+  }
+
+  "Bulk creation of mappings via YAML file" - {
+    "works" in {
+      val sourceEntityType = OpenApiEntityType(
+        name = "BulkYamlSourceEntityType",
+        Some(Vector("MappingSource", "FirstBulkYamlSource")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "surname",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val targetEntityType = OpenApiEntityType(
+        name = "BulkYamlTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "surname",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "additionalParameter",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val secondSourceEntityType = OpenApiEntityType(
+        name = "BulkYamlSecondSourceEntityType",
+        Some(Vector("MappingSource", "SecondBulkYamlSource")),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Integer,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "address",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val secondTargetEntityType = OpenApiEntityType(
+        name = "BulkYamlSecondTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Integer,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "address",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val stream = fs2.io.readClassLoaderResource[IO]("bulk_mappings.yaml")
+      val resp: Resource[IO, (ReadMappingResponse, ReadMappingResponse)] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(
+          client.createTrait(OpenApiTrait("FirstBulkYamlSource"))
+        )
+        _ <- Resource.liftK(
+          client.createTrait(OpenApiTrait("SecondBulkYamlSource"))
+        )
+        _ <- Resource.liftK(
+          client
+            .linkTrait("FirstBulkYamlSource", "hasPart", "SecondBulkYamlSource")
+        )
+        _ <- Resource.liftK(client.createType(sourceEntityType))
+        _ <- Resource.liftK(client.createType(targetEntityType))
+        _ <- Resource.liftK(client.createType(secondSourceEntityType))
+        _ <- Resource.liftK(client.createType(secondTargetEntityType))
+        _ <- Resource.liftK(client.createMappingBulkByYaml(stream))
+        firstMapping <- Resource.liftK(
+          client.readMapping(
+            "bulkYamlMappingDefinition",
+            sourceEntityType.name,
+            targetEntityType.name
+          )
+        )
+        secondMapping <- Resource.liftK(
+          client.readMapping(
+            "bulkYamlSecondMappingDefinition",
+            secondSourceEntityType.name,
+            secondTargetEntityType.name
+          )
+        )
+      } yield (firstMapping, secondMapping)
+      resp.use(resp => IO.pure(resp)).asserting {
+        case (ReadMappingResponse.Ok(_), ReadMappingResponse.Ok(_)) => succeed
+        case _ => fail("Expected the two mappings to be created successfully")
       }
     }
   }

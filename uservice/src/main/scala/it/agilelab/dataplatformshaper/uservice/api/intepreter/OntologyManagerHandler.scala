@@ -1338,6 +1338,96 @@ class OntologyManagerHandler[F[_]: Async](
       .map(res => respond.Ok(res))
   end createMappingBulk
 
+  override def createMappingBulkByYaml(
+    respond: Resource.CreateMappingBulkByYamlResponse.type
+  )(body: Stream[F, Byte]): F[CreateMappingBulkByYamlResponse] =
+    val eitherRequest: F[Either[String, OpenApiBulkMappingsCreationRequest]] =
+      body
+        .through(text.utf8.decode)
+        .fold("")(_ + _)
+        .compile
+        .toList
+        .map(_.head)
+        .map(parser.parse(_).leftMap(_.getMessage))
+        .map(
+          _.flatMap(json =>
+            OpenApiBulkMappingsCreationRequest
+              .decodeBulkMappingsCreationRequest(json.hcursor)
+              .leftMap(_.getMessage)
+          )
+        )
+
+    eitherRequest.flatMap {
+      case Left(error) =>
+        Applicative[F].pure(respond.BadRequest(ValidationError(Vector(error))))
+      case Right(openApiRequest) =>
+        val createMapRes = openApiRequest.mappingDefinitions
+          .map(md =>
+            val schemaEither = tms
+              .read(md.mappingKey.targetEntityTypeName)
+              .map(_.map(_.schema))
+              .map(_.leftMap(l => Vector(l.errors.head)))
+            val tupleEither =
+              schemaEither.map(
+                _.map(schema =>
+                  jsonToTuple(md.mapper, schemaToMapperSchema(schema))
+                )
+              )
+            val tupleMappedEither: F[Either[Vector[String], Tuple]] =
+              tupleEither
+                .map {
+                  case Left(errors) => Left(errors)
+                  case Right(parsedResult) =>
+                    parsedResult
+                      .leftMap(parsingFailure =>
+                        Vector(parsingFailure.getMessage)
+                      )
+                }
+                .map {
+                  case Left(errors) => Left(errors)
+                  case Right(tuple) => Right(tuple)
+                }
+            val mappedResult = tupleMappedEither
+              .map(
+                _.map(tuple =>
+                  mms
+                    .create(
+                      MappingDefinition(
+                        MappingKey(
+                          md.mappingKey.mappingName,
+                          md.mappingKey.sourceEntityTypeName,
+                          md.mappingKey.targetEntityTypeName
+                        ),
+                        tuple,
+                        md.additionalSourcesReferences
+                      )
+                    )
+                    .map(
+                      _.fold(
+                        err => (md, err.errors.mkString(",")),
+                        _ => (md, "OK")
+                      )
+                    )
+                )
+              )
+              .map(
+                _.fold(
+                  errors => Applicative[F].pure((md, errors.mkString(","))),
+                  identity
+                )
+              )
+              .flatten
+            mappedResult.map(m =>
+              OpenApiBulkMappingsCreationResponse.MappingDefinitions(m._1, m._2)
+            )
+          )
+          .sequence
+        createMapRes
+          .map(OpenApiBulkMappingsCreationResponse.apply)
+          .map(res => respond.Ok(res))
+    }
+  end createMappingBulkByYaml
+
   override def createMappingByYaml(
     respond: Resource.CreateMappingByYamlResponse.type
   )(body: Stream[F, Byte]): F[Resource.CreateMappingByYamlResponse] =

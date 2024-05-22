@@ -1,0 +1,20 @@
+mappingDefinitions:
+  - mappingKey:
+      mappingName: "bulkYamlMappingDefinition"
+      sourceEntityTypeName: "BulkYamlSourceEntityType"
+      targetEntityTypeName: "BulkYamlTargetEntityType"
+    mapper:
+      name: "source.get('name')"
+      surname: "source.get('surname')"
+      additionalParameter: "target.get('name')"
+    additionalSourcesReferences:
+      target: "source/hasPart/BulkYamlSecondSourceEntityType"
+  - mappingKey:
+      mappingName: "bulkYamlSecondMappingDefinition"
+      sourceEntityTypeName: "BulkYamlSecondSourceEntityType"
+      targetEntityTypeName: "BulkYamlSecondTargetEntityType"
+    mapper:
+      age: "source.get('age')"
+      address: "source.get('address')"
+    additionalSourcesReferences:
+      {}
