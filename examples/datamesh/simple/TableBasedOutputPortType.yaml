@@ -1,8 +1,0 @@
-name: TableBasedOutputPortType
-traits: [TableBasedOutputPort, MappingSource]
-schema:
-  - name: name
-    typeName: String
-    mode: Required
-fatherName: null
-

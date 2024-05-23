@@ -4,7 +4,7 @@ curl -X 'POST' \
   'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/trait/bulk/yaml' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/octet-stream' \
-  --data-binary '@traitsAndRelationships.yaml'
+  --data-binary '@TraitsAndRelationships.yaml'
 
   echo ""
 
