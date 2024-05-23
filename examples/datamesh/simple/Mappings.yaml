@@ -1,0 +1,20 @@
+mappingDefinitions:
+  - mappingKey:
+      mappingName: "fileBasedMapping"
+      sourceEntityTypeName: "FileBasedOutputPortType"
+      targetEntityTypeName: "S3FolderType"
+    mapper: 
+      path: "dataproduct.get('domain') += '/' += dataproduct.get('name')"
+    additionalSourcesReferences:
+      dataproduct: "source/partOf/DataProductType"
+  - mappingKey:
+      mappingName: "tableBasedMapping"
+      sourceEntityTypeName: "TableBasedOutputPortType"
+      targetEntityTypeName: "AthenaTableType"
+    mapper: 
+      table: "source.get('name')"
+      database: "dataproduct.get('domain') += '.' += dataproduct.get('name')"
+      dataPath: "s3folder.get('path')"
+    additionalSourcesReferences:
+      dataproduct: "source/partOf/DataProductType"
+      s3folder: "source/dependsOn/FileBasedOutputPortType/mappedTo/S3FolderType"

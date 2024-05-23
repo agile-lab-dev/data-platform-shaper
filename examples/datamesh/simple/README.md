@@ -46,75 +46,32 @@ curl -X 'POST' \
 Basically the whole [conceptual layer](#conceptual-layer) was created through one curl, which used the contents of the file “traitsAndRelationships.yaml”.
 
 ### Creating the EntityTypes
-We now proceed with the creation of the necessary EntityTypes, to do this we run the following curls, to create **DataProductType**:
+To create the previously stated EntityTypes, only one curl is needed:
 
 ```bash
 curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
-  -H 'accept: application/text' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/bulk/yaml' \
+  -H 'accept: application/json' \
   -H 'Content-Type: application/octet-stream' \
-  --data-binary '@DataProductType.yaml'
+  --data-binary '@EntityTypes.yaml'
 ```
-To create **FileBasedOutputPortType**:
-
-```bash
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
-  -H 'accept: application/text' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@FileBasedOutputPortType.yaml'
-```
-To create **TableBasedOutputPortType**:
-
-```bash
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
-  -H 'accept: application/text' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@TableBasedOutputPortType.yaml'
-```
-To create **S3FolderType**:
-
-```bash
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
-  -H 'accept: application/text' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@S3FolderType.yaml'
-```
-And finally to create **AthenaTableType**:
-
-```bash
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
-  -H 'accept: application/text' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@AthenaTableType.yaml'
-```
+Where the file "EntityTypes.yaml" contains the definitions of the **DataProductType**, **FileBasedOutputPortType**, **TableBasedOutputPortType**, **S3FolderType** and **AthenaTableType**.
 
 ### Creating the mappings
 As we can see from [Structure of the example](#structure-of-the-example), there are two mappings in the example: these mappings aim to create the attributes of **S3FolderType** and **AthenaTableType** as a function of some attributes present in other EntityTypes. As we can see from "TableBasedMapping.yaml" we can specify an additional reference using a path that allows me to get to the EntityType that contains the attribute I need, for example S3FolderType can be reached from AthenaTableType using:
 ```
 source/dependsOn/FileBasedOutputPortType/mappedTo/S3FolderType
 ```
-To create the mapping between **FileBasedOutputPortType** and **S3FolderType** we use:
+We can create the mapping between **FileBasedOutputPortType** and **S3FolderType** and the mapping between **TableBasedOutputPortType** and **AthenaTableType** by using:
 
 ```bash
 curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping/yaml' \
-  -H 'accept: application/text' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping/bulk/yaml' \
+  -H 'accept: application/json' \
   -H 'Content-Type: application/octet-stream' \
-  --data-binary '@TableBasedMapping.yaml'
+  --data-binary '@Mappings.yaml'
 ```
-And to create the mapping between **TableBasedOutputPortType** and **AthenaTableType** we use:
-
-```bash
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping/yaml' \
-  -H 'accept: application/text' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@FileBasedMapping.yaml'
-```
+Where the file "Mappings.yaml" contains the MappingDefinitions of both mappings.
 
 ### Creating the Entities
 Now that the example structure has been created, we can try to create example Entities for the EntityTypes. We start by creating an Entity for the **DataProductType**:
