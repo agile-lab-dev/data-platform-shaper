@@ -267,7 +267,7 @@ paths:
       summary: Bulk creation of user-defined types
       operationId: createTypeBulk
       requestBody:
-        description: A BulkTraitsCreationRequest spec
+        description: A BulkEntityTypessCreationRequest spec
         content:
           application/json:
             schema:
@@ -275,7 +275,7 @@ paths:
         required: true
       responses:
         200:
-          description: If successful returns a BulkTraitsCreationResponse
+          description: If successful returns a BulkEntityTypesCreationResponse
           content:
             application/json:
               schema:
@@ -1132,6 +1132,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/mapping/bulk:
+    post:
+      tags:
+        - OntologyManager
+      summary: Bulk creation of mappings
+      operationId: createMappingBulk
+      requestBody:
+        description: A BulkMappingsCreationRequest spec
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkMappingsCreationRequest'
+        required: true
+      responses:
+        200:
+          description: If successful returns a BulkMappingsCreationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkMappingsCreationResponse'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
+  /ontology/mapping/bulk/yaml:
+    post:
+      tags:
+        - OntologyManager
+      summary: Bulk creation of mappings using a YAML file
+      operationId: createMappingBulkByYaml
+      requestBody:
+        description: A YAML file containing a BulkMappingsCreationRequest spec
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: If successful returns a BulkMappingsCreationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkMappingsCreationResponse'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
   /ontology/mapping/{mappingName}/{sourceTypeName}/{targetTypeName}/yaml:
     get:
       tags:
@@ -1471,6 +1536,32 @@ components:
           type: string
         inheritsFrom:
           type: string
+    BulkMappingsCreationRequest:
+      required:
+        - mappingDefinitions
+      type: object
+      properties:
+        mappingDefinitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/MappingDefinition'
+    BulkMappingsCreationResponse:
+      required:
+        - mappingDefinitions
+      type: object
+      properties:
+        mappingDefinitions:
+          type: array
+          items:
+            required:
+              - first
+              - second
+            type: object
+            properties:
+              first:
+                $ref: '#/components/schemas/MappingDefinition'
+              second:
+                type: string
     BulkEntityTypesCreationRequest:
       required:
         - entityTypes

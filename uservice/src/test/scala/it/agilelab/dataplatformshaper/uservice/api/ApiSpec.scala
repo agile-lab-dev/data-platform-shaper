@@ -39,6 +39,7 @@ import it.agilelab.dataplatformshaper.uservice.{
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,
+  BulkMappingsCreationRequest,
   MappingDefinition,
   MappingKey,
   ValidationError,
@@ -787,6 +788,371 @@ class ApiSpec
             fail(
               "Expected the target instance to have 'additionalParameter' with value 'Milton'"
             )
+        }
+    }
+  }
+
+  "Bulk creation of EntityTypes using a YAML file" - {
+    "works" in {
+      val stream = fs2.io.readClassLoaderResource[IO]("bulk_entity_types.yaml")
+
+      val resp: Resource[IO, (ReadTypeResponse, ReadTypeResponse)] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(client.createTypeBulkByYaml(stream))
+        firstType <- Resource.liftK(client.readType("bulk_first_entity"))
+        secondType <- Resource.liftK(client.readType("bulk_second_entity"))
+      } yield (firstType, secondType)
+
+      resp
+        .use { case (response1, response2) =>
+          IO {
+            (response1, response2) match {
+              case (ReadTypeResponse.Ok(_), ReadTypeResponse.Ok(_)) =>
+                succeed
+              case _ =>
+                fail("Both responses should be Ok")
+            }
+          }
+        }
+    }
+  }
+
+  "Bulk creation of mappings" - {
+    "works" in {
+      val sourceEntityType = OpenApiEntityType(
+        name = "BulkSourceEntityType",
+        Some(Vector("MappingSource", "FirstBulkSource")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "surname",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val targetEntityType = OpenApiEntityType(
+        name = "BulkTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "surname",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "additionalParameter",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val secondSourceEntityType = OpenApiEntityType(
+        name = "BulkSecondSourceEntityType",
+        Some(Vector("MappingSource", "SecondBulkSource")),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Integer,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "address",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val secondTargetEntityType = OpenApiEntityType(
+        name = "BulkSecondTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Integer,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "address",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val mapperTuple: String =
+        """
+          {
+            "name": "source.get('name')",
+            "surname": "source.get('surname')",
+            "additionalParameter": "target.get('address')"
+          }
+        """
+      val secondMapperTuple: String =
+        """
+          {
+            "age": "source.get('age')",
+            "address": "source.get('address')"
+          }
+        """
+
+      val resp: Resource[IO, (ReadMappingResponse, ReadMappingResponse)] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        jsonMapperTuple <- Resource.eval(IO.fromEither(parse(mapperTuple)))
+        secondJsonMapperTuple <- Resource.eval(
+          IO.fromEither(parse(secondMapperTuple))
+        )
+        mappingDefinition = MappingDefinition(
+          MappingKey(
+            "bulkCreateMapping",
+            sourceEntityType.name,
+            targetEntityType.name
+          ),
+          jsonMapperTuple,
+          Map("target" -> "source/dependsOn/BulkSecondSourceEntityType")
+        )
+        secondMappingDefinition = MappingDefinition(
+          MappingKey(
+            "bulkSecondCreateMapping",
+            secondSourceEntityType.name,
+            secondTargetEntityType.name
+          ),
+          secondJsonMapperTuple
+        )
+        _ <- Resource.liftK(client.createTrait(OpenApiTrait("FirstBulkSource")))
+        _ <- Resource.liftK(
+          client.createTrait(OpenApiTrait("SecondBulkSource"))
+        )
+        _ <- Resource.liftK(
+          client.linkTrait("FirstBulkSource", "dependsOn", "SecondBulkSource")
+        )
+        _ <- Resource.liftK(client.createType(sourceEntityType))
+        _ <- Resource.liftK(client.createType(targetEntityType))
+        _ <- Resource.liftK(client.createType(secondSourceEntityType))
+        _ <- Resource.liftK(client.createType(secondTargetEntityType))
+        // We insert two times the first mapping so the first one should succeed and the second should fail
+        res <- Resource.liftK(
+          client.createMappingBulk(
+            BulkMappingsCreationRequest(
+              Vector(
+                mappingDefinition,
+                mappingDefinition,
+                secondMappingDefinition
+              )
+            )
+          )
+        )
+        firstMapping <- Resource.liftK(
+          client.readMapping(
+            mappingDefinition.mappingKey.mappingName,
+            mappingDefinition.mappingKey.sourceEntityTypeName,
+            mappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+        secondMapping <- Resource.liftK(
+          client.readMapping(
+            secondMappingDefinition.mappingKey.mappingName,
+            secondMappingDefinition.mappingKey.sourceEntityTypeName,
+            secondMappingDefinition.mappingKey.targetEntityTypeName
+          )
+        )
+      } yield (firstMapping, secondMapping)
+      resp.use(resp => IO.pure(resp)).asserting {
+        case (ReadMappingResponse.Ok(_), ReadMappingResponse.Ok(_)) => succeed
+        case _ => fail("Expected the two mappings to be created successfully")
+      }
+    }
+  }
+
+  "Bulk creation of mappings via YAML file" - {
+    "works" in {
+      val sourceEntityType = OpenApiEntityType(
+        name = "BulkYamlSourceEntityType",
+        Some(Vector("MappingSource", "FirstBulkYamlSource")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "surname",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val targetEntityType = OpenApiEntityType(
+        name = "BulkYamlTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType(
+            "name",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "surname",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "additionalParameter",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val secondSourceEntityType = OpenApiEntityType(
+        name = "BulkYamlSecondSourceEntityType",
+        Some(Vector("MappingSource", "SecondBulkYamlSource")),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Integer,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "address",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val secondTargetEntityType = OpenApiEntityType(
+        name = "BulkYamlSecondTargetEntityType",
+        Some(Vector("MappingTarget")),
+        Vector(
+          OpenApiAttributeType(
+            "age",
+            AttributeTypeName.Integer,
+            Some(OpenApiMode.Required),
+            None
+          ),
+          OpenApiAttributeType(
+            "address",
+            AttributeTypeName.String,
+            Some(OpenApiMode.Required),
+            None
+          )
+        ),
+        None
+      )
+
+      val stream = fs2.io.readClassLoaderResource[IO]("bulk_mappings.yaml")
+      val resp: Resource[IO, (ReadMappingResponse, ReadMappingResponse)] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        _ <- Resource.liftK(
+          client.createTrait(OpenApiTrait("FirstBulkYamlSource"))
+        )
+        _ <- Resource.liftK(
+          client.createTrait(OpenApiTrait("SecondBulkYamlSource"))
+        )
+        _ <- Resource.liftK(
+          client
+            .linkTrait("FirstBulkYamlSource", "hasPart", "SecondBulkYamlSource")
+        )
+        _ <- Resource.liftK(client.createType(sourceEntityType))
+        _ <- Resource.liftK(client.createType(targetEntityType))
+        _ <- Resource.liftK(client.createType(secondSourceEntityType))
+        _ <- Resource.liftK(client.createType(secondTargetEntityType))
+        _ <- Resource.liftK(client.createMappingBulkByYaml(stream))
+        firstMapping <- Resource.liftK(
+          client.readMapping(
+            "bulkYamlMappingDefinition",
+            sourceEntityType.name,
+            targetEntityType.name
+          )
+        )
+        secondMapping <- Resource.liftK(
+          client.readMapping(
+            "bulkYamlSecondMappingDefinition",
+            secondSourceEntityType.name,
+            secondTargetEntityType.name
+          )
+        )
+      } yield (firstMapping, secondMapping)
+      resp.use(resp => IO.pure(resp)).asserting {
+        case (ReadMappingResponse.Ok(_), ReadMappingResponse.Ok(_)) => succeed
+        case _ => fail("Expected the two mappings to be created successfully")
+      }
+    }
+  }
+
+  "Bulk creation of three EntityTypes where one is wrong using a YAML file" - {
+    "works" in {
+      val stream =
+        fs2.io.readClassLoaderResource[IO]("wrong_bulk_entity_types.yaml")
+
+      val resp: Resource[IO, (ReadTypeResponse, ReadTypeResponse)] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        createResp <- Resource.liftK(client.createTypeBulkByYaml(stream))
+        firstType <- Resource.liftK(client.readType("wrong_bulk_first_entity"))
+        secondType <- Resource.liftK(
+          client.readType("wrong_bulk_second_entity")
+        )
+      } yield (firstType, secondType)
+
+      resp
+        .use { case (response1, response2) =>
+          IO {
+            (response1, response2) match {
+              case (ReadTypeResponse.Ok(_), ReadTypeResponse.Ok(_)) =>
+                succeed
+              case _ =>
+                fail("Both responses should be Ok")
+            }
+          }
         }
     }
   }

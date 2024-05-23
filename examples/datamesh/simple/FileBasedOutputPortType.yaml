@@ -1,8 +1,0 @@
-name: FileBasedOutputPortType
-traits: [FileBasedOutputPort, MappingSource]
-schema:
-  - name: name
-    typeName: String
-    mode: Required
-fatherName: null
-

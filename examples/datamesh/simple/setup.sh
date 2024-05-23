@@ -10,60 +10,18 @@ curl -X 'POST' \
 
 
 curl -X 'POST' \
-'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
--H 'accept: application/text' \
--H 'Content-Type: application/octet-stream' \
---data-binary '@DataProductType.yaml'
-
-echo ""
-
-
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
-  -H 'accept: application/text' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/bulk/yaml' \
+  -H 'accept: application/json' \
   -H 'Content-Type: application/octet-stream' \
-  --data-binary '@FileBasedOutputPortType.yaml'
-
-echo ""
-
-
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
-  -H 'accept: application/text' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@TableBasedOutputPortType.yaml'
+  --data-binary '@EntityTypes.yaml'
 
 echo ""
 
 curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
-  -H 'accept: application/text' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping/bulk/yaml' \
+  -H 'accept: application/json' \
   -H 'Content-Type: application/octet-stream' \
-  --data-binary '@S3FolderType.yaml'
-
-echo ""
-
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/yaml' \
-  -H 'accept: application/text' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@AthenaTableType.yaml'
-
-echo ""
-
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping/yaml' \
-  -H 'accept: application/text' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@FileBasedMapping.yaml'
-
-echo ""
-
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping/yaml' \
-  -H 'accept: application/text' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@TableBasedMapping.yaml'
+  --data-binary '@Mappings.yaml'
 
 echo ""
 

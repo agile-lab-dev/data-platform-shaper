@@ -1,8 +1,0 @@
-name: S3FolderType
-traits: [MappingTarget]
-schema:
-  - name: path
-    typeName: String
-    mode: Required
-fatherName: null
-
