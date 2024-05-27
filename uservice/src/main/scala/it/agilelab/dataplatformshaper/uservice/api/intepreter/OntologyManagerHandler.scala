@@ -1533,4 +1533,7 @@ class OntologyManagerHandler[F[_]: Async](
       })
   end readMappedInstances
 
+  override def bulkCreationYaml(respond: Resource.BulkCreationYamlResponse.type)(body: Stream[F, Byte]): F[BulkCreationYamlResponse[F]] =
+    ???
+  end bulkCreationYaml
 end OntologyManagerHandler

@@ -1490,6 +1490,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SystemError'
+  /ontology/bulkCreation/yaml:
+    post:
+      tags:
+        - OntologyManager
+      summary: Bulk creation of entity types, traits and mappings using a YAML file
+      operationId: bulkCreationYaml
+      requestBody:
+        description: A YAML file containing one or more YAML documents
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: If successful, return a YAML file with one or more documents, one for each request document
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        500:
+          description: System problem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemError'
 components:
   schemas:
     Entity:
