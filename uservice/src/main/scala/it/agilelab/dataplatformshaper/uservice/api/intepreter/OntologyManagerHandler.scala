@@ -7,7 +7,7 @@ import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
 import fs2.io.readInputStream
 import fs2.{Stream, text}
-import io.circe.Json
+import io.circe.{Json, yaml}
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
@@ -36,10 +36,10 @@ import it.agilelab.dataplatformshaper.uservice.definitions.{
   ValidationError,
   BulkEntityTypesCreationRequest as OpenApiBulkEntityTypesCreationRequest,
   BulkEntityTypesCreationResponse as OpenApiBulkEntityTypesCreationResponse,
-  BulkTraitsCreationRequest as OpenApiBulkTraitsCreationRequest,
-  BulkTraitsCreationResponse as OpenApiBulkTraitsCreationResponse,
   BulkMappingsCreationRequest as OpenApiBulkMappingsCreationRequest,
   BulkMappingsCreationResponse as OpenApiBulkMappingsCreationResponse,
+  BulkTraitsCreationRequest as OpenApiBulkTraitsCreationRequest,
+  BulkTraitsCreationResponse as OpenApiBulkTraitsCreationResponse,
   Entity as OpenApiEntity,
   EntityType as OpenApiEntityType,
   MappingDefinition as OpenApiMappingDefinition,
@@ -48,9 +48,10 @@ import it.agilelab.dataplatformshaper.uservice.definitions.{
 }
 import it.agilelab.dataplatformshaper.uservice.{Handler, Resource}
 
-import java.io.ByteArrayInputStream
+import java.io.{ByteArrayInputStream, FileReader}
 import scala.Tuple.*
 import scala.language.implicitConversions
+import scala.util.Try
 
 class OntologyManagerHandler[F[_]: Async](
   tms: TypeManagementServiceInterpreter[F],
@@ -95,10 +96,10 @@ class OntologyManagerHandler[F[_]: Async](
       )
   end createType
 
-  override def createTypeBulk(
-    respond: Resource.CreateTypeBulkResponse.type
-  )(body: OpenApiBulkEntityTypesCreationRequest): F[CreateTypeBulkResponse] =
-    body.entityTypes
+  private def processBulkTypeRequest(
+    openApiRequest: OpenApiBulkEntityTypesCreationRequest
+  ): F[OpenApiBulkEntityTypesCreationResponse] =
+    openApiRequest.entityTypes
       .map(tp =>
         tp.fatherName
           .fold(
@@ -133,7 +134,12 @@ class OntologyManagerHandler[F[_]: Async](
         )
       )
       .map(OpenApiBulkEntityTypesCreationResponse.apply)
-      .map(res => respond.Ok(res))
+  end processBulkTypeRequest
+
+  override def createTypeBulk(respond: Resource.CreateTypeBulkResponse.type)(
+    body: OpenApiBulkEntityTypesCreationRequest
+  ): F[CreateTypeBulkResponse] =
+    processBulkTypeRequest(body).map(res => respond.Ok(res))
   end createTypeBulk
 
   override def createTypeBulkByYaml(
@@ -159,42 +165,7 @@ class OntologyManagerHandler[F[_]: Async](
       case Left(error) =>
         Applicative[F].pure(respond.BadRequest(ValidationError(Vector(error))))
       case Right(openApiRequest) =>
-        openApiRequest.entityTypes
-          .map(tp =>
-            tp.fatherName
-              .fold(
-                tms
-                  .create(
-                    EntityType(
-                      tp.name,
-                      tp.traits.fold(Set.empty[String])(_.toSet),
-                      tp.schema: Schema,
-                      None
-                    )
-                  )
-                  .map(et => (tp, et.fold(_.errors.mkString(","), _ => "OK")))
-              )(fn =>
-                tms
-                  .create(
-                    EntityType(
-                      tp.name,
-                      tp.traits.fold(Set.empty[String])(_.toSet),
-                      tp.schema: Schema,
-                      None
-                    ),
-                    fn
-                  )
-                  .map(et => (tp, et.fold(_.errors.mkString(","), _ => "OK")))
-              )
-          )
-          .sequence
-          .map(
-            _.map(p =>
-              OpenApiBulkEntityTypesCreationResponse.EntityTypes(p(0), p(1))
-            )
-          )
-          .map(OpenApiBulkEntityTypesCreationResponse.apply)
-          .map(res => respond.Ok(res))
+        processBulkTypeRequest(openApiRequest).map(res => respond.Ok(res))
     }
   end createTypeBulkByYaml
 
@@ -1533,7 +1504,206 @@ class OntologyManagerHandler[F[_]: Async](
       })
   end readMappedInstances
 
-  override def bulkCreationYaml(respond: Resource.BulkCreationYamlResponse.type)(body: Stream[F, Byte]): F[BulkCreationYamlResponse[F]] =
-    ???
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
+  private def processBulkCreation(jsons: List[Json]): F[Stream[F, Byte]] =
+    val streams = jsons.map { json =>
+      val names = json.hcursor.keys
+        .getOrElse(throw new Exception("Not found any keys"))
+        .toList
+      names match {
+        case List("traits", "relationships") =>
+          val processTraitsResult: F[Either[String, Stream[F, Byte]]] = (for {
+            traitsEither <- EitherT.fromEither(
+              OpenApiBulkTraitsCreationRequest
+                .decodeBulkTraitsCreationRequest(json.hcursor)
+                .leftMap(_.getMessage)
+            )
+            bulkRequest = BulkTraitsCreationRequest(
+              traitsEither.traits
+                .map(tr => Trait(tr.name, tr.inheritsFrom))
+                .toList,
+              traitsEither.relationships
+                .map(re =>
+                  (re.subject, re.relationship: Relationship, re.`object`)
+                )
+                .toList
+            )
+            bulkTraitsResponse <- EitherT.liftF(
+              trms
+                .create(bulkRequest)
+            )
+            streamResult <- EitherT(
+              Applicative[F].pure(
+                Right(
+                  readInputStream(
+                    Applicative[F].pure(
+                      ByteArrayInputStream(
+                        OpenApiBulkTraitsCreationResponse
+                          .encodeBulkTraitsCreationResponse(
+                            OpenApiBulkTraitsCreationResponse(
+                              bulkTraitsResponse.traits
+                                .map(t =>
+                                  Traits(
+                                    OpenApiTrait(
+                                      t._1.traitName,
+                                      t._1.inheritsFrom
+                                    ),
+                                    t._2.getOrElse("OK")
+                                  )
+                                )
+                                .toVector,
+                              bulkTraitsResponse.relationships
+                                .map(r =>
+                                  OpenApiBulkTraitsCreationResponse
+                                    .Relationships(
+                                      First(r._1._1, r._1._2: String, r._1._3),
+                                      r._2.getOrElse("OK")
+                                    )
+                                )
+                                .toVector
+                            )
+                          )
+                          .asYaml
+                          .spaces2
+                          .getBytes("UTF8")
+                      )
+                    ),
+                    128
+                  )
+                )
+              )
+            )
+          } yield streamResult).value
+          processTraitsResult
+        case List("entityTypes") =>
+          val streamTraitsResult: F[Either[String, Stream[F, Byte]]] = (for {
+            bulkTypeRequest <- EitherT.fromEither(
+              OpenApiBulkEntityTypesCreationRequest
+                .decodeBulkEntityTypesCreationRequest(json.hcursor)
+                .leftMap(_.getMessage)
+            )
+            bulkTypeResponse <- EitherT.liftF(
+              processBulkTypeRequest(bulkTypeRequest)
+            )
+            streamResult <- EitherT(
+              Applicative[F].pure(
+                Right(
+                  readInputStream(
+                    Applicative[F].pure(
+                      ByteArrayInputStream(
+                        OpenApiBulkEntityTypesCreationResponse
+                          .encodeBulkEntityTypesCreationResponse(
+                            bulkTypeResponse
+                          )
+                          .asYaml
+                          .spaces2
+                          .getBytes("UTF8")
+                      )
+                    ),
+                    128
+                  )
+                )
+              )
+            )
+          } yield streamResult).value
+          streamTraitsResult
+        case List("mappingDefinitions") =>
+          val streamMappingDefinitionResult
+            : F[Either[String, Stream[F, Byte]]] = (for {
+            bulkMappingDefinitionRequest <- EitherT.fromEither(
+              OpenApiBulkMappingsCreationRequest
+                .decodeBulkMappingsCreationRequest(json.hcursor)
+                .leftMap(_.getMessage)
+            )
+            mappingDefinitionVector <- EitherT.liftF(
+              bulkMapCreator(bulkMappingDefinitionRequest)
+            )
+            bulkMappingDefinitionResponse = OpenApiBulkMappingsCreationResponse(
+              mappingDefinitionVector
+            )
+            streamResult <- EitherT(
+              Applicative[F].pure(
+                Right(
+                  readInputStream(
+                    Applicative[F].pure(
+                      ByteArrayInputStream(
+                        OpenApiBulkMappingsCreationResponse
+                          .encodeBulkMappingsCreationResponse(
+                            bulkMappingDefinitionResponse
+                          )
+                          .asYaml
+                          .spaces2
+                          .getBytes("UTF8")
+                      )
+                    ),
+                    128
+                  )
+                )
+              )
+            )
+          } yield streamResult).value
+          streamMappingDefinitionResult
+        case _ =>
+          val streamUnknown: F[Either[String, Stream[F, Byte]]] =
+            Applicative[F].pure(
+              Right(
+                Stream
+                  .eval(
+                    Applicative[F].pure(
+                      Stream.emits("Unknown file".getBytes) ++ Stream
+                        .emits(json.noSpaces.getBytes)
+                    )
+                  )
+                  .flatten
+              )
+            )
+          streamUnknown
+      }
+    }
+    val streamsList = streams.map(_.map {
+      case Left(s) =>
+        Stream.eval(Applicative[F].pure(s.getBytes.toSeq)).flatMap(Stream.emits)
+      case Right(s) => s
+    })
+    val separator: Stream[F, Byte] = Stream.emits("---\n".getBytes)
+    streamsList.sequence.map(_.reduce(_ ++ separator ++ _))
+  end processBulkCreation
+
+  override def bulkCreationYaml(
+    respond: Resource.BulkCreationYamlResponse.type
+  )(body: Stream[F, Byte]): F[BulkCreationYamlResponse[F]] =
+    val yamlStringReader: F[Either[Throwable, String]] =
+      body.through(fs2.text.utf8.decode).compile.foldMonoid.attempt
+    val res: F[BulkCreationYamlResponse[F]] = yamlStringReader.flatMap {
+      case Left(ex) =>
+        BulkCreationYamlResponse
+          .BadRequest(ValidationError(Vector(ex.toString)))
+          .pure[F]
+      case Right(yamlContent) =>
+        val yamlFileReader: Either[Throwable, FileReader] =
+          Try {
+            val tempFile = java.io.File.createTempFile("yamlContent", ".yaml")
+            val writer = java.io.PrintWriter(tempFile)
+            writer.write(yamlContent)
+            writer.close()
+            FileReader(tempFile.getAbsolutePath)
+          }.toEither
+        yamlFileReader match
+          case Left(ex) =>
+            BulkCreationYamlResponse
+              .BadRequest(ValidationError(Vector(ex.toString)))
+              .pure[F]
+          case Right(reader) =>
+            val allFiles = yaml.parser.parseDocuments(reader).toList.sequence
+            allFiles match
+              case Left(parseError) =>
+                BulkCreationYamlResponse
+                  .BadRequest(ValidationError(Vector(parseError.toString)))
+                  .pure[F]
+              case Right(listOfJson) =>
+                val bulkCreation = processBulkCreation(listOfJson)
+                bulkCreation.map(bc => BulkCreationYamlResponse.Ok(bc))
+    }
+    res
   end bulkCreationYaml
 end OntologyManagerHandler

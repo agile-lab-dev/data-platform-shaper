@@ -16,6 +16,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.uservice.definitions.Mode.members.Required
 import it.agilelab.dataplatformshaper.uservice.{
+  BulkCreationYamlResponse,
   Client,
   CreateEntityByYamlResponse,
   CreateEntityResponse,
@@ -1123,6 +1124,125 @@ class ApiSpec
         case (ReadMappingResponse.Ok(_), ReadMappingResponse.Ok(_)) => succeed
         case _ => fail("Expected the two mappings to be created successfully")
       }
+    }
+  }
+
+  "Bulk creation of everything" - {
+    "works" in {
+      val stream =
+        fs2.io.readClassLoaderResource[IO]("bulk_everything.yaml")
+
+      val resp: Resource[
+        IO,
+        (
+          ListTraitsResponse,
+          LinkedTraitsResponse,
+          ListTypesResponse,
+          ReadMappingResponse
+        )
+      ] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        createResp <- Resource.liftK(client.createTypeBulkByYaml(stream))
+        _ <- client.bulkCreationYaml(stream)
+        listOfTraits <- Resource.liftK(client.listTraits())
+        linkedTrait <- Resource.liftK(
+          client.linkedTraits("BulkEverything", "hasPart")
+        )
+        entityTypes <- Resource.liftK(client.listTypes())
+        mappingDefinition <- Resource.liftK(
+          client.readMapping(
+            "BulkEverythingMapping",
+            "BulkEverythingEntityType",
+            "SecondBulkEverythingEntityType"
+          )
+        )
+      } yield (listOfTraits, linkedTrait, entityTypes, mappingDefinition)
+
+      resp
+        .use { bulkResp =>
+          IO {
+            bulkResp match {
+              case (
+                    ListTraitsResponse.Ok(traits),
+                    LinkedTraitsResponse.Ok(linkedTrait),
+                    ListTypesResponse.Ok(entityTypes),
+                    ReadMappingResponse.Ok(mappingDefinition)
+                  ) =>
+                if traits.contains("BulkEverything") && traits.contains(
+                    "SecondBulkEverything"
+                  ) && linkedTrait.contains(
+                    "SecondBulkEverything"
+                  ) && entityTypes
+                    .count(et =>
+                      et.name.equals("BulkEverythingEntityType") || et.name
+                        .equals("SecondBulkEverythingEntityType")
+                    )
+                    .equals(2) && mappingDefinition.mappingKey.mappingName
+                    .equals("BulkEverythingMapping")
+                then succeed
+                else
+                  fail(
+                    "Something went wrong during the bulk creation of everything"
+                  )
+              case _ =>
+                fail("Both responses should be Ok")
+            }
+          }
+        }
+    }
+  }
+
+  "Bulk creation of everything without the section for traits and relationships" - {
+    "works" in {
+      val stream =
+        fs2.io.readClassLoaderResource[IO]("bulk_everything_no_traits.yaml")
+
+      val resp: Resource[IO, (ListTypesResponse, ReadMappingResponse)] = for {
+        client <- EmberClientBuilder
+          .default[IO]
+          .build
+          .map(client => Client.httpClient(client, "http://127.0.0.1:8093"))
+        createResp <- Resource.liftK(client.createTypeBulkByYaml(stream))
+        _ <- client.bulkCreationYaml(stream)
+        entityTypes <- Resource.liftK(client.listTypes())
+        mappingDefinition <- Resource.liftK(
+          client.readMapping(
+            "NoTraitsBulkEverythingMapping",
+            "NoTraitsBulkEverythingEntityType",
+            "NoTraitsSecondBulkEverythingEntityType"
+          )
+        )
+      } yield (entityTypes, mappingDefinition)
+
+      resp
+        .use { bulkResp =>
+          IO {
+            bulkResp match {
+              case (
+                    ListTypesResponse.Ok(entityTypes),
+                    ReadMappingResponse.Ok(mappingDefinition)
+                  ) =>
+                if entityTypes
+                    .count(et =>
+                      et.name
+                        .equals("NoTraitsBulkEverythingEntityType") || et.name
+                        .equals("NoTraitsSecondBulkEverythingEntityType")
+                    )
+                    .equals(2) && mappingDefinition.mappingKey.mappingName
+                    .equals("NoTraitsBulkEverythingMapping")
+                then succeed
+                else
+                  fail(
+                    "Something went wrong during the bulk creation of everything without the section for traits and relationships"
+                  )
+              case _ =>
+                fail("Both responses should be Ok")
+            }
+          }
+        }
     }
   }
 

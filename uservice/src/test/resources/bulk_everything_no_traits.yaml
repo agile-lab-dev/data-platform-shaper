@@ -1,0 +1,32 @@
+entityTypes:
+  - name: NoTraitsBulkEverythingEntityType
+    traits: [MappingSource]
+    schema:
+      - name: name
+        typeName: String
+        mode: Required
+      - name: surname
+        typeName: String
+        mode: Required
+    fatherName: null
+  - name: NoTraitsSecondBulkEverythingEntityType
+    traits: [MappingTarget]
+    schema:
+      - name: name
+        typeName: String
+        mode: Required
+      - name: surname
+        typeName: String
+        mode: Required
+    fatherName: null
+---
+mappingDefinitions:
+  - mappingKey:
+      mappingName: "NoTraitsBulkEverythingMapping"
+      sourceEntityTypeName: "NoTraitsBulkEverythingEntityType"
+      targetEntityTypeName: "NoTraitsSecondBulkEverythingEntityType"
+    mapper:
+      name: "source.get('name')"
+      surname: "source.get('surname')"
+    additionalSourcesReferences:
+      {}
