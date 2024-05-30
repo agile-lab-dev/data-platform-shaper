@@ -73,16 +73,15 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       schema <- EitherT[F, ManagementServiceError, Schema](getSchema)
       _ <- traceT(s"Retrieved schema $schema for type name $instanceTypeName")
       _ <- EitherT[F, ManagementServiceError, Unit](
-        Applicative[F].pure(
-          cueValidate(schema, tuple).leftMap(errors =>
+        cueValidate(schema, tuple)
+          .leftMap(errors =>
             ManagementServiceError(s"Instance validation error" :: errors)
           )
-        )
+          .pure[F]
       )
       stmts <- EitherT[F, ManagementServiceError, List[Statement]](
-        Applicative[F].pure(
-          emitStatementsForEntity(entityId, instanceTypeName, tuple, schema)
-        )
+        emitStatementsForEntity(entityId, instanceTypeName, tuple, schema)
+          .pure[F]
       )
       _ <- traceT(s"Statements emitted ${stmts.mkString("\n")}")
       id <- EitherT[F, ManagementServiceError, String](
@@ -477,7 +476,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
           case None =>
             fieldName -> List[Int]()
       case _ => EmptyTuple
-    Applicative[F].pure(tuple)
+    tuple.pure[F]
   end handlePrimitiveDataTypes
 
   private def handleStructDataType(
@@ -518,13 +517,13 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
             ) // TODO it could break with Virtuoso
           case Nullable =>
             if fieldValue(0)(1) === "null" then
-              Applicative[F].pure(fieldName -> Option.empty[Tuple])
+              (fieldName -> Option.empty[Tuple]).pure[F]
             else
               val tuple =
                 createTupleForStructDataType(logger, dataType, fieldValue.head)
               tuple.map(t => fieldName -> Some(t))
       case None =>
-        Applicative[F].pure(fieldName -> None)
+        (fieldName -> None).pure[F]
   end handleStructDataType
 
   def fieldsToTuple(
@@ -566,7 +565,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
               struct,
               fieldValue
             )
-          case _ => Applicative[F].pure(EmptyTuple)
+          case _ => EmptyTuple.pure[F]
       )
     Traverse[List].sequence(tuples).map(_.fold(EmptyTuple)(_ :* _))
   end fieldsToTuple
@@ -603,26 +602,19 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                 val s = iri(sb.getValue.stringValue)
                 val p = iri(pb.getValue.stringValue)
                 if Relationship.isRelationship(p.getLocalName) then
-                  Applicative[F].pure(List.empty[Statement])
+                  List.empty[Statement].pure[F]
                 else if ob.getValue.isLiteral then
-                  Applicative[F].pure(
-                    List(
-                      statement(
-                        triple(s, p, ob.getValue.asInstanceOf[Literal]),
-                        L2
-                      )
+                  List(
+                    statement(
+                      triple(s, p, ob.getValue.asInstanceOf[Literal]),
+                      L2
                     )
-                  )
+                  ).pure[F]
                 else
                   if p == RDF.TYPE || p == NS.ISCLASSIFIEDBY then
-                    Applicative[F].pure(
-                      List(
-                        statement(
-                          triple(s, p, iri(ob.getValue.stringValue)),
-                          L2
-                        )
-                      )
-                    )
+                    List(
+                      statement(triple(s, p, iri(ob.getValue.stringValue)), L2)
+                    ).pure[F]
                   else
                     val stmt =
                       statement(triple(s, p, iri(ob.getValue.stringValue)), L2)
@@ -670,11 +662,11 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       ).getLocalName
       entityType <- EitherT(typeManagementService.read(instanceType))
       _ <- EitherT[F, ManagementServiceError, Unit](
-        Applicative[F].pure(
-          cueValidate(entityType.schema, values).leftMap(errors =>
+        cueValidate(entityType.schema, values)
+          .leftMap(errors =>
             ManagementServiceError(s"Instance validation error" :: errors)
           )
-        )
+          .pure[F]
       )
       _ <- EitherT.liftF(
         logger.trace(s"$instanceId is classified by $instanceType")
@@ -695,13 +687,11 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     EitherT(instanceManagementService.exist(instanceId)).flatMapF { exist =>
       if exist then res
       else
-        Applicative[F].pure(
-          Left(
-            ManagementServiceError(
-              s"The instance with id $instanceId does not exist"
-            )
+        Left(
+          ManagementServiceError(
+            s"The instance with id $instanceId does not exist"
           )
-        )
+        ).pure[F]
     }.value
   end updateInstanceNoCheck
 
@@ -907,7 +897,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     val stack = scala.collection.mutable.Stack(entityTypeName)
 
     def loop(): F[Either[ManagementServiceError, Unit]] =
-      if stack.isEmpty then Applicative[F].pure(Right(()))
+      if stack.isEmpty then Right(()).pure[F]
       else
         val currentType = stack.pop()
         getRelations(logger, repository, currentType, isGetParent = false)
@@ -921,8 +911,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                       sourceEntityType.name.equals(currentType)
                   }
 
-                  if filteredMappings.isEmpty then
-                    Applicative[F].pure(Right(()))
+                  if filteredMappings.isEmpty then Right(()).pure[F]
                   else
                     val (
                       mappingName,
@@ -948,21 +937,19 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                       mapperId
                     ).map(Right(_))
 
-                case Left(error) => Applicative[F].pure(Left(error))
+                case Left(error) => Left(error).pure[F]
               }
               .flatMap {
                 case Right(_)    => loop()
-                case Left(error) => Applicative[F].pure(Left(error))
+                case Left(error) => Left(error).pure[F]
               }
           }
           .handleErrorWith { error =>
-            Applicative[F].pure(
-              Left(
-                ManagementServiceError(
-                  s"There was an error during the deletion of the mapping: $error"
-                )
+            Left(
+              ManagementServiceError(
+                s"There was an error during the deletion of the mapping: $error"
               )
-            )
+            ).pure[F]
           }
     loop()
   end recursiveDelete
@@ -1010,15 +997,13 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     (for {
       ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
       stmts <- EitherT(
-        Applicative[F].pure(
-          emitStatementsForEntity(
-            mapperId,
-            ttype.name,
-            mapper,
-            schemaToMapperSchema(ttype.schema),
-            L2
-          )
-        )
+        emitStatementsForEntity(
+          mapperId,
+          ttype.name,
+          mapper,
+          schemaToMapperSchema(ttype.schema),
+          L2
+        ).pure[F]
       )
       res <- EitherT(
         repository
@@ -1162,7 +1147,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
             loop(tValue :: acc)
 
-        Applicative[F].pure(loop(Nil).reverse)
+        loop(Nil).reverse.pure[F]
       }
 
   def getRoots(
@@ -1171,7 +1156,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     entityTypeName: String
   ): F[List[String]] =
     def loop(pending: Set[String], roots: Set[String]): F[Set[String]] =
-      if pending.isEmpty then Applicative[F].pure(roots)
+      if pending.isEmpty then roots.pure[F]
       else
         val next = pending.head
         getRelations(logger, repository, next, true).flatMap { parents =>
@@ -1183,7 +1168,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       initialParents =>
         if !initialParents.isEmpty then
           loop(initialParents.toSet, Set.empty).map(_.toList)
-        else Applicative[F].pure(List(entityTypeName))
+        else List(entityTypeName).pure[F]
     }
   end getRoots
 
@@ -1198,29 +1183,25 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
       visited: Set[String],
       accumulator: List[String]
     ): F[Either[ManagementServiceError, List[String]]] =
-      if pendingTypes.isEmpty then Applicative[F].pure(Right(accumulator))
+      if pendingTypes.isEmpty then Right(accumulator).pure[F]
       else
         val currentType = pendingTypes.pop()
         if visited.contains(currentType) then
-          Applicative[F].pure(
-            Left(
-              ManagementServiceError(
-                s"Cycle detected in the hierarchy when processing '$currentType'"
-              )
+          Left(
+            ManagementServiceError(
+              s"Cycle detected in the hierarchy when processing '$currentType'"
             )
-          )
+          ).pure[F]
         else
           getRelations(logger, repository, currentType, true).flatMap { roots =>
             val newVisited = visited + currentType
             val commonRoots = roots.toSet.intersect(newVisited)
             if commonRoots.nonEmpty then
-              Applicative[F].pure(
-                Left(
-                  ManagementServiceError(
-                    s"Cycle detected in the hierarchy when processing one of the roots of '$currentType'"
-                  )
+              Left(
+                ManagementServiceError(
+                  s"Cycle detected in the hierarchy when processing one of the roots of '$currentType'"
                 )
-              )
+              ).pure[F]
             else if roots.contains(currentType) then
               loop(pendingTypes, newVisited, currentType :: accumulator)
             else

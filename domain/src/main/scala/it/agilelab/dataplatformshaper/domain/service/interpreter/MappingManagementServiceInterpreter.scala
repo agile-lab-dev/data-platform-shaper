@@ -7,7 +7,6 @@ import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
-import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -18,6 +17,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.{
   tupleToMappedTuple,
   validateMappingTuple
 }
+import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{
   InstanceManagementService,
@@ -172,22 +172,20 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
       _ <- EitherT(
-        Applicative[F].pure(
-          validateMappingTuple(mapper, ttype.schema).leftMap(error =>
+        validateMappingTuple(mapper, ttype.schema)
+          .leftMap(error =>
             ManagementServiceError(s"The mapper instance is invalid: $error")
           )
-        )
+          .pure[F]
       )
       stmts <- EitherT(
-        Applicative[F].pure(
-          emitStatementsForEntity(
-            mapperId,
-            ttype.name,
-            mapper,
-            schemaToMapperSchema(ttype.schema),
-            L2
-          )
-        )
+        emitStatementsForEntity(
+          mapperId,
+          ttype.name,
+          mapper,
+          schemaToMapperSchema(ttype.schema),
+          L2
+        ).pure[F]
       )
       res <- EitherT(
         repository
@@ -289,7 +287,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     finalQuery.fold(
       l =>
         val res: Either[ManagementServiceError, Tuple] = Left(l)
-        summon[Applicative[F]].pure(res)
+        res.pure[F]
       ,
       query =>
         (for {
@@ -375,9 +373,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           )
         ).map(_.collect { case s: String => s })
       }
-      instanceIds <- EitherT.liftF(
-        Applicative[F].pure(rawInstanceIdsList.flatten.distinct)
-      )
+      instanceIds <- EitherT.liftF(rawInstanceIdsList.flatten.distinct.pure[F])
       _ <- EitherT.liftF(instanceIds.traverse(id => updateMappedInstances(id)))
       _ <- EitherT.liftF(logger.trace(s"Selected mapping last string: $pairs"))
     } yield ()).value
@@ -530,11 +526,11 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             val tempTuple: EitherT[F, ManagementServiceError, Tuple] =
               for {
                 mappedInstances <- EitherT.liftF(getMappedInstancesReferenceExpressions(logger, typeManagementService, mapping._1, mapping._2.name))
-                mappedQueries <- EitherT.liftF(Applicative[F].pure(mappedInstances.map { case (name, path) =>
+                mappedQueries <- EitherT.liftF(mappedInstances.map { case (name, path) =>
                   val paths = splitPath(path)
                   val preparedQuery = prepareReferenceTuple(paths, sourceInstanceId)
                   preparedQuery.map(_.map((name, _)))
-                }.toList.sequence))
+                }.toList.sequence.pure[F])
                 tuplesMapped <- EitherT.liftF(mappedQueries)
                 finalTuplesMapped <- EitherT.fromEither(tuplesMapped.traverse(identity).map(_.toMap))
                 tupleResult <- EitherT(tupleToMappedTuple(
@@ -579,14 +575,12 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
                 then
                   completedOperations.push(false)
                   EitherT.liftF(
-                    Applicative[F]
-                      .pure(targetInstanceOption.get.entityId)
+                    targetInstanceOption.get.entityId.pure[F]
                   )
                 else
                   for {
                     _ <- EitherT.liftF(
-                      Applicative[F]
-                        .pure(completedOperations.push(true))
+                      completedOperations.push(true).pure[F]
                     )
                     tmpCreatedInstance <- EitherT(
                       tuple.map(
@@ -746,11 +740,11 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
                     mapping(0).name
                   )
                 )
-                mappedQueries <- EitherT.liftF(Applicative[F].pure(mappedInstances.map { case (name, path) =>
+                mappedQueries <- EitherT.liftF(mappedInstances.map { case (name, path) =>
                   val paths = splitPath(path)
                   val preparedQuery = prepareReferenceTuple(paths, sourceInstanceId)
                   preparedQuery.map(_.map((name, _)))
-                }.toList.sequence))
+                }.toList.sequence.pure[F])
                 tuplesMapped <- EitherT.liftF(mappedQueries)
                 finalTuplesMapped <- EitherT.fromEither(tuplesMapped.traverse(identity).map(_.toMap))
                 tupleResult <- EitherT(tupleToMappedTuple(
@@ -859,11 +853,11 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         stack: mutable.Stack[String],
         accumulated: Set[EntityType]
     ): F[Either[ManagementServiceError, Set[EntityType]]] =
-      if stack.isEmpty then Applicative[F].pure(Right(accumulated))
+      if stack.isEmpty then Right(accumulated).pure[F]
       else
         val head = stack.pop()
         getTargetEntityType(head).flatMap {
-          case Left(error) => Applicative[F].pure(Left(error))
+          case Left(error) => Left(error).pure[F]
           case Right(entityTypes) =>
             entityTypes
               .traverse { entityType =>
@@ -930,14 +924,13 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
             )
           )
           _ <- EitherT.liftF(
-            Applicative[F]
-              .pure(statementsToRemove.pushAll(filteredStatements))
+            statementsToRemove.pushAll(filteredStatements).pure[F]
           )
           ids <- EitherT.liftF(
-            Applicative[F].pure(mappings.map(mapping =>
+            mappings.map(mapping =>
               instancesToDelete.push(mapping(3).entityId)
               mapping(3).entityId: String
-            ))
+            ).pure[F]
           )
           _ <- EitherT(
             ids.map(id => getMappedInstancesToDelete(id)).sequence.map(
@@ -1025,7 +1018,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           .read(targetId)
           .map(_.map(entity => Option(entity)))
       case _ =>
-        Applicative[F].pure(Right(None))
+        Right(None).pure[F]
     }
     response
   end readTargetInstance

@@ -3,7 +3,6 @@ package it.agilelab.dataplatformshaper.domain.service.interpreter
 import cats.data.EitherT
 import cats.effect.Sync
 import cats.implicits.*
-import cats.{Applicative, Functor}
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS.{L1, ns}
@@ -54,14 +53,12 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       )
       fatherExist <- EitherT(
         traitDefinition.inheritsFrom.fold(
-          Applicative[F]
-            .pure(Right[ManagementServiceError, Boolean](true))
+          Right[ManagementServiceError, Boolean](true).pure[F]
         )(inhf => this.exist(inhf))
       )
       _ <- traceT(s"Checking if the father exists: $fatherExist")
       stmts <- EitherT(
-        Applicative[F]
-          .pure(Right[ManagementServiceError, List[Statement]](statements))
+        Right[ManagementServiceError, List[Statement]](statements).pure[F]
       )
       _ <- EitherT {
         if fatherExist then
@@ -71,22 +68,17 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
               .removeAndInsertStatements(stmts)
               .map(Right[ManagementServiceError, Unit])
           else
-            Applicative[F]
-              .pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"The trait ${traitDefinition.traitName} has been already defined"
-                  )
-                )
-              )
-        else
-          Applicative[F].pure(
             Left[ManagementServiceError, Unit](
               ManagementServiceError(
-                s"The father trait ${traitDefinition.inheritsFrom.getOrElse("")} does not exist"
+                s"The trait ${traitDefinition.traitName} has been already defined"
               )
+            ).pure[F]
+        else
+          Left[ManagementServiceError, Unit](
+            ManagementServiceError(
+              s"The father trait ${traitDefinition.inheritsFrom.getOrElse("")} does not exist"
             )
-          )
+          ).pure[F]
         end if
       }
       _ <- traceT(s"Instance type created")
@@ -175,18 +167,14 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         else EitherT.rightT[F, ManagementServiceError](())
       superClass <- EitherT.liftF(getSuperClassOf(traitName))
       additionalStatements <- EitherT.liftF(
-        Applicative[F].pure(
-          superClass
-            .map(trait2 =>
-              List(
-                statement(
-                  triple(traitIri, RDFS.SUBCLASSOF, iri(ns, trait2)),
-                  L1
-                )
-              )
+        superClass
+          .map(trait2 =>
+            List(
+              statement(triple(traitIri, RDFS.SUBCLASSOF, iri(ns, trait2)), L1)
             )
-            .getOrElse(List.empty[Statement])
-        )
+          )
+          .getOrElse(List.empty[Statement])
+          .pure[F]
       )
       statementsToRemove = initialStatements ::: additionalStatements
       _ <- EitherT.liftF(
@@ -385,29 +373,21 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
         else
           if !exist1
           then
-            Applicative[F].pure(
-              Left[ManagementServiceError, Unit](
-                ManagementServiceError(s"The trait $traitName1 does not exist")
-              )
-            )
+            Left[ManagementServiceError, Unit](
+              ManagementServiceError(s"The trait $traitName1 does not exist")
+            ).pure[F]
           else
             if !exist2
             then
-              Applicative[F].pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"The trait $traitName2 does not exist"
-                  )
-                )
-              )
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError(s"The trait $traitName2 does not exist")
+              ).pure[F]
             else
-              Applicative[F].pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"The trait $traitName1 $traitName2 or does not exist"
-                  )
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError(
+                  s"The trait $traitName1 $traitName2 or does not exist"
                 )
-              )
+              ).pure[F]
             end if
           end if
       )
@@ -488,42 +468,32 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
                   .removeAndInsertStatements(List.empty, statements)
                   .map(_ => Right[ManagementServiceError, Unit](()))
               else
-                Applicative[F].pure(
-                  Left[ManagementServiceError, Unit](
-                    ManagementServiceError(
-                      s"Traits $traitName1 and $traitName2 have linked instances"
-                    )
+                Left[ManagementServiceError, Unit](
+                  ManagementServiceError(
+                    s"Traits $traitName1 and $traitName2 have linked instances"
                   )
-                )
+                ).pure[F]
               end if
             )
             .flatten
         else
           if !exist1
           then
-            Applicative[F].pure(
-              Left[ManagementServiceError, Unit](
-                ManagementServiceError(s"The trait $traitName1 does not exist")
-              )
-            )
+            Left[ManagementServiceError, Unit](
+              ManagementServiceError(s"The trait $traitName1 does not exist")
+            ).pure[F]
           else
             if !exist2
             then
-              Applicative[F].pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"The trait $traitName2 does not exist"
-                  )
-                )
-              )
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError(s"The trait $traitName2 does not exist")
+              ).pure[F]
             else
-              Applicative[F].pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"The trait $traitName1 or $traitName2 does not exist"
-                  )
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError(
+                  s"The trait $traitName1 or $traitName2 does not exist"
                 )
-              )
+              ).pure[F]
             end if
           end if
       )
@@ -564,11 +534,9 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
             )
             .map(Right[ManagementServiceError, List[String]])
         else
-          Applicative[F].pure(
-            Left[ManagementServiceError, List[String]](
-              ManagementServiceError(s"The trait $traitName does not exist")
-            )
-          )
+          Left[ManagementServiceError, List[String]](
+            ManagementServiceError(s"The trait $traitName does not exist")
+          ).pure[F]
       )
     } yield res).value
   end linked

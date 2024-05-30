@@ -77,11 +77,7 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
               entityType.copy(father = Some(fatherEntityType))
             )
           )
-      )(_ =>
-        Applicative[F].pure(
-          Right[ManagementServiceError, EntityType](entityType)
-        )
-      )
+      )(_ => Right[ManagementServiceError, EntityType](entityType).pure[F])
     end inheritsFrom
   end extension
 
@@ -340,15 +336,12 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
           val fieldConstraints =
             bs.getBinding("constraints").getValue.stringValue()
           if !isStructType(fieldType) then
-            Applicative[F]
-              .pure(
-                fieldName -> stringToDataType(
-                  fieldType,
-                  fieldMode,
-                  fieldConstraints,
-                  None
-                )
-              )
+            (fieldName -> stringToDataType(
+              fieldType,
+              fieldMode,
+              fieldConstraints,
+              None
+            )).pure[F]
           else
             getStructTypeRecords(
               iri(bs.getBinding("type").getValue.stringValue())
@@ -394,11 +387,9 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         )
     } yield fatherName match
       case None =>
-        Applicative[F].pure(
-          Right[ManagementServiceError, Option[EntityType]](
-            None: Option[EntityType]
-          )
-        ): F[Either[ManagementServiceError, Option[EntityType]]]
+        Right[ManagementServiceError, Option[EntityType]](
+          None: Option[EntityType]
+        ).pure[F]: F[Either[ManagementServiceError, Option[EntityType]]]
       case Some(name) =>
         read(name).map(_.map(et => Some(et)))
     ).flatten
@@ -448,14 +439,14 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
               val fieldConstraints =
                 bs.getBinding("constraints").getValue.stringValue()
               if !isStructType(fieldType) then
-                Applicative[F].pure(
+                (
                   fieldName -> stringToDataType(
                     fieldType,
                     fieldMode,
                     fieldConstraints,
                     None
                   )
-                )
+                ).pure[F]
               else
                 getStructTypeRecords(
                   iri(bs.getBinding("type").getValue.stringValue())
@@ -484,9 +475,8 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     val statementsForInheritance
       : F[Either[ManagementServiceError, List[Statement]]] =
       entityType.father.fold(
-        Applicative[F].pure(
-          Right[ManagementServiceError, List[Statement]](List.empty[Statement])
-        )
+        Right[ManagementServiceError, List[Statement]](List.empty[Statement])
+          .pure[F]
       )(entityType =>
         exist(entityType.name).map(
           _.map(exist =>
@@ -536,11 +526,11 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
       }
       stmts <- EitherT(statementsForInheritance)
       _ <- EitherT[F, ManagementServiceError, Unit](
-        Applicative[F].pure(
-          cueValidateModel(entityType.schema).leftMap(errors =>
+        cueValidateModel(entityType.schema)
+          .leftMap(errors =>
             ManagementServiceError(s"Invalid constraints" :: errors)
           )
-        )
+          .pure[F]
       )
       _ <- EitherT {
         if isCreation then
@@ -551,14 +541,11 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
               )
               .map(Right[ManagementServiceError, Unit])
           else
-            Applicative[F]
-              .pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"The EntityType ${entityType.name} has been already defined"
-                  )
-                )
+            Left[ManagementServiceError, Unit](
+              ManagementServiceError(
+                s"The EntityType ${entityType.name} has been already defined"
               )
+            ).pure[F]
         else
           repository
             .removeAndInsertStatements(
@@ -635,19 +622,19 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
                       )
                   )
                 } yield et).value)(et =>
-                  logger.trace(s"found in the cache") *> Applicative[F]
-                    .pure(Right[ManagementServiceError, EntityType](et))
+                  logger.trace(s"found in the cache") *> Right[
+                    ManagementServiceError,
+                    EntityType
+                  ](et).pure[F]
                 )
             )
           } yield definitionWithCacheLookup).value
         else
-          Applicative[F].pure(
-            Left[ManagementServiceError, EntityType](
-              ManagementServiceError(
-                s"The EntityType $instanceTypeName does not exist"
-              )
+          Left[ManagementServiceError, EntityType](
+            ManagementServiceError(
+              s"The EntityType $instanceTypeName does not exist"
             )
-          )
+          ).pure[F]
         end if
       }
     } yield definitionWithExistCheck).value
@@ -720,25 +707,21 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
         val instanceCheck = hasInstances(instanceTypeName)
         instanceCheck.flatMap {
           case Right(true) =>
-            Applicative[F].pure(
-              Left[ManagementServiceError, Unit](
-                ManagementServiceError(
-                  s"The EntityType $instanceTypeName cannot be deleted because there are related instances"
-                )
+            Left[ManagementServiceError, Unit](
+              ManagementServiceError(
+                s"The EntityType $instanceTypeName cannot be deleted because there are related instances"
               )
-            )
+            ).pure[F]
 
           case Right(false) =>
             val isFatherCheck = isFather(instanceTypeName)
             isFatherCheck.flatMap {
               case Right(true) =>
-                Applicative[F].pure(
-                  Left[ManagementServiceError, Unit](
-                    ManagementServiceError(
-                      s"The EntityType $instanceTypeName cannot be deleted because is inherited by other EntityType"
-                    )
+                Left[ManagementServiceError, Unit](
+                  ManagementServiceError(
+                    s"The EntityType $instanceTypeName cannot be deleted because is inherited by other EntityType"
                   )
-                )
+                ).pure[F]
 
               case Right(false) =>
                 testEntity.flatMap {
@@ -751,28 +734,26 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
                         createOrDelete(entityType, isCreation = false)
                       }
                   case Left(error) =>
-                    Applicative[F].pure(Left(error))
+                    Left(error).pure[F]
                 }
 
               case Left(error) =>
-                Applicative[F].pure(Left[ManagementServiceError, Unit](error))
+                Left[ManagementServiceError, Unit](error).pure[F]
             }
 
           case Left(error) =>
-            Applicative[F].pure(Left[ManagementServiceError, Unit](error))
+            Left[ManagementServiceError, Unit](error).pure[F]
         }
 
       case Right(false) =>
-        Applicative[F].pure(
-          Left[ManagementServiceError, Unit](
-            ManagementServiceError(
-              s"The EntityType $instanceTypeName does not exist"
-            )
+        Left[ManagementServiceError, Unit](
+          ManagementServiceError(
+            s"The EntityType $instanceTypeName does not exist"
           )
-        )
+        ).pure[F]
 
       case Left(error) =>
-        Applicative[F].pure(Left[ManagementServiceError, Unit](error))
+        Left[ManagementServiceError, Unit](error).pure[F]
     }
   }
 
@@ -783,48 +764,42 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
     (for {
       entityTypeResult <- EitherT(read(entityTypeRequest.name))
       _ <- EitherT[F, ManagementServiceError, Unit](
-        Applicative[F].pure(
-          cueValidateModel(entityTypeRequest.schema).leftMap(errors =>
+        cueValidateModel(entityTypeRequest.schema)
+          .leftMap(errors =>
             ManagementServiceError(s"Invalid constraints" :: errors)
           )
-        )
+          .pure[F]
       )
       _ <-
         EitherT(
-          Applicative[F]
-            .pure(if (entityTypeResult.schema === entityTypeRequest.schema) {
-              Right[ManagementServiceError, Unit](())
-            } else {
-              Left[ManagementServiceError, Unit](
-                ManagementServiceError("Schemas did not match during update")
-              )
-            })
+          (if (entityTypeResult.schema === entityTypeRequest.schema) {
+             Right[ManagementServiceError, Unit](())
+           } else {
+             Left[ManagementServiceError, Unit](
+               ManagementServiceError("Schemas did not match during update")
+             )
+           }).pure[F]
         )
       previousEntityType <- EitherT(read(entityTypeRequest.name))
       previousEntityTypeIRI <- EitherT(
-        Applicative[F].pure(
-          Right[ManagementServiceError, IRI](iri(ns, previousEntityType.name))
-        )
+        Right[ManagementServiceError, IRI](iri(ns, previousEntityType.name))
+          .pure[F]
       )
       allPreviousStatements <- EitherT(
-        Applicative[F].pure(
-          Right[ManagementServiceError, List[Statement]](
-            emitStatementsFromSchema(
-              previousEntityTypeIRI,
-              previousEntityType.schema
-            )
+        Right[ManagementServiceError, List[Statement]](
+          emitStatementsFromSchema(
+            previousEntityTypeIRI,
+            previousEntityType.schema
           )
-        )
+        ).pure[F]
       )
       previousStatements = allPreviousStatements.filter(statement =>
         statement.getPredicate.toString.endsWith("constraints")
       )
       allStatements <- EitherT(
-        Applicative[F].pure(
-          Right[ManagementServiceError, List[Statement]](
-            emitStatementsFromSchema(instanceType, entityTypeRequest.schema)
-          )
-        )
+        Right[ManagementServiceError, List[Statement]](
+          emitStatementsFromSchema(instanceType, entityTypeRequest.schema)
+        ).pure[F]
       )
       statements = allStatements.filter(statement =>
         statement.getPredicate.toString.endsWith("constraints")
@@ -879,11 +854,12 @@ class TypeManagementServiceInterpreter[F[_]: Sync](
 
     for
       queryResults <- repository.evaluateQuery(query)
-      entityTypeNames <- Applicative[F].pure(
+      entityTypeNames <-
         queryResults
           .map(_.getBinding("entityTypeName").getValue.stringValue())
           .toList
-      )
+          .pure[F]
+
       entities <- entityTypeNames.traverse { entityName =>
         val result = for
           traits <- EitherT(getTraitsFromEntityType(entityName))

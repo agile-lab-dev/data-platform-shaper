@@ -63,14 +63,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             List.empty
           )
         else
-          Applicative[F]
-            .pure(
-              Left[ManagementServiceError, String](
-                ManagementServiceError(
-                  s"The EntityType $instanceTypeName does not exist"
-                )
-              )
+          Left[ManagementServiceError, String](
+            ManagementServiceError(
+              s"The EntityType $instanceTypeName does not exist"
             )
+          ).pure[F]
         end if
       }
       _ <- traceT(
@@ -98,11 +95,9 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
       _ <- traceT(s"Loaded the tuple $tuple")
       entity <- EitherT[F, ManagementServiceError, Entity](
-        Applicative[F].pure(
-          Right[ManagementServiceError, Entity](
-            Entity(instanceId, entityType.name, tuple)
-          )
-        )
+        Right[ManagementServiceError, Entity](
+          Entity(instanceId, entityType.name, tuple)
+        ).pure[F]
       )
       _ <- traceT(s"About to return the entity $entity")
     } yield entity
@@ -113,13 +108,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
         if exist then res
         else
           EitherT(
-            Applicative[F].pure(
-              Left[ManagementServiceError, Entity](
-                ManagementServiceError(
-                  s"The instance with id $instanceId does not exist"
-                )
+            Left[ManagementServiceError, Entity](
+              ManagementServiceError(
+                s"The instance with id $instanceId does not exist"
               )
-            )
+            ).pure[F]
           )
     } yield r).value
   end read
@@ -161,13 +154,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     EitherT(exist(instanceId)).flatMapF { exist =>
       if exist then res
       else
-        Applicative[F].pure(
-          Left(
-            ManagementServiceError(
-              s"This instance with id $instanceId does not exist"
-            )
+        Left(
+          ManagementServiceError(
+            s"This instance with id $instanceId does not exist"
           )
-        )
+        ).pure[F]
     }.value
   end update
 
@@ -226,22 +217,18 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
       )
       r <- EitherT(
         if linkedInstancesExisting then
-          Applicative[F].pure(
-            Left[ManagementServiceError, Unit](
-              ManagementServiceError(
-                s"This instance with id $instanceId cannot be deleted because has linked instances"
-              )
+          Left[ManagementServiceError, Unit](
+            ManagementServiceError(
+              s"This instance with id $instanceId cannot be deleted because has linked instances"
             )
-          )
+          ).pure[F]
         else if exist then res
         else
-          Applicative[F].pure(
-            Left[ManagementServiceError, Unit](
-              ManagementServiceError(
-                s"This instance with id $instanceId cannot be deleted because does not exist"
-              )
+          Left[ManagementServiceError, Unit](
+            ManagementServiceError(
+              s"This instance with id $instanceId cannot be deleted because does not exist"
             )
-          )
+          ).pure[F]
       )
     } yield r).value
 
@@ -332,15 +319,14 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
     limit: Option[Int]
   ): F[Either[ManagementServiceError, List[String | Entity]]] =
     val predicate: F[Either[ManagementServiceError, Option[SearchPredicate]]] =
-      Applicative[F].pure(
-        (if query.trim.isEmpty then Either.right(None)
-         else
-           Either.catchNonFatal(Some(generateSearchPredicate("i", query)))
-        ).left
-          .map(t =>
-            ManagementServiceError(s"Invalid search predicate: ${t.getMessage}")
-          )
-      )
+      (if query.trim.isEmpty then Either.right(None)
+       else
+         Either.catchNonFatal(Some(generateSearchPredicate("i", query)))
+      ).left
+        .map(t =>
+          ManagementServiceError(s"Invalid search predicate: ${t.getMessage}")
+        )
+        .pure[F]
 
     (for {
       pred <- EitherT(predicate)
@@ -420,44 +406,36 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
                   .removeAndInsertStatements(statements, List.empty)
                   .map(_ => Right[ManagementServiceError, Unit](()))
               else
-                Applicative[F].pure(
-                  Left[ManagementServiceError, Unit](
-                    ManagementServiceError(
-                      s"Linking $instanceId1 to $instanceId2 with relationship $linkType: invalid relationship"
-                    )
+                Left[ManagementServiceError, Unit](
+                  ManagementServiceError(
+                    s"Linking $instanceId1 to $instanceId2 with relationship $linkType: invalid relationship"
                   )
-                )
+                ).pure[F]
               end if
             )
             .flatten
         else
           if !exist1
           then
-            Applicative[F].pure(
-              Left[ManagementServiceError, Unit](
-                ManagementServiceError(
-                  s"This instance with id $instanceId1 cannot be linked because does not exist"
-                )
+            Left[ManagementServiceError, Unit](
+              ManagementServiceError(
+                s"This instance with id $instanceId1 cannot be linked because does not exist"
               )
-            )
+            ).pure[F]
           else
             if !exist2
             then
-              Applicative[F].pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"This instance with id $instanceId2 cannot be linked because does not exist"
-                  )
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError(
+                  s"This instance with id $instanceId2 cannot be linked because does not exist"
                 )
-              )
+              ).pure[F]
             else
-              Applicative[F].pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"This instance with id $instanceId1 or $instanceId2 cannot be linked because does not exist"
-                  )
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError(
+                  s"This instance with id $instanceId1 or $instanceId2 cannot be linked because does not exist"
                 )
-              )
+              ).pure[F]
             end if
           end if
       )
@@ -501,30 +479,24 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             .map(_ => Right[ManagementServiceError, Unit](()))
         else
           if !exist1 then
-            Applicative[F].pure(
+            Left[ManagementServiceError, Unit](
+              ManagementServiceError(
+                s"This instance with id $instanceId1 cannot be unlinked because does not exist"
+              )
+            ).pure[F]
+          else
+            if !exist2 then
               Left[ManagementServiceError, Unit](
                 ManagementServiceError(
                   s"This instance with id $instanceId1 cannot be unlinked because does not exist"
                 )
-              )
-            )
-          else
-            if !exist2 then
-              Applicative[F].pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"This instance with id $instanceId1 cannot be unlinked because does not exist"
-                  )
-                )
-              )
+              ).pure[F]
             else
-              Applicative[F].pure(
-                Left[ManagementServiceError, Unit](
-                  ManagementServiceError(
-                    s"This instance with id $instanceId1 or $instanceId2 cannot be unlinked because does not exist"
-                  )
+              Left[ManagementServiceError, Unit](
+                ManagementServiceError(
+                  s"This instance with id $instanceId1 or $instanceId2 cannot be unlinked because does not exist"
                 )
-              )
+              ).pure[F]
             end if
           end if
       )
@@ -565,13 +537,11 @@ class InstanceManagementServiceInterpreter[F[_]: Sync](
             )
             .map(Right[ManagementServiceError, List[String]])
         else
-          Applicative[F].pure(
-            Left[ManagementServiceError, List[String]](
-              ManagementServiceError(
-                s"This instance with id $instanceId does not exist"
-              )
+          Left[ManagementServiceError, List[String]](
+            ManagementServiceError(
+              s"This instance with id $instanceId does not exist"
             )
-          )
+          ).pure[F]
       )
     } yield res).value
   end linked

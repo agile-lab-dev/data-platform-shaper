@@ -7,9 +7,9 @@ import cats.syntax.all.*
 import com.typesafe.scalalogging.StrictLogging
 import fs2.io.readInputStream
 import fs2.{Stream, text}
-import io.circe.{Json, yaml}
 import io.circe.yaml.parser
 import io.circe.yaml.syntax.*
+import io.circe.{Json, yaml}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -91,9 +91,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors) => respond.BadRequest(ValidationError(errors))
         case Right(_)     => respond.Ok("OK")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end createType
 
   private def processBulkTypeRequest(
@@ -163,7 +161,7 @@ class OntologyManagerHandler[F[_]: Async](
         )
     eitherRequest.flatMap {
       case Left(error) =>
-        Applicative[F].pure(respond.BadRequest(ValidationError(Vector(error))))
+        respond.BadRequest(ValidationError(Vector(error))).pure[F]
       case Right(openApiRequest) =>
         processBulkTypeRequest(openApiRequest).map(res => respond.Ok(res))
     }
@@ -182,7 +180,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(successMessage) => respond.Ok(successMessage)
       }
       .onError { t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
+        logger.error(s"Error: ${t.getMessage}").pure[F]
       }
   end deleteType
 
@@ -211,9 +209,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors) => respond.BadRequest(ValidationError(errors))
         case Right(_)     => respond.Ok("OK")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end updateTypeConstraints
 
   override def createTypeByYaml(
@@ -258,9 +254,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
         case Right(_)    => respond.Ok("OK")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end createTypeByYaml
 
   override def updateTypeConstraintsByYaml(
@@ -296,9 +290,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
         case Right(_)    => respond.Ok("OK")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end updateTypeConstraintsByYaml
 
   override def readType(respond: Resource.ReadTypeResponse.type)(
@@ -316,9 +308,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
         case Right(entityType) => respond.Ok(entityType)
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end readType
 
   override def readTypeAsYaml(respond: Resource.ReadTypeAsYamlResponse.type)(
@@ -331,22 +321,18 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(_.errors.head))
       )
       stream <- EitherT(
-        Applicative[F].pure(
-          Right(
-            readInputStream(
-              Applicative[F].pure(
-                ByteArrayInputStream(
-                  OpenApiEntityType
-                    .encodeEntityType(et)
-                    .asYaml
-                    .spaces2
-                    .getBytes("UTF8")
-                )
-              ),
-              128
-            )
+        Right(
+          readInputStream(
+            ByteArrayInputStream(
+              OpenApiEntityType
+                .encodeEntityType(et)
+                .asYaml
+                .spaces2
+                .getBytes("UTF8")
+            ).pure[F],
+            128
           )
-        )
+        ).pure[F]
       )
     } yield stream).value
 
@@ -355,9 +341,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(error)   => respond.BadRequest(ValidationError(Vector(error)))
         case Right(stream) => respond.Ok(stream)
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end readTypeAsYaml
 
   override def createEntity(respond: Resource.CreateEntityResponse.type)(
@@ -371,10 +355,9 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        Applicative[F]
-          .pure(
-            jsonToTuple(body.values, schema).leftMap(l => Vector(l.getMessage))
-          )
+        jsonToTuple(body.values, schema)
+          .leftMap(l => Vector(l.getMessage))
+          .pure[F]
       )
       entityId <- EitherT(
         ims
@@ -389,9 +372,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors)    => respond.BadRequest(ValidationError(errors))
         case Right(entityId) => respond.Ok(entityId)
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end createEntity
 
   override def deleteEntity(
@@ -405,7 +386,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Right(_) => respond.Ok("Entity deleted successfully")
       }
       .onError { t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
+        logger.error(s"Error: ${t.getMessage}").pure[F]
       }
   end deleteEntity
 
@@ -420,10 +401,9 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        Applicative[F]
-          .pure(
-            jsonToTuple(body.values, schema).leftMap(l => Vector(l.getMessage))
-          )
+        jsonToTuple(body.values, schema)
+          .leftMap(l => Vector(l.getMessage))
+          .pure[F]
       )
       entityId <- EitherT(
         ims
@@ -439,9 +419,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors)    => respond.BadRequest(ValidationError(errors))
         case Right(entityId) => respond.Ok(entityId)
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end updateEntity
 
   override def updateEntityByYaml(
@@ -472,8 +450,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(_.errors.head))
       )
       tuple <- EitherT(
-        Applicative[F]
-          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+        jsonToTuple(body.values, schema).leftMap(_.getMessage).pure[F]
       )
       _ <- EitherT(ims.update(id, tuple).map(_.leftMap(_.errors.head)))
     } yield id).value
@@ -483,9 +460,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
         case Right(updatedId) => respond.Ok(updatedId)
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}}").pure[F])
   }
 
   override def createEntityByYaml(
@@ -513,8 +488,7 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(_.errors.head))
       )
       tuple <- EitherT(
-        Applicative[F]
-          .pure(jsonToTuple(body.values, schema).leftMap(_.getMessage))
+        jsonToTuple(body.values, schema).leftMap(_.getMessage).pure[F]
       )
       entityId <- EitherT(
         ims.create(body.entityTypeName, tuple).map(_.leftMap(_.errors.head))
@@ -526,9 +500,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
         case Right(entityId) => respond.Ok(entityId)
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end createEntityByYaml
 
   override def readEntity(respond: Resource.ReadEntityResponse.type)(
@@ -540,12 +512,10 @@ class OntologyManagerHandler[F[_]: Async](
         tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.errors.head))
       )
       values <- EitherT(
-        Applicative[F]
-          .pure(tupleToJson(et.values, schema).leftMap(_.getMessage))
+        tupleToJson(et.values, schema).leftMap(_.getMessage).pure[F]
       )
       oaEntity <- EitherT(
-        Applicative[F]
-          .pure(Right(OpenApiEntity(et.entityId, et.entityTypeName, values)))
+        Right(OpenApiEntity(et.entityId, et.entityTypeName, values)).pure[F]
       )
     } yield oaEntity).value
 
@@ -554,9 +524,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(error) => respond.BadRequest(ValidationError(Vector(error)))
         case Right(oaEntity) => respond.Ok(oaEntity)
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end readEntity
 
   override def readEntityAsYaml(
@@ -568,28 +536,23 @@ class OntologyManagerHandler[F[_]: Async](
         tms.read(et.entityTypeName).map(_.map(_.schema).leftMap(_.errors.head))
       )
       values <- EitherT(
-        Applicative[F]
-          .pure(tupleToJson(et.values, schema).leftMap(_.getMessage))
+        tupleToJson(et.values, schema).leftMap(_.getMessage).pure[F]
       )
       oaEntity <- EitherT(
-        Applicative[F].pure(
-          Right(
-            readInputStream(
-              Applicative[F].pure(
-                ByteArrayInputStream(
-                  OpenApiEntity
-                    .encodeEntity(
-                      OpenApiEntity(et.entityId, et.entityTypeName, values)
-                    )
-                    .asYaml
-                    .spaces2
-                    .getBytes("UTF8")
+        Right(
+          readInputStream(
+            ByteArrayInputStream(
+              OpenApiEntity
+                .encodeEntity(
+                  OpenApiEntity(et.entityId, et.entityTypeName, values)
                 )
-              ),
-              128
-            )
+                .asYaml
+                .spaces2
+                .getBytes("UTF8")
+            ).pure[F],
+            128
           )
-        )
+        ).pure[F]
       )
     } yield oaEntity).value
 
@@ -598,9 +561,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(error)   => respond.BadRequest(ValidationError(Vector(error)))
         case Right(stream) => respond.Ok(stream)
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end readEntityAsYaml
 
   override def createTrait(respond: Resource.CreateTraitResponse.type)(
@@ -672,7 +633,7 @@ class OntologyManagerHandler[F[_]: Async](
 
     eitherRequest.flatMap {
       case Left(error) =>
-        Applicative[F].pure(respond.BadRequest(ValidationError(Vector(error))))
+        respond.BadRequest(ValidationError(Vector(error))).pure[F]
       case Right(openApiRequest) =>
         val request = BulkTraitsCreationRequest(
           openApiRequest.traits
@@ -995,11 +956,9 @@ class OntologyManagerHandler[F[_]: Async](
 
     result.value.flatMap {
       case Right(entityTypes) =>
-        Applicative[F].pure(respond.Ok(entityTypes))
+        respond.Ok(entityTypes).pure[F]
       case Left(error) =>
-        Applicative[F].pure(
-          respond.BadRequest(ValidationError(error.errors.toVector))
-        )
+        respond.BadRequest(ValidationError(error.errors.toVector)).pure[F]
     }
   end listTypes
 
@@ -1012,11 +971,9 @@ class OntologyManagerHandler[F[_]: Async](
 
     result.value.flatMap {
       case Right(traitNames) =>
-        Applicative[F].pure(respond.Ok(traitNames))
+        respond.Ok(traitNames).pure[F]
       case Left(error) =>
-        Applicative[F].pure(
-          respond.BadRequest(ValidationError(error.errors.toVector))
-        )
+        respond.BadRequest(ValidationError(error.errors.toVector)).pure[F]
     }
   end listTraits
 
@@ -1058,21 +1015,20 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.map(t => schemaToMapperSchema(t.schema)))
       )
       res <- EitherT(
-        Applicative[F].pure(
-          tupleToJson(mappingDefinition.mapper, mapperSchema)
-            .leftMap(e => ManagementServiceError(e.getMessage))
-            .map(
-              OpenApiMappingDefinition(
-                OpenApiMappingKey(
-                  mappingDefinition.mappingKey.mappingName,
-                  mappingDefinition.mappingKey.sourceEntityTypeName,
-                  mappingDefinition.mappingKey.targetEntityTypeName
-                ),
-                _,
-                mappingDefinition.additionalSourcesReferences
-              )
+        tupleToJson(mappingDefinition.mapper, mapperSchema)
+          .leftMap(e => ManagementServiceError(e.getMessage))
+          .map(
+            OpenApiMappingDefinition(
+              OpenApiMappingKey(
+                mappingDefinition.mappingKey.mappingName,
+                mappingDefinition.mappingKey.sourceEntityTypeName,
+                mappingDefinition.mappingKey.targetEntityTypeName
+              ),
+              _,
+              mappingDefinition.additionalSourcesReferences
             )
-        )
+          )
+          .pure[F]
       )
     } yield res).value.map {
       case Left(error) =>
@@ -1100,38 +1056,33 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.map(t => schemaToMapperSchema(t.schema)))
       )
       openApiMappingDefinition <- EitherT(
-        Applicative[F].pure(
-          tupleToJson(mappingDefinition.mapper, mapperSchema)
-            .leftMap(e => ManagementServiceError(e.getMessage))
-            .map(
-              OpenApiMappingDefinition(
-                OpenApiMappingKey(
-                  mappingDefinition.mappingKey.mappingName,
-                  mappingDefinition.mappingKey.sourceEntityTypeName,
-                  mappingDefinition.mappingKey.targetEntityTypeName
-                ),
-                _
-              )
-            )
-        )
-      )
-      res <- EitherT(
-        Applicative[F].pure(
-          Right(
-            readInputStream(
-              Applicative[F].pure(
-                ByteArrayInputStream(
-                  OpenApiMappingDefinition
-                    .encodeMappingDefinition(openApiMappingDefinition)
-                    .asYaml
-                    .spaces2
-                    .getBytes("UTF8")
-                )
+        tupleToJson(mappingDefinition.mapper, mapperSchema)
+          .leftMap(e => ManagementServiceError(e.getMessage))
+          .map(
+            OpenApiMappingDefinition(
+              OpenApiMappingKey(
+                mappingDefinition.mappingKey.mappingName,
+                mappingDefinition.mappingKey.sourceEntityTypeName,
+                mappingDefinition.mappingKey.targetEntityTypeName
               ),
-              128
+              _
             )
           )
-        )
+          .pure[F]
+      )
+      res <- EitherT(
+        Right(
+          readInputStream(
+            ByteArrayInputStream(
+              OpenApiMappingDefinition
+                .encodeMappingDefinition(openApiMappingDefinition)
+                .asYaml
+                .spaces2
+                .getBytes("UTF8")
+            ).pure[F],
+            128
+          )
+        ).pure[F]
       )
     } yield res).value map {
       case Left(error) =>
@@ -1155,9 +1106,7 @@ class OntologyManagerHandler[F[_]: Async](
           respond.BadRequest(ValidationError(error.errors.toVector))
         case Right(()) => respond.Ok("Mapping deleted successfully")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end deleteMapping
 
   override def updateMapping(respond: Resource.UpdateMappingResponse.type)(
@@ -1171,12 +1120,9 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        Applicative[F]
-          .pure(
-            jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
-              Vector(l.getMessage)
-            )
-          )
+        jsonToTuple(body.mapper, schemaToMapperSchema(schema))
+          .leftMap(l => Vector(l.getMessage))
+          .pure[F]
       )
       _ <- EitherT.liftF(
         mms.update(
@@ -1194,9 +1140,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors) => respond.BadRequest(ValidationError(errors))
         case Right(())    => respond.Ok("Mapping updated successfully")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end updateMapping
 
   override def createMapping(respond: Resource.CreateMappingResponse.type)(
@@ -1210,12 +1154,9 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        Applicative[F]
-          .pure(
-            jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
-              Vector(l.getMessage)
-            )
-          )
+        jsonToTuple(body.mapper, schemaToMapperSchema(schema))
+          .leftMap(l => Vector(l.getMessage))
+          .pure[F]
       )
       _ <- EitherT(
         mms
@@ -1240,9 +1181,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors) => respond.BadRequest(ValidationError(errors))
         case Right(())    => respond.Ok("Mapping created successfully")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end createMapping
 
   override def createMappingBulk(
@@ -1275,7 +1214,7 @@ class OntologyManagerHandler[F[_]: Async](
 
     eitherRequest.flatMap {
       case Left(error) =>
-        Applicative[F].pure(respond.BadRequest(ValidationError(Vector(error))))
+        respond.BadRequest(ValidationError(Vector(error))).pure[F]
       case Right(openApiRequest) =>
         val createMapRes = bulkMapCreator(openApiRequest)
         createMapRes
@@ -1331,12 +1270,7 @@ class OntologyManagerHandler[F[_]: Async](
                 )
             )
           )
-          .map(
-            _.fold(
-              errors => Applicative[F].pure((md, errors.mkString(","))),
-              identity
-            )
-          )
+          .map(_.fold(errors => (md, errors.mkString(",")).pure[F], identity))
           .flatten
         mappedResult.map(m =>
           OpenApiBulkMappingsCreationResponse.MappingDefinitions(m._1, m._2)
@@ -1372,12 +1306,9 @@ class OntologyManagerHandler[F[_]: Async](
           .map(_.leftMap(l => Vector(l.errors.head)))
       )
       tuple <- EitherT(
-        Applicative[F]
-          .pure(
-            jsonToTuple(body.mapper, schemaToMapperSchema(schema)).leftMap(l =>
-              Vector(l.getMessage)
-            )
-          )
+        jsonToTuple(body.mapper, schemaToMapperSchema(schema))
+          .leftMap(l => Vector(l.getMessage))
+          .pure[F]
       )
       _ <- EitherT(
         mms
@@ -1400,9 +1331,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors) => respond.BadRequest(ValidationError(errors))
         case Right(())    => respond.Ok("Mapping created successfully")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end createMappingByYaml
 
   override def createMappedInstances(
@@ -1416,9 +1345,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors) => respond.BadRequest(ValidationError(errors))
         case Right(())    => respond.Ok("Mapped instances created successfully")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end createMappedInstances
 
   override def updateMappedInstances(
@@ -1432,9 +1359,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors) => respond.BadRequest(ValidationError(errors))
         case Right(())    => respond.Ok("Mapping created successfully")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end updateMappedInstances
 
   override def deleteMappedInstances(
@@ -1448,9 +1373,7 @@ class OntologyManagerHandler[F[_]: Async](
         case Left(errors) => respond.BadRequest(ValidationError(errors))
         case Right(())    => respond.Ok("Mapping deleted successfully")
       }
-      .onError(t =>
-        Applicative[F].pure(logger.error(s"Error: ${t.getMessage}"))
-      )
+      .onError(t => logger.error(s"Error: ${t.getMessage}").pure[F])
   end deleteMappedInstances
 
   @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
@@ -1533,45 +1456,38 @@ class OntologyManagerHandler[F[_]: Async](
                 .create(bulkRequest)
             )
             streamResult <- EitherT(
-              Applicative[F].pure(
-                Right(
-                  readInputStream(
-                    Applicative[F].pure(
-                      ByteArrayInputStream(
-                        OpenApiBulkTraitsCreationResponse
-                          .encodeBulkTraitsCreationResponse(
-                            OpenApiBulkTraitsCreationResponse(
-                              bulkTraitsResponse.traits
-                                .map(t =>
-                                  Traits(
-                                    OpenApiTrait(
-                                      t._1.traitName,
-                                      t._1.inheritsFrom
-                                    ),
-                                    t._2.getOrElse("OK")
-                                  )
-                                )
-                                .toVector,
-                              bulkTraitsResponse.relationships
-                                .map(r =>
-                                  OpenApiBulkTraitsCreationResponse
-                                    .Relationships(
-                                      First(r._1._1, r._1._2: String, r._1._3),
-                                      r._2.getOrElse("OK")
-                                    )
-                                )
-                                .toVector
+              Right(
+                readInputStream(
+                  ByteArrayInputStream(
+                    OpenApiBulkTraitsCreationResponse
+                      .encodeBulkTraitsCreationResponse(
+                        OpenApiBulkTraitsCreationResponse(
+                          bulkTraitsResponse.traits
+                            .map(t =>
+                              Traits(
+                                OpenApiTrait(t._1.traitName, t._1.inheritsFrom),
+                                t._2.getOrElse("OK")
+                              )
                             )
-                          )
-                          .asYaml
-                          .spaces2
-                          .getBytes("UTF8")
+                            .toVector,
+                          bulkTraitsResponse.relationships
+                            .map(r =>
+                              OpenApiBulkTraitsCreationResponse
+                                .Relationships(
+                                  First(r._1._1, r._1._2: String, r._1._3),
+                                  r._2.getOrElse("OK")
+                                )
+                            )
+                            .toVector
+                        )
                       )
-                    ),
-                    128
-                  )
+                      .asYaml
+                      .spaces2
+                      .getBytes("UTF8")
+                  ).pure[F],
+                  128
                 )
-              )
+              ).pure[F]
             )
           } yield streamResult).value
           processTraitsResult
@@ -1586,24 +1502,18 @@ class OntologyManagerHandler[F[_]: Async](
               processBulkTypeRequest(bulkTypeRequest)
             )
             streamResult <- EitherT(
-              Applicative[F].pure(
-                Right(
-                  readInputStream(
-                    Applicative[F].pure(
-                      ByteArrayInputStream(
-                        OpenApiBulkEntityTypesCreationResponse
-                          .encodeBulkEntityTypesCreationResponse(
-                            bulkTypeResponse
-                          )
-                          .asYaml
-                          .spaces2
-                          .getBytes("UTF8")
-                      )
-                    ),
-                    128
-                  )
+              Right(
+                readInputStream(
+                  ByteArrayInputStream(
+                    OpenApiBulkEntityTypesCreationResponse
+                      .encodeBulkEntityTypesCreationResponse(bulkTypeResponse)
+                      .asYaml
+                      .spaces2
+                      .getBytes("UTF8")
+                  ).pure[F],
+                  128
                 )
-              )
+              ).pure[F]
             )
           } yield streamResult).value
           streamTraitsResult
@@ -1622,47 +1532,41 @@ class OntologyManagerHandler[F[_]: Async](
               mappingDefinitionVector
             )
             streamResult <- EitherT(
-              Applicative[F].pure(
-                Right(
-                  readInputStream(
-                    Applicative[F].pure(
-                      ByteArrayInputStream(
-                        OpenApiBulkMappingsCreationResponse
-                          .encodeBulkMappingsCreationResponse(
-                            bulkMappingDefinitionResponse
-                          )
-                          .asYaml
-                          .spaces2
-                          .getBytes("UTF8")
+              Right(
+                readInputStream(
+                  ByteArrayInputStream(
+                    OpenApiBulkMappingsCreationResponse
+                      .encodeBulkMappingsCreationResponse(
+                        bulkMappingDefinitionResponse
                       )
-                    ),
-                    128
-                  )
+                      .asYaml
+                      .spaces2
+                      .getBytes("UTF8")
+                  ).pure[F],
+                  128
                 )
-              )
+              ).pure[F]
             )
           } yield streamResult).value
           streamMappingDefinitionResult
         case _ =>
           val streamUnknown: F[Either[String, Stream[F, Byte]]] =
-            Applicative[F].pure(
-              Right(
-                Stream
-                  .eval(
-                    Applicative[F].pure(
-                      Stream.emits("Unknown file".getBytes) ++ Stream
-                        .emits(json.noSpaces.getBytes)
-                    )
-                  )
-                  .flatten
-              )
-            )
+            Right(
+              Stream
+                .eval(
+                  (
+                    Stream.emits("Unknown file".getBytes) ++ Stream
+                      .emits(json.noSpaces.getBytes)
+                  ).pure[F]
+                )
+                .flatten
+            ).pure[F]
           streamUnknown
       }
     }
     val streamsList = streams.map(_.map {
       case Left(s) =>
-        Stream.eval(Applicative[F].pure(s.getBytes.toSeq)).flatMap(Stream.emits)
+        Stream.eval(s.getBytes.toSeq.pure[F]).flatMap(Stream.emits)
       case Right(s) => s
     })
     val separator: Stream[F, Byte] = Stream.emits("---\n".getBytes)
