@@ -1,0 +1,54 @@
+traits:
+  - name: BulkEverything
+    inheritsFrom: null
+  - name: BulkEverything #This should give an error, and then it should carry on with the next Trait
+    inheritsFrom: null
+  - name: SecondBulkEverything
+    inheritsFrom: null
+relationships:
+  - subject: BulkEverything
+    relationship: hasPart
+    object: SecondBulkEverything
+---
+entityTypes:
+  - name: BulkEverythingEntityType
+    traits: [BulkEverything, MappingSource]
+    schema:
+      - name: name
+        typeName: String
+        mode: Required
+      - name: surname
+        typeName: String
+        mode: Required
+    fatherName: null
+  - name: BulkEverythingEntityType #This should give an error, and then it should carry on with the next EntityType
+    traits: [BulkEverything, MappingSource]
+    schema:
+      - name: name
+        typeName: String
+        mode: Required
+      - name: surname
+        typeName: String
+        mode: Required
+    fatherName: null
+  - name: SecondBulkEverythingEntityType
+    traits: [SecondBulkEverything, MappingTarget]
+    schema:
+      - name: name
+        typeName: String
+        mode: Required
+      - name: surname
+        typeName: String
+        mode: Required
+    fatherName: null
+---
+mappingDefinitions:
+  - mappingKey:
+      mappingName: "BulkEverythingMapping"
+      sourceEntityTypeName: "BulkEverythingEntityType"
+      targetEntityTypeName: "SecondBulkEverythingEntityType"
+    mapper:
+      name: "source.get('name')"
+      surname: "source.get('surname')"
+    additionalSourcesReferences:
+      {}

@@ -1,0 +1,90 @@
+#Traits definitions together with their relationships
+traits:
+  - name: DataProduct
+    inheritsFrom: null
+  - name: OutputPort
+    inheritsFrom: null
+  - name: FileBasedOutputPort
+    inheritsFrom: OutputPort
+  - name: TableBasedOutputPort
+    inheritsFrom: OutputPort
+relationships:
+  - subject: DataProduct
+    relationship: hasPart
+    object: OutputPort
+  - subject: TableBasedOutputPort
+    relationship: dependsOn
+    object: FileBasedOutputPort
+
+---
+
+#All the needed types
+entityTypes:
+  - name: DataProductType
+    traits: [DataProduct]
+    schema:
+      - name: name
+        typeName: String
+        mode: Required
+      - name: domain
+        typeName: String
+        mode: Required
+    fatherName: null
+  - name: FileBasedOutputPortType
+    traits: [FileBasedOutputPort, MappingSource]
+    schema:
+      - name: name
+        typeName: String
+        mode: Required
+    fatherName: null
+  - name: TableBasedOutputPortType
+    traits: [TableBasedOutputPort, MappingSource]
+    schema:
+      - name: name
+        typeName: String
+        mode: Required
+    fatherName: null
+  - name: S3FolderType
+    traits: [MappingTarget]
+    schema:
+      - name: path
+        typeName: String
+        mode: Required
+    fatherName: null
+  - name: AthenaTableType
+    traits: [MappingTarget]
+    schema:
+      - name: dataPath
+        typeName: String
+        mode: Required
+      - name: database
+        typeName: String
+        mode: Required
+      - name: table
+        typeName: String
+        mode: Required
+    fatherName: null
+
+---
+
+#Mappings between the "logical" types and the "physical" types
+mappingDefinitions:
+  - mappingKey:
+      mappingName: "fileBasedMapping"
+      sourceEntityTypeName: "FileBasedOutputPortType"
+      targetEntityTypeName: "S3FolderType"
+    mapper: 
+      path: "dataproduct.get('domain') += '/' += dataproduct.get('name')"
+    additionalSourcesReferences:
+      dataproduct: "source/partOf/DataProductType"
+  - mappingKey:
+      mappingName: "tableBasedMapping"
+      sourceEntityTypeName: "TableBasedOutputPortType"
+      targetEntityTypeName: "AthenaTableType"
+    mapper: 
+      table: "source.get('name')"
+      database: "dataproduct.get('domain') += '.' += dataproduct.get('name')"
+      dataPath: "s3folder.get('path')"
+    additionalSourcesReferences:
+      dataproduct: "source/partOf/DataProductType"
+      s3folder: "source/dependsOn/FileBasedOutputPortType/mappedTo/S3FolderType"

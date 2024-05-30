@@ -1,27 +1,10 @@
 #!/bin/bash
 
 curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/trait/bulk/yaml' \
-  -H 'accept: application/json' \
+  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/bulkCreation/yaml' \
+  -H 'accept: application/octet-stream' \
   -H 'Content-Type: application/octet-stream' \
-  --data-binary '@TraitsAndRelationships.yaml'
-
-  echo ""
-
-
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/entity-type/bulk/yaml' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@EntityTypes.yaml'
-
-echo ""
-
-curl -X 'POST' \
-  'http://127.0.0.1:8093/dataplatform.shaper.uservice/0.0/ontology/mapping/bulk/yaml' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/octet-stream' \
-  --data-binary '@Mappings.yaml'
+  --data-binary '@DataPlatformShape.yaml'
 
 echo ""
 
