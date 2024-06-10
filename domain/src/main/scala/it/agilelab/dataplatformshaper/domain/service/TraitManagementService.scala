@@ -8,7 +8,7 @@ import it.agilelab.dataplatformshaper.domain.model.{
 }
 
 trait TraitManagementService[F[_]]:
-  
+
   def create(traitDefinition: Trait): F[Either[ManagementServiceError, Unit]]
 
   def create(

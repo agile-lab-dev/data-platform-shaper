@@ -3,7 +3,7 @@ package it.agilelab.dataplatformshaper.domain.service
 import it.agilelab.dataplatformshaper.domain.model.EntityType
 
 trait TypeManagementService[F[_]]:
-  
+
   def create(entityType: EntityType): F[Either[ManagementServiceError, Unit]]
 
   def create(

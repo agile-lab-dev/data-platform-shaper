@@ -9,13 +9,28 @@ import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
 import it.agilelab.dataplatformshaper.domain.model.Relationship.mappedTo
-import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{
+  MappingDefinition,
+  MappingKey
+}
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
-import it.agilelab.dataplatformshaper.domain.model.schema.{DataType, Schema, cueValidate, schemaToMapperSchema, unfoldTuple}
-import it.agilelab.dataplatformshaper.domain.model.{Entity, EntityType, NS, Relationship, given}
+import it.agilelab.dataplatformshaper.domain.model.schema.{
+  DataType,
+  Schema,
+  cueValidate,
+  schemaToMapperSchema,
+  unfoldTuple
+}
+import it.agilelab.dataplatformshaper.domain.model.{
+  Entity,
+  EntityType,
+  NS,
+  Relationship,
+  given
+}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import org.eclipse.rdf4j.model.util.Statements.statement

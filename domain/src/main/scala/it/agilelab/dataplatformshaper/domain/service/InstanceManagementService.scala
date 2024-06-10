@@ -5,7 +5,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.SearchPredicate
 
 trait InstanceManagementService[F[_]]:
 
-  //val repository: KnowledgeGraph[F]
+  // val repository: KnowledgeGraph[F]
 
   def create(
     instanceTypeName: String,

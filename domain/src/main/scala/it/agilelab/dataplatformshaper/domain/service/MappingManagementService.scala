@@ -7,7 +7,7 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
 import it.agilelab.dataplatformshaper.domain.model.{Entity, EntityType}
 
 trait MappingManagementService[F[_]]:
-  
+
   def create(
     mappingDefinition: MappingDefinition
   ): F[Either[ManagementServiceError, Unit]]
