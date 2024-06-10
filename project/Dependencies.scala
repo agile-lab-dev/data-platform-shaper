@@ -9,6 +9,21 @@ object Dependencies {
     lazy val queryAlgebra = namespace % "rdf4j-queryalgebra-evaluation" % rdf4jVersion
   }
 
+  private[this] object flyway {
+    lazy val namespace  = "org.flywaydb"
+    lazy val postgresql = namespace % "flyway-database-postgresql" % flywayVersion
+  }
+
+  private[this] object fly4s {
+    lazy val namespace  = "com.github.geirolz"
+    lazy val postgresql = namespace %% "fly4s-core" % fly4sVersion
+  }
+
+  private[this] object postgresql {
+    lazy val namespace = "org.postgresql"
+    lazy val jdbc      = namespace % "postgresql" % postgresqlVersion
+  }
+
   private[this] object virtuoso {
     lazy val namespace   = "com.openlinksw"
     lazy val rdf4jDriver = namespace % "virt_rdf4j_v4_0" % virtuosoRDF4JVersion
@@ -84,7 +99,8 @@ object Dependencies {
 
     lazy val overrides: Seq[ModuleID] = Seq(
       "org.slf4j" % "jcl-over-slf4j" % "2.0.9",
-      "org.slf4j" % "slf4j-api" % "2.0.9"
+      "org.slf4j" % "slf4j-api" % "2.0.9",
+      cats.core
     )
 
     lazy val domain: Seq[ModuleID] = Seq(
@@ -92,6 +108,9 @@ object Dependencies {
       rdf4j.queryAlgebra           % Compile,
       virtuoso.rdf4jDriver         % Compile,
       virtuoso.jdbcDriver          % Compile,
+      flyway.postgresql            % Compile,
+      fly4s.postgresql          % Compile,
+      postgresql.jdbc              % Compile,
       cats.core                    % Compile,
       cats.effect                  % Compile,
       cats.loggingCore             % Compile,
