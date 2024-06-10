@@ -1,4 +1,4 @@
-package it.agilelab.dataplatformshaper.domain.service.interpreter
+package it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j
 
 import cats.data.EitherT
 import cats.effect.Sync
@@ -8,10 +8,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS.{L1, ns}
 import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{
-  ManagementServiceError,
-  TraitManagementService
-}
+import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, TraitManagementService}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, triple}

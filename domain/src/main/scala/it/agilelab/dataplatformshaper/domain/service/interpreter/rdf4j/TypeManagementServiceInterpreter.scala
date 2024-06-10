@@ -1,4 +1,4 @@
-package it.agilelab.dataplatformshaper.domain.service.interpreter
+package it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j
 
 import cats.*
 import cats.data.*
@@ -12,11 +12,7 @@ import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.service.{
-  ManagementServiceError,
-  TraitManagementService,
-  TypeManagementService
-}
+import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, TraitManagementService, TypeManagementService}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.{OWL, RDF, RDFS}

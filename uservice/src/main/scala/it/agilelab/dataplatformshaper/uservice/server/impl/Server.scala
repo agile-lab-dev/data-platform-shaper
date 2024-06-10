@@ -11,7 +11,7 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
   Session
 }
 import it.agilelab.dataplatformshaper.domain.model.EntityType
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
   InstanceManagementServiceInterpreter,
   MappingManagementServiceInterpreter,
   TraitManagementServiceInterpreter,

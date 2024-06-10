@@ -14,7 +14,7 @@ import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.interpreter.{
+import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
   InstanceManagementServiceInterpreter,
   TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter

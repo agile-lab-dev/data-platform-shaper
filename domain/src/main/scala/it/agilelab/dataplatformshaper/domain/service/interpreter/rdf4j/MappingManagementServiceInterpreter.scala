@@ -1,4 +1,4 @@
-package it.agilelab.dataplatformshaper.domain.service.interpreter
+package it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j
 
 import cats.*
 import cats.data.*
@@ -7,24 +7,11 @@ import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
-import it.agilelab.dataplatformshaper.domain.model.mapping.{
-  MappingDefinition,
-  MappingKey
-}
-import it.agilelab.dataplatformshaper.domain.model.schema.{
-  getPathQuery,
-  schemaToMapperSchema,
-  tupleToMappedTuple,
-  validateMappingTuple
-}
+import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, MappingKey}
+import it.agilelab.dataplatformshaper.domain.model.schema.{getPathQuery, schemaToMapperSchema, tupleToMappedTuple, validateMappingTuple}
 import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{
-  InstanceManagementService,
-  ManagementServiceError,
-  MappingManagementService,
-  TypeManagementService
-}
+import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, MappingManagementService, TypeManagementService}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
