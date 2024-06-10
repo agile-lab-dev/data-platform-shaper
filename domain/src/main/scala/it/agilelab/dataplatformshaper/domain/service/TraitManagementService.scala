@@ -1,6 +1,5 @@
 package it.agilelab.dataplatformshaper.domain.service
 
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.{
   BulkTraitsCreationRequest,
   BulkTraitsCreationResponse,
@@ -9,9 +8,7 @@ import it.agilelab.dataplatformshaper.domain.model.{
 }
 
 trait TraitManagementService[F[_]]:
-
-  val repository: KnowledgeGraph[F]
-
+  
   def create(traitDefinition: Trait): F[Either[ManagementServiceError, Unit]]
 
   def create(

@@ -1,6 +1,5 @@
 package it.agilelab.dataplatformshaper.domain.service
 
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,
   MappingKey
@@ -8,9 +7,7 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
 import it.agilelab.dataplatformshaper.domain.model.{Entity, EntityType}
 
 trait MappingManagementService[F[_]]:
-
-  val repository: KnowledgeGraph[F]
-
+  
   def create(
     mappingDefinition: MappingDefinition
   ): F[Either[ManagementServiceError, Unit]]

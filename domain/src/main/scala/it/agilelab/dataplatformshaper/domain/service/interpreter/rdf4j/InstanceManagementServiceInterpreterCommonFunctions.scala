@@ -17,7 +17,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase.*
 import it.agilelab.dataplatformshaper.domain.model.schema.{DataType, Schema, cueValidate, schemaToMapperSchema, unfoldTuple}
 import it.agilelab.dataplatformshaper.domain.model.{Entity, EntityType, NS, Relationship, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.RDF
@@ -36,7 +36,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
   def createInstanceNoCheck(
     logger: Logger[F],
-    typeManagementService: TypeManagementService[F],
+    typeManagementService: TypeManagementServiceInterpreter[F],
     entityId: String,
     instanceTypeName: String,
     tuple: Tuple,
@@ -617,8 +617,8 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   @SuppressWarnings(Array("scalafix:DisableSyntax.=="))
   def updateInstanceNoCheck(
     logger: Logger[F],
-    typeManagementService: TypeManagementService[F],
-    instanceManagementService: InstanceManagementService[F],
+    typeManagementService: TypeManagementServiceInterpreter[F],
+    instanceManagementService: InstanceManagementServiceInterpreter[F],
     instanceId: String,
     values: Tuple
   ): F[Either[ManagementServiceError, String]] =
@@ -679,7 +679,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
   def getMappingsForEntityType(
     logger: Logger[F],
-    typeManagementService: TypeManagementService[F],
+    typeManagementService: TypeManagementServiceInterpreter[F],
     sourceEntityTypeName: String
   ): F[Either[ManagementServiceError, List[
     (String, EntityType, EntityType, Tuple, String)
@@ -760,7 +760,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
   def getMappedInstancesReferenceExpressions(
     logger: Logger[F],
-    typeManagementService: TypeManagementService[F],
+    typeManagementService: TypeManagementServiceInterpreter[F],
     mappingName: String,
     sourceEntityTypeName: String
   ): F[Map[String, String]] =
@@ -874,7 +874,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     logger: Logger[F],
     repository: KnowledgeGraph[F],
     entityTypeName: String,
-    typeManagementService: TypeManagementService[F]
+    typeManagementService: TypeManagementServiceInterpreter[F]
   ): F[Either[ManagementServiceError, Unit]] =
     val stack = scala.collection.mutable.Stack(entityTypeName)
 
@@ -939,7 +939,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
   def deleteMappedInstances(
     logger: Logger[F],
     repository: KnowledgeGraph[F],
-    typeManagementService: TypeManagementService[F],
+    typeManagementService: TypeManagementServiceInterpreter[F],
     mappingDefinition: MappingDefinition,
     mapperId: String
   ): F[Either[ManagementServiceError, Unit]] =
@@ -1000,8 +1000,8 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
   def getMappingsForEntity(
     logger: Logger[F],
-    typeManagementService: TypeManagementService[F],
-    instanceManagementService: InstanceManagementService[F],
+    typeManagementService: TypeManagementServiceInterpreter[F],
+    instanceManagementService: InstanceManagementServiceInterpreter[F],
     sourceEntityId: String
   ): F[Either[ManagementServiceError, List[
     (EntityType, Entity, EntityType, Entity, Tuple, String)

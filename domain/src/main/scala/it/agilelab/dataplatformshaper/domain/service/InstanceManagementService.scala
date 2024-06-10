@@ -1,12 +1,11 @@
 package it.agilelab.dataplatformshaper.domain.service
 
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.{Entity, Relationship}
 import it.agilelab.dataplatformshaper.domain.model.schema.SearchPredicate
 
 trait InstanceManagementService[F[_]]:
 
-  val repository: KnowledgeGraph[F]
+  //val repository: KnowledgeGraph[F]
 
   def create(
     instanceTypeName: String,

@@ -10,7 +10,7 @@ import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, triple}
@@ -21,7 +21,7 @@ import java.util.UUID
 import scala.language.{implicitConversions, postfixOps}
 
 class InstanceManagementServiceInterpreter[F[_]: Sync](
-  typeManagementService: TypeManagementService[F]
+  typeManagementService: TypeManagementServiceInterpreter[F]
 ) extends InstanceManagementService[F]
     with InstanceManagementServiceInterpreterCommonFunctions[F]:
 

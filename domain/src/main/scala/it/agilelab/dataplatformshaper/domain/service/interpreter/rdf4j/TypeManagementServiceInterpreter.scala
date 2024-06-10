@@ -12,7 +12,7 @@ import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.NS.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, TraitManagementService, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, TypeManagementService}
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
 import org.eclipse.rdf4j.model.vocabulary.{OWL, RDF, RDFS}
@@ -24,7 +24,7 @@ import java.util.UUID
 import scala.language.{implicitConversions, postfixOps}
 
 class TypeManagementServiceInterpreter[F[_]: Sync](
-  traitManagementService: TraitManagementService[F]
+  traitManagementService: TraitManagementServiceInterpreter[F]
 )(using cache: Cache[F, String, EntityType])
     extends TypeManagementService[F]:
 

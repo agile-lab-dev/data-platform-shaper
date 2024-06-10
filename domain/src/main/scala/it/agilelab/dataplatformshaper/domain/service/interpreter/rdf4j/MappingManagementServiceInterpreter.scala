@@ -11,7 +11,7 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{MappingDefinition, M
 import it.agilelab.dataplatformshaper.domain.model.schema.{getPathQuery, schemaToMapperSchema, tupleToMappedTuple, validateMappingTuple}
 import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.{InstanceManagementService, ManagementServiceError, MappingManagementService, TypeManagementService}
+import it.agilelab.dataplatformshaper.domain.service.{ManagementServiceError, MappingManagementService}
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.util.Statements.statement
 import org.eclipse.rdf4j.model.util.Values.{iri, literal, triple}
@@ -23,8 +23,8 @@ import scala.collection.mutable
 import scala.util.Try
 
 class MappingManagementServiceInterpreter[F[_]: Sync](
-  typeManagementService: TypeManagementService[F],
-  instanceManagementService: InstanceManagementService[F]
+  typeManagementService: TypeManagementServiceInterpreter[F],
+  instanceManagementService: InstanceManagementServiceInterpreter[F]
 ) extends MappingManagementService[F]
     with InstanceManagementServiceInterpreterCommonFunctions[F]:
 
@@ -354,9 +354,9 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         EitherT(
           instanceManagementService.list(
             instanceTypeName = root,
-            predicate = "",
+            query = "",
             returnEntities = false,
-            limit = None
+            limit = None : Option[Int]
           )
         ).map(_.collect { case s: String => s })
       }
