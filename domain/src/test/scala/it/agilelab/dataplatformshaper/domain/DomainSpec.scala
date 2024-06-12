@@ -5,11 +5,9 @@ import cats.data.EitherT
 import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
@@ -93,7 +91,7 @@ class DomainSpec extends CommonSpec:
 
   "Counting initial statements" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -122,7 +120,7 @@ class DomainSpec extends CommonSpec:
 
   "Creating various types of statements" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -183,7 +181,7 @@ class DomainSpec extends CommonSpec:
 
   "Deleting various types of statements" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -247,7 +245,7 @@ class DomainSpec extends CommonSpec:
 
   "Counting final statements" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,

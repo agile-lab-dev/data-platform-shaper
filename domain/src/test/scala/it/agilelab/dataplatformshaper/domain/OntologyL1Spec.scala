@@ -4,10 +4,8 @@ import cats.data.EitherT
 import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.schema.*
@@ -36,7 +34,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Checking the existence of a non existing Trait" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -55,7 +53,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Creating a trait" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -77,7 +75,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Bulk creation of traits and their relationships" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -108,7 +106,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Bulk creation of traits and their relationships with a wrong request" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -139,7 +137,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Creating a trait with a missing father" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -162,7 +160,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Listing all traits" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -190,7 +188,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Deleting a trait" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -213,7 +211,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Deleting a trait with existing links" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -242,7 +240,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Deleting a trait while an entity has it" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -278,7 +276,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Deleting a trait while another trait is its subClass" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -308,7 +306,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Linking a trait to another trait" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -338,7 +336,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Link with relationship hasPart different instances of entity types" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -391,7 +389,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Deleting an instance with linked instances should trigger an error" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -427,7 +425,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Unlinking two traits that have associated linked instances should trigger an error" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -451,7 +449,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Link with relationship hasPart two instances and one of them is not related to the proper trait" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -489,7 +487,7 @@ class OntologyL1Spec extends CommonSpec:
 
   "Link with relationship hasPart when traits are inherited" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,

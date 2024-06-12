@@ -3,10 +3,9 @@ import cats.effect.std.Random
 import cats.effect.{ExitCode, IO, IOApp}
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.common.db.Session
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.uservice.system.ApplicationConfiguration.*
 import org.http4s.ember.client.EmberClientBuilder
@@ -25,7 +24,7 @@ object Main extends IOApp:
       ) // TODO magic number
     val server = for {
       _ <- createRepository
-      session = Session.getSession(
+      session = Rdf4jSession.getSession(
         graphdbType,
         graphdbHost,
         graphdbPort,

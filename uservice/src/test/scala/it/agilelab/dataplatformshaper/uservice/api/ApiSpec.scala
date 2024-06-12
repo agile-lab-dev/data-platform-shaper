@@ -9,10 +9,8 @@ import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.*
 import io.circe.parser.*
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.uservice.definitions.Mode.members.Required
 import it.agilelab.dataplatformshaper.uservice.{
@@ -152,7 +150,7 @@ class ApiSpec
   end createRepository
 
   def loadBaseOntologies(): Unit =
-    val session = Session[IO](
+    val session = Rdf4jSession[IO](
       graphdbType,
       "localhost",
       7202,
@@ -170,7 +168,7 @@ class ApiSpec
   end loadBaseOntologies
 
   def createServer(): FiberIO[Nothing] =
-    val session = Session.getSession(
+    val session = Rdf4jSession.getSession(
       graphdbType,
       "localhost",
       7202,

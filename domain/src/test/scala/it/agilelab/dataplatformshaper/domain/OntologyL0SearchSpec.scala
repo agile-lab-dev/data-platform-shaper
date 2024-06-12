@@ -4,10 +4,8 @@ import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.parser.parse
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
@@ -306,7 +304,7 @@ class OntologyL0SearchSpec extends CommonSpec:
 
   "Creating an EntityType instance" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -340,7 +338,7 @@ class OntologyL0SearchSpec extends CommonSpec:
 
   "Creating an instance for an EntityType" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -364,7 +362,7 @@ class OntologyL0SearchSpec extends CommonSpec:
 
   "Searching an instance for an EntityType" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,

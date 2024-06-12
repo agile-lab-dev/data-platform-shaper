@@ -6,10 +6,8 @@ import cats.implicits.*
 import com.comcast.ip4s.{Port, ipv4}
 import fs2.io.net.Network
 import io.chrisdavenport.mules.Cache
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.common.db.Session
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
   InstanceManagementServiceInterpreter,

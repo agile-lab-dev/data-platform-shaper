@@ -4,10 +4,8 @@ import cats.data.EitherT
 import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.NS.{
   ENTITY,
@@ -349,7 +347,7 @@ class MappingSpec extends CommonSpec:
 
   "Creating mapping instances" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -431,7 +429,7 @@ class MappingSpec extends CommonSpec:
 
   "Automatic creation and updates of instances driven by the mappings" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -545,7 +543,7 @@ class MappingSpec extends CommonSpec:
 
   "Trying to read, update, delete a mapping target" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -648,7 +646,7 @@ class MappingSpec extends CommonSpec:
 
   "Automatic deletion of instances driven by the mappings" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -718,7 +716,7 @@ class MappingSpec extends CommonSpec:
 
   "Creating a Mapping instance with the same name" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -758,7 +756,7 @@ class MappingSpec extends CommonSpec:
 
   "Creating a mapping cycle" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -835,7 +833,7 @@ class MappingSpec extends CommonSpec:
 
   "Creating a mapping between two EntityTypes which do not have the proper traits" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -885,7 +883,7 @@ class MappingSpec extends CommonSpec:
 
   "Trying to update a mapping target" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -954,7 +952,7 @@ class MappingSpec extends CommonSpec:
 
   "Creating an instance for an EntityType which is a MappingTarget" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -992,7 +990,7 @@ class MappingSpec extends CommonSpec:
 
   "Reading a mapping" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1039,7 +1037,7 @@ class MappingSpec extends CommonSpec:
 
   "Updating a mapping" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1103,7 +1101,7 @@ class MappingSpec extends CommonSpec:
 
   "Deleting a mapping" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1166,7 +1164,7 @@ class MappingSpec extends CommonSpec:
 
   "Creating the mapped instances more than once" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1218,7 +1216,7 @@ class MappingSpec extends CommonSpec:
 
   "Checking if the creation of mapped instances is idempotent" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1309,7 +1307,7 @@ class MappingSpec extends CommonSpec:
   }
   "Creating a mapping between two EntityTypes with a repeated attribute" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1395,7 +1393,7 @@ class MappingSpec extends CommonSpec:
 
   "Creating a mapping between two EntityTypes with a nullable attribute" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1467,7 +1465,7 @@ class MappingSpec extends CommonSpec:
 
   "Injecting additional references in mapping" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1573,7 +1571,7 @@ class MappingSpec extends CommonSpec:
 
   "Injecting additional source references when there are multiple instances" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1681,7 +1679,7 @@ class MappingSpec extends CommonSpec:
 
   "Injecting additional source references using the mapping name in the path" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1814,7 +1812,7 @@ class MappingSpec extends CommonSpec:
 
   "Injecting additional source references using the partOf relationship" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1913,7 +1911,7 @@ class MappingSpec extends CommonSpec:
 
   "Updating mapped instances with additional references" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -2029,7 +2027,7 @@ class MappingSpec extends CommonSpec:
 
   "Reading a mapping definition after injecting additional references" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -2099,7 +2097,7 @@ class MappingSpec extends CommonSpec:
 
   "Injecting additional source references with a wrong path" - {
     "fails" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -2153,7 +2151,7 @@ class MappingSpec extends CommonSpec:
 
   "Checking if the deletion of mapped instances is idempotent" - {
     "works" in {
-      val session = Session[IO](
+      val session = Rdf4jSession[IO](
         graphdbType,
         "localhost",
         7201,

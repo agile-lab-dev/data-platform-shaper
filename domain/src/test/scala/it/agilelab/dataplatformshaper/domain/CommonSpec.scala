@@ -4,10 +4,8 @@ import cats.effect.IO
 import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
-  Rdf4jKnowledgeGraph,
-  Session
-}
+import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
@@ -50,6 +48,14 @@ class CommonSpec
             "0.0.0.0:" + 8890 + ":" + 8890
           ).asJava
         )
+        container
+      case "jdbc" =>
+        val container = GenericContainer("postgres:latest")
+        container.withEnv("POSTGRES_USER", "postgres")
+        container.withEnv("POSTGRES_PASSWORD", "mysecret")
+        container.withEnv("POSTGRES_DB", "testdb")
+        container.addExposedPort(5432)
+        container.setPortBindings(List("0.0.0.0:" + 5432 + ":" + 5432).asJava)
         container
     end match
 
@@ -109,7 +115,7 @@ class CommonSpec
   end createRepository
 
   def loadBaseOntologies(): Unit =
-    val session = Session[IO](
+    val session = Rdf4jSession[IO](
       graphdbType,
       "localhost",
       7201,

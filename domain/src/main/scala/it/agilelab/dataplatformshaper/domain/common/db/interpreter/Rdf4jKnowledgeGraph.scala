@@ -1,9 +1,8 @@
-package it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter
+package it.agilelab.dataplatformshaper.domain.common.db.interpreter
 
 import cats.effect.Sync
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS.{L0, ns}
-import it.agilelab.dataplatformshaper.domain.common.db.Session
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.model.{Resource, Statement}
 import org.eclipse.rdf4j.query.BindingSet
@@ -11,7 +10,7 @@ import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 
 import scala.jdk.CollectionConverters.*
 
-class Rdf4jKnowledgeGraph[F[_]: Sync](session: Session)
+class Rdf4jKnowledgeGraph[F[_]: Sync](session: Rdf4jSession)
     extends KnowledgeGraph[F]:
 
   override def removeAndInsertStatements(
