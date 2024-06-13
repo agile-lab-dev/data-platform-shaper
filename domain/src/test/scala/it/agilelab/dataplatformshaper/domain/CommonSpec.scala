@@ -1,11 +1,17 @@
 package it.agilelab.dataplatformshaper.domain
 
-import cats.effect.IO
+import cats.effect.{IO, Sync}
 import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
+import it.agilelab.dataplatformshaper.domain.common.db.{Repository, Session}
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
-import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
+  JdbcRepository,
+  JdbcSession,
+  Rdf4jRepository,
+  Rdf4jSession
+}
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
@@ -73,6 +79,12 @@ class CommonSpec
     // Thread.sleep(10000000)
     graphdbContainer.stop()
   end afterAll
+
+  def getRepository[F[_]: Sync](session: Session): Repository[F] =
+    session match
+      case session: JdbcSession  => JdbcRepository[F](session)
+      case session: Rdf4jSession => Rdf4jRepository[F](session)
+  end getRepository
 
   private def createRepository(port: Int): Unit =
     val multiparts = Random

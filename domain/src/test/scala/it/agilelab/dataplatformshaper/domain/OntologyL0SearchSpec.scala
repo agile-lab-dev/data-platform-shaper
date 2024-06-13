@@ -4,11 +4,11 @@ import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.parser.parse
+import it.agilelab.dataplatformshaper.domain.common.db.Repository
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
-import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
+import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
   InstanceManagementServiceInterpreter,
@@ -314,8 +314,7 @@ class OntologyL0SearchSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository: Rdf4jKnowledgeGraph[IO] =
-          Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
         val entityType = EntityType(
@@ -348,7 +347,7 @@ class OntologyL0SearchSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
@@ -372,7 +371,7 @@ class OntologyL0SearchSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)

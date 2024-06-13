@@ -4,8 +4,8 @@ import cats.data.EitherT
 import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
+import it.agilelab.dataplatformshaper.domain.common.db.Repository
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.schema.*
@@ -44,7 +44,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         trms.exist("NonExistentTrait")
       } asserting (res => res should be(Right(false)))
@@ -63,7 +63,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
           _ <- EitherT(trms.create(Trait("ANewTrait", None)))
@@ -85,7 +85,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
 
         val request = BulkTraitsCreationRequest(
@@ -116,7 +116,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
 
         val request = BulkTraitsCreationRequest(
@@ -147,7 +147,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
           _ <- EitherT(
@@ -170,7 +170,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
           _ <- EitherT(trms.create(Trait("ListTrait1", None)))
@@ -198,7 +198,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
           _ <- EitherT(trms.create(Trait("DeleteTrait", None)))
@@ -221,7 +221,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
           _ <- EitherT(trms.create(Trait("LinkTrait1", None)))
@@ -257,7 +257,7 @@ class OntologyL1Spec extends CommonSpec:
         EntityType("ExampleEntityType", Set("ExampleTrait"), exampleSchema)
 
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trms)
         (for {
@@ -287,7 +287,7 @@ class OntologyL1Spec extends CommonSpec:
       )
 
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
           _ <- EitherT(trms.create(Trait("FatherExampleTrait", None)))
@@ -316,7 +316,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trms = TraitManagementServiceInterpreter[IO](repository)
         (for {
           _ <- EitherT(trms.create(Trait("DataProductComponent", None)))
@@ -346,7 +346,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
@@ -399,7 +399,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
@@ -435,7 +435,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         trservice.unlink("DataProduct", Relationship.hasPart, "OutputPort")
       } asserting (res =>
@@ -459,7 +459,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trservice)
         val ims = InstanceManagementServiceInterpreter[IO](tms)
@@ -497,7 +497,7 @@ class OntologyL1Spec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trs = TraitManagementServiceInterpreter[IO](repository)
         val tms = TypeManagementServiceInterpreter[IO](trs)
         val ims = InstanceManagementServiceInterpreter[IO](tms)

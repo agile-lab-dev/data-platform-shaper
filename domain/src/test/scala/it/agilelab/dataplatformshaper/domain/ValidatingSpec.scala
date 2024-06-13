@@ -6,8 +6,8 @@ import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.*
 import io.circe.parser.*
+import it.agilelab.dataplatformshaper.domain.common.db.Repository
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.JsonType
@@ -378,8 +378,7 @@ class ValidatingSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository: Rdf4jKnowledgeGraph[IO] =
-          Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
         val entityType = EntityType("ValidationDataCollectionType", schema)
@@ -403,7 +402,7 @@ class ValidatingSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
@@ -424,7 +423,7 @@ class ValidatingSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
@@ -447,7 +446,7 @@ class ValidatingSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
@@ -489,7 +488,7 @@ class ValidatingSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
@@ -529,8 +528,7 @@ class ValidatingSpec extends CommonSpec:
       val updatedEntityType =
         EntityType("UpdateDataCollectionType", schemaAfterUpdate)
       session.use { session =>
-        val repository: Rdf4jKnowledgeGraph[IO] =
-          Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 
@@ -562,8 +560,7 @@ class ValidatingSpec extends CommonSpec:
       val updatedEntityType =
         EntityType("UpdateDataCollectionType", wrongSchemaAfterUpdate)
       session.use { session =>
-        val repository: Rdf4jKnowledgeGraph[IO] =
-          Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 
@@ -598,8 +595,7 @@ class ValidatingSpec extends CommonSpec:
         StructType(List("anInt" -> IntType(constraints = Some("< NOTANUMBER"))))
       )
       session.use { session =>
-        val repository: Rdf4jKnowledgeGraph[IO] =
-          Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 
@@ -637,8 +633,7 @@ class ValidatingSpec extends CommonSpec:
       )
 
       session.use { session =>
-        val repository: Rdf4jKnowledgeGraph[IO] =
-          Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val service = TypeManagementServiceInterpreter[IO](trservice)
 

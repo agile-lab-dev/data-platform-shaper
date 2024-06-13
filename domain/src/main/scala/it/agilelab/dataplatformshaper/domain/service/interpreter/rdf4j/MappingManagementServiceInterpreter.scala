@@ -5,7 +5,7 @@ import cats.data.*
 import cats.effect.*
 import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.common.db.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.NS.{L2, ns}
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingDefinition,

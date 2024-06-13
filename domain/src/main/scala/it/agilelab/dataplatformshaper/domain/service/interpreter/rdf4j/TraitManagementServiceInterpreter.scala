@@ -4,7 +4,10 @@ import cats.data.EitherT
 import cats.effect.Sync
 import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.common.db.{
+  KnowledgeGraph,
+  Repository
+}
 import it.agilelab.dataplatformshaper.domain.model.NS.{L1, ns}
 import it.agilelab.dataplatformshaper.domain.model.{*, given}
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
@@ -20,8 +23,13 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 class TraitManagementServiceInterpreter[F[_]: Sync](
-  val repository: KnowledgeGraph[F]
+  val genericRepository: Repository[F]
 ) extends TraitManagementService[F]:
+
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
+  val repository: KnowledgeGraph[F] = genericRepository match
+    case repo: KnowledgeGraph[F] => repo
+    case _ => throw new IllegalArgumentException("Expected Rdf4jRepository")
 
   given logger: Logger[F] = Slf4jLogger.getLogger[F]
 

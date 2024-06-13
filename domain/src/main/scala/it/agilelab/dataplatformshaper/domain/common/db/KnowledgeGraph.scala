@@ -3,7 +3,7 @@ package it.agilelab.dataplatformshaper.domain.common.db
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.query.BindingSet
 
-trait KnowledgeGraph[F[_]] extends DataAccessInterface:
+trait KnowledgeGraph[F[_]] extends Repository[F]:
 
   def loadBaseOntologies(): F[Unit]
 

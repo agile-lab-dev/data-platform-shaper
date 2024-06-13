@@ -6,8 +6,13 @@ import cats.implicits.*
 import com.comcast.ip4s.{Port, ipv4}
 import fs2.io.net.Network
 import io.chrisdavenport.mules.Cache
-import it.agilelab.dataplatformshaper.domain.common.db.Session
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.common.db.{Repository, Session}
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
+  JdbcRepository,
+  JdbcSession,
+  Rdf4jRepository,
+  Rdf4jSession
+}
 import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
   InstanceManagementServiceInterpreter,
@@ -51,7 +56,9 @@ object Server:
 
     given cache: Cache[F, String, EntityType] = typeCache
 
-    val repository = Rdf4jKnowledgeGraph[F](session)
+    val repository: Repository[F] = session match
+      case session: JdbcSession  => JdbcRepository[F](session)
+      case session: Rdf4jSession => Rdf4jRepository[F](session)
     val trms = TraitManagementServiceInterpreter[F](repository)
     val tms = TypeManagementServiceInterpreter[F](trms)
     val ims = InstanceManagementServiceInterpreter[F](tms)

@@ -5,6 +5,7 @@ import cats.data.EitherT
 import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
+import it.agilelab.dataplatformshaper.domain.common.db.Repository
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
@@ -130,7 +131,7 @@ class DomainSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)
@@ -191,7 +192,7 @@ class DomainSpec extends CommonSpec:
         false
       )
       session.use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val repository: Repository[IO] = getRepository[IO](session)
         val trservice = TraitManagementServiceInterpreter[IO](repository)
         val tservice = TypeManagementServiceInterpreter[IO](trservice)
         val iservice = InstanceManagementServiceInterpreter[IO](tservice)

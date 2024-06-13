@@ -1,5 +1,5 @@
 package it.agilelab.dataplatformshaper.domain.common.db
 
-trait DataAccessInterface:
+trait Repository[F[_]]:
 
-end DataAccessInterface
+end Repository
