@@ -1,31 +1,52 @@
 package it.agilelab.dataplatformshaper.domain.common.db.interpreter
 
 import cats.effect.Sync
-import it.agilelab.dataplatformshaper.domain.common.db.KnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.common.db.{
+  Connection,
+  KnowledgeGraph
+}
 import it.agilelab.dataplatformshaper.domain.model.NS.{L0, ns}
 import org.eclipse.rdf4j.model.util.Values.iri
 import org.eclipse.rdf4j.model.{Resource, Statement}
 import org.eclipse.rdf4j.query.BindingSet
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 
+import java.security.InvalidParameterException
 import scala.jdk.CollectionConverters.*
 
 case class Rdf4jRepository[F[_]: Sync](session: Rdf4jSession)
     extends KnowledgeGraph[F]:
+
+  private def connectionToRdf4jConnection(conn: Connection): Rdf4jConnection =
+    conn match
+      case rdfConn: Rdf4jConnection => rdfConn
+      case _ =>
+        throw new InvalidParameterException(
+          "Expected the connection to be an Rdf4jConnection"
+        )
+  end connectionToRdf4jConnection
+
   def removeAndInsertStatements(
     statements: List[Statement],
     deleteStatements: List[Statement]
   ): F[Unit] =
     session.withTx(conn => {
+      val connection = connectionToRdf4jConnection(conn).connection
       deleteStatements.foreach(st => {
-        conn.remove(st.getSubject, st.getPredicate, st.getObject, st.getContext)
+        connection.remove(
+          st.getSubject,
+          st.getPredicate,
+          st.getObject,
+          st.getContext
+        )
       })
-      conn.add(statements.asJava)
+      connection.add(statements.asJava)
     })
   end removeAndInsertStatements
 
   def evaluateQuery(query: String): F[Iterator[BindingSet]] =
-    session.withTx { connection =>
+    session.withTx { conn =>
+      val connection = connectionToRdf4jConnection(conn).connection
       val tupledQuery = connection.prepareTupleQuery(query)
       tupledQuery.evaluate().iterator().asScala
     }

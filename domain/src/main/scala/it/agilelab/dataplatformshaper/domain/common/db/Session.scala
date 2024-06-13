@@ -2,7 +2,6 @@ package it.agilelab.dataplatformshaper.domain.common.db
 
 import cats.effect.Sync
 import cats.effect.*
-import org.eclipse.rdf4j.repository.RepositoryConnection
 
 trait Session:
   def getSession(
@@ -15,6 +14,6 @@ trait Session:
     tls: Boolean
   ): Session
 
-  def withTx[F[_]: Sync, T](func: RepositoryConnection => T): F[T]
+  def withTx[F[_]: Sync, T](func: Connection => T): F[T]
 
 end Session

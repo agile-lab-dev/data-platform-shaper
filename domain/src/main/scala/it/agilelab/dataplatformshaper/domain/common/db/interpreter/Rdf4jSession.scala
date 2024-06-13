@@ -3,7 +3,7 @@ package it.agilelab.dataplatformshaper.domain.common.db.interpreter
 import cats.effect.*
 import cats.effect.kernel.Resource.*
 import cats.implicits.*
-import it.agilelab.dataplatformshaper.domain.common.db.Session
+import it.agilelab.dataplatformshaper.domain.common.db.{Connection, Session}
 import org.eclipse.rdf4j.model.IRI
 import org.eclipse.rdf4j.repository.RepositoryConnection
 import org.eclipse.rdf4j.repository.manager.RemoteRepositoryManager
@@ -11,7 +11,7 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import virtuoso.rdf4j.driver.VirtuosoRepository
 
-final case class Rdf4jSession(connection: RepositoryConnection) extends Session:
+final case class Rdf4jSession(connection: Rdf4jConnection) extends Session:
 
   override def getSession(
     dbType: String,
@@ -24,27 +24,27 @@ final case class Rdf4jSession(connection: RepositoryConnection) extends Session:
   ): Session =
     Rdf4jSession.getSession(dbType, host, port, user, pwd, repositoryId, tls)
 
-  def withTx[F[_]: Sync, T](func: RepositoryConnection => T): F[T] =
+  def withTx[F[_]: Sync, T](func: Connection => T): F[T] =
     val logger: Logger[F] = Slf4jLogger.getLogger[F]
     Resource
       .makeCase(Sync[F].delay {
-        this.connection.begin()
+        this.connection.connection.begin()
         this.connection
       }) {
         case (connection, ExitCase.Succeeded) =>
-          Sync[F].delay(connection.commit()) *> logger.trace(
+          Sync[F].delay(connection.connection.commit()) *> logger.trace(
             s"Transaction committed"
           )
         case (connection, ExitCase.Errored(ex: Throwable)) =>
-          Sync[F].delay(connection.rollback()) *> logger.trace(
+          Sync[F].delay(connection.connection.rollback()) *> logger.trace(
             s"Transaction rollback with error ${ex.getLocalizedMessage}"
           )
         case (connection, ExitCase.Canceled) =>
-          Sync[F].delay(connection.rollback()) *> logger.trace(
+          Sync[F].delay(connection.connection.rollback()) *> logger.trace(
             s"Transaction rollback"
           )
       }
-      .use(session => Sync[F].delay(func(session)))
+      .use(session => Sync[F].delay(func(Rdf4jConnection(session.connection))))
   end withTx
 
 end Rdf4jSession
@@ -67,7 +67,7 @@ object Rdf4jSession:
         manager.init()
         val conn: RepositoryConnection =
           manager.getRepository(repositoryId).getConnection
-        Rdf4jSession(conn)
+        Rdf4jSession(Rdf4jConnection(conn))
       case "virtuoso" =>
         val virtuosoRepository =
           VirtuosoRepository(s"jdbc:virtuoso://$host:$port", user, pwd)
@@ -75,7 +75,7 @@ object Rdf4jSession:
           virtuosoRepository.getValueFactory.createIRI(s"db:$repositoryId")
         val conn: RepositoryConnection = virtuosoRepository.getConnection
         conn.clear(context)
-        Rdf4jSession(conn)
+        Rdf4jSession(Rdf4jConnection(conn))
     end match
   end getSession
 
@@ -101,7 +101,7 @@ object Rdf4jSession:
         )
       )(session =>
         Sync[F].delay {
-          session.connection.close()
+          session.connection.connection.close()
           ()
         }
       )
