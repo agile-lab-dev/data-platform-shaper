@@ -3,7 +3,7 @@ object Versions {
    lazy val rdf4jVersion                     = "4.3.12"
    lazy val flywayVersion                    = "10.14.0"
    lazy val fly4sVersion                     = "1.0.0"
-   lazy val doobieVersion                    = "1.0.0-RC4"
+   lazy val scalikeVersion                   = "4.3.0"
    lazy val postgresqlVersion                = "42.7.3"
    lazy val virtuosoJDBCVersion              = "3.123"
    lazy val virtuosoRDF4JVersion             = "1.17"

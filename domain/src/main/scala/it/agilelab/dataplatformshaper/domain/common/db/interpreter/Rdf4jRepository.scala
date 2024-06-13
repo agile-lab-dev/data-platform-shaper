@@ -14,6 +14,7 @@ import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import java.security.InvalidParameterException
 import scala.jdk.CollectionConverters.*
 
+@SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
 case class Rdf4jRepository[F[_]: Sync](session: Rdf4jSession)
     extends KnowledgeGraph[F]:
 

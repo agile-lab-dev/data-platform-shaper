@@ -2,10 +2,10 @@ package it.agilelab.dataplatformshaper.domain.common.db.interpreter
 
 import cats.effect.*
 import cats.implicits.*
+import scalikejdbc.ConnectionPool
 import it.agilelab.dataplatformshaper.domain.common.db.{Connection, Session}
 
-final case class JdbcSession(connection: JdbcConnection)
-    extends Session:
+final case class JdbcSession(connection: JdbcConnection) extends Session:
 
   override def getSession(
     dbType: String,
@@ -37,7 +37,11 @@ object JdbcSession:
     repositoryId: String,
     tls: Boolean
   ): JdbcSession =
-    ???
+    val driver = "com.mysql.cj.jdbc.Driver"
+    val url = s"jdbc:$dbType://$host:$port/$repositoryId"
+    Class.forName(driver)
+    ConnectionPool.singleton(url, user, pwd)
+    JdbcSession(JdbcConnection(ConnectionPool.borrow()))
   end getSession
 
   def apply[F[_]: Sync](
@@ -49,6 +53,14 @@ object JdbcSession:
     repositoryId: String,
     tls: Boolean
   ): Resource[F, Session] =
-    ???
+    Resource.make {
+      Sync[F].delay {
+        getSession(dbType, host, port, user, pwd, repositoryId, tls)
+      }
+    } { session =>
+      Sync[F].delay {
+        session.connection.connection.close()
+      }
+    }
   end apply
 end JdbcSession

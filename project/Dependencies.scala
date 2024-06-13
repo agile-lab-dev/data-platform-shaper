@@ -19,12 +19,10 @@ object Dependencies {
     lazy val postgresql = namespace %% "fly4s-core" % fly4sVersion
   }
 
-  private[this] object doobie {
-    lazy val namespace = "org.tpolecat"
-    lazy val core = namespace %% "doobie-core" % doobieVersion
-    lazy val postgresql = namespace %% "doobie-postgres" % doobieVersion
-    lazy val specs = namespace %% "doobie-specs2" % doobieVersion
-    lazy val hikari = namespace %% "doobie-hikari" % doobieVersion
+  private[this] object scalike {
+    lazy val core = "org.scalikejdbc" %% "scalikejdbc" % scalikeVersion
+    lazy val h2database = "com.h2database" % "h2" % "2.2.224"
+    lazy val logback = "ch.qos.logback" % "logback-classic" % "1.5.6"
   }
 
   private[this] object postgresql {
@@ -118,10 +116,9 @@ object Dependencies {
       virtuoso.jdbcDriver          % Compile,
       flyway.postgresql            % Compile,
       fly4s.postgresql             % Compile,
-      doobie.core                  % Compile,
-      doobie.postgresql            % Compile,
-      doobie.specs                 % Compile,
-      doobie.hikari                % Compile,
+      scalike.core                 % Compile,
+      scalike.h2database           % Compile,
+      scalike.logback              % Compile,
       postgresql.jdbc              % Compile,
       cats.core                    % Compile,
       cats.effect                  % Compile,
