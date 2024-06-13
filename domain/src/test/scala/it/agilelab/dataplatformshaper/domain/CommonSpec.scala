@@ -5,7 +5,6 @@ import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
 import it.agilelab.dataplatformshaper.domain.common.db.{Repository, Session}
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
   JdbcRepository,
   JdbcSession,
@@ -138,8 +137,13 @@ class CommonSpec
     )
     session
       .use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
-        repository.loadBaseOntologies()
+        val repository: Repository[IO] = getRepository[IO](session)
+        repository match
+          case rdf4jRepository: Rdf4jRepository[IO] =>
+            rdf4jRepository.loadBaseOntologies()
+          case jdbcRepository: JdbcRepository[IO] =>
+            IO.unit // TODO actual implementation
+        end match
       }
       .unsafeRunSync()
   end loadBaseOntologies

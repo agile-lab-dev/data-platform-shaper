@@ -9,8 +9,13 @@ import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.*
 import io.circe.parser.*
-import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.common.db.{Repository, Session}
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
+  JdbcRepository,
+  JdbcSession,
+  Rdf4jRepository,
+  Rdf4jSession
+}
 import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.uservice.definitions.Mode.members.Required
 import it.agilelab.dataplatformshaper.uservice.{
@@ -109,6 +114,13 @@ class ApiSpec
     graphdbContainer.stop()
   end afterAll
 
+  def getRepository[F[_]: Sync](session: Session): Repository[F] =
+    session match
+      case session: JdbcSession  => JdbcRepository[F](session)
+      case session: Rdf4jSession => Rdf4jRepository[F](session)
+    end match
+  end getRepository
+
   private def createRepository(port: Int): Unit =
     val multiparts = Random
       .scalaUtilRandom[IO]
@@ -161,8 +173,12 @@ class ApiSpec
     )
     session
       .use { session =>
-        val repository = Rdf4jKnowledgeGraph[IO](session)
-        repository.loadBaseOntologies()
+        val repository: Repository[IO] = getRepository[IO](session)
+        repository match
+          case rdf4jRepository: Rdf4jRepository[IO] =>
+            rdf4jRepository.loadBaseOntologies()
+          case jdbcRepository: JdbcRepository[IO] =>
+            IO.unit // TODO actual implementation
       }
       .unsafeRunSync()
   end loadBaseOntologies

@@ -3,9 +3,13 @@ import cats.effect.std.Random
 import cats.effect.{ExitCode, IO, IOApp}
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
-import it.agilelab.dataplatformshaper.domain.common.db.Session
-import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.Rdf4jKnowledgeGraph
+import it.agilelab.dataplatformshaper.domain.common.db.{Repository, Session}
+import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
+  JdbcRepository,
+  JdbcSession,
+  Rdf4jRepository,
+  Rdf4jSession
+}
 import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.uservice.system.ApplicationConfiguration.*
 import org.http4s.ember.client.EmberClientBuilder
@@ -90,8 +94,14 @@ object Main extends IOApp:
   end createRepository
 
   private def loadInitialOntologies(session: Session): IO[Unit] = {
-    val repository = Rdf4jKnowledgeGraph[IO](session)
-    repository.loadBaseOntologies()
+    val repository: Repository[IO] = session match
+      case session: JdbcSession  => JdbcRepository[IO](session)
+      case session: Rdf4jSession => Rdf4jRepository[IO](session)
+    repository match
+      case rdf4jRepository: Rdf4jRepository[IO] =>
+        rdf4jRepository.loadBaseOntologies()
+      case jdbcRepository: JdbcRepository[IO] =>
+        IO.unit // TODO actual implementation
   }
 
 end Main
