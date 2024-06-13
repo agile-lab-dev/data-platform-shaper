@@ -1,13 +1,11 @@
 package it.agilelab.dataplatformshaper.domain
 
-import cats.Functor
 import cats.data.EitherT
 import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
 import it.agilelab.dataplatformshaper.domain.common.db.Repository
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
-import it.agilelab.dataplatformshaper.domain.knowledgegraph.KnowledgeGraph
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
@@ -15,7 +13,6 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
   InstanceManagementServiceInterpreter,
   MappingManagementServiceInterpreter,
@@ -69,6 +66,7 @@ class DomainSpec extends CommonSpec:
   private val mapperTuple =
     ("field1" -> "source.get('field1')", "field2" -> "source.get('field2')")
 
+  /* TODO: Make this work for both jdbc and rdf4j
   def countStatements(
     logger: Logger[IO],
     repository: KnowledgeGraph[IO]
@@ -88,6 +86,7 @@ class DomainSpec extends CommonSpec:
       Right[ManagementServiceError, Int](count)
     )
   end countStatements
+   */
 
   /* TODO: Make this work for both jdbc and rdf4j
   "Counting initial statements" - {
