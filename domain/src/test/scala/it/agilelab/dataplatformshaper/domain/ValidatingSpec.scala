@@ -7,7 +7,6 @@ import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.*
 import io.circe.parser.*
 import it.agilelab.dataplatformshaper.domain.common.db.Repository
-import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.JsonType
@@ -368,7 +367,7 @@ class ValidatingSpec extends CommonSpec:
 
   "Creating an EntityType instance" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -392,7 +391,7 @@ class ValidatingSpec extends CommonSpec:
 
   "Creating a conforming instance for an EntityType" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -413,7 +412,7 @@ class ValidatingSpec extends CommonSpec:
 
   "Creating a non-conforming instance for an EntityType" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -436,7 +435,7 @@ class ValidatingSpec extends CommonSpec:
 
   "Updating an Entity with conforming values" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -478,7 +477,7 @@ class ValidatingSpec extends CommonSpec:
 
   "Updating an Entity with non-conforming values" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -515,7 +514,7 @@ class ValidatingSpec extends CommonSpec:
 
   "Updating an EntityType instance" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -547,7 +546,7 @@ class ValidatingSpec extends CommonSpec:
 
   "Updating an EntityType instance with a different schema" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -581,7 +580,7 @@ class ValidatingSpec extends CommonSpec:
 
   "Creating an EntityType with wrong constraints" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -613,7 +612,7 @@ class ValidatingSpec extends CommonSpec:
 
   "Updating an EntityType with wrong constraints" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,

@@ -7,7 +7,6 @@ import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.*
 import io.circe.parser.*
 import it.agilelab.dataplatformshaper.domain.common.db.Repository
-import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
@@ -430,7 +429,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Listing all existing EntityTypes" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -487,7 +486,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Creating an EntityType instance" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -536,7 +535,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Deleting an EntityType instance" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -597,7 +596,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Creating the same EntityType instance" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -627,7 +626,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Creating an EntityType with a non-existing trait" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -661,7 +660,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Deleting an EntityType instance with instance referencing it as father" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -733,7 +732,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Deleting an EntityType with existing instances" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -774,7 +773,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Deleting an EntityType with descendants who have instances" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -818,7 +817,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Creating an EntityType with a repeated struct" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -847,7 +846,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Creating an instance for an EntityType with a repeated struct and reading it" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -906,7 +905,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Creating an instance for an EntityType that doesn't exist" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -935,7 +934,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Creating an instance for an EntityType" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -959,7 +958,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Checking if an Entity instance exists" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -997,7 +996,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Retrieving an Entity given its id" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1034,7 +1033,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Updating an Entity given its id" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1079,7 +1078,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Retrieving the EntityType given its name" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1105,7 +1104,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Reading a Non-Existent Entity" - {
     "succeeds if an error is returned" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1138,7 +1137,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Using a service when there is no connection with the knowledge graph" - {
     "fails" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7210,
@@ -1158,7 +1157,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Inheriting from another EntityType with traits" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -1208,7 +1207,7 @@ class OntologyL0Spec extends CommonSpec:
 
   "Following the inheritance chain for an EntityType" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,

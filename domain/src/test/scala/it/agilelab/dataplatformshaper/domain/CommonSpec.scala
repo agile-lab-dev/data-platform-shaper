@@ -1,6 +1,6 @@
 package it.agilelab.dataplatformshaper.domain
 
-import cats.effect.{IO, Sync}
+import cats.effect.{IO, Resource, Sync}
 import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
@@ -84,6 +84,21 @@ class CommonSpec
       case session: JdbcSession  => JdbcRepository[F](session)
       case session: Rdf4jSession => Rdf4jRepository[F](session)
   end getRepository
+
+  def getSession[F[_]: Sync](
+    dbType: String,
+    host: String,
+    port: Int,
+    user: String,
+    pwd: String,
+    repositoryId: String,
+    tls: Boolean
+  ): Resource[F, Session] =
+    dbType match
+      case "graphdb" | "virtuoso" =>
+        Rdf4jSession(dbType, host, port, user, pwd, repositoryId, tls)
+      case _ => JdbcSession(dbType, host, port, user, pwd, repositoryId, tls)
+  end getSession
 
   private def createRepository(port: Int): Unit =
     val multiparts = Random

@@ -92,6 +92,14 @@ class ApiSpec
         container.addExposedPort(1111)
         container.setPortBindings(List("0.0.0.0:" + 7202 + ":" + 1111).asJava)
         container
+      case "jdbc" =>
+        val container = GenericContainer("postgres:latest")
+        container.withEnv("POSTGRES_USER", "postgres")
+        container.withEnv("POSTGRES_PASSWORD", "mysecret")
+        container.withEnv("POSTGRES_DB", "testdb")
+        container.addExposedPort(5432)
+        container.setPortBindings(List("0.0.0.0:" + 5432 + ":" + 5432).asJava)
+        container
     end match
 
   var server: Option[FiberIO[Nothing]] = None
@@ -107,6 +115,21 @@ class ApiSpec
     server = Some(createServer())
     Thread.sleep(1000)
   end beforeAll
+
+  def getSession[F[_]: Sync](
+    dbType: String,
+    host: String,
+    port: Int,
+    user: String,
+    pwd: String,
+    repositoryId: String,
+    tls: Boolean
+  ): Resource[F, Session] =
+    dbType match
+      case "graphdb" | "virtuoso" =>
+        Rdf4jSession(dbType, host, port, user, pwd, repositoryId, tls)
+      case _ => JdbcSession(dbType, host, port, user, pwd, repositoryId, tls)
+  end getSession
 
   override protected def afterAll(): Unit =
     // Thread.sleep(1000000000)
@@ -162,7 +185,7 @@ class ApiSpec
   end createRepository
 
   def loadBaseOntologies(): Unit =
-    val session = Rdf4jSession[IO](
+    val session = getSession[IO](
       graphdbType,
       "localhost",
       7202,
@@ -184,15 +207,27 @@ class ApiSpec
   end loadBaseOntologies
 
   def createServer(): FiberIO[Nothing] =
-    val session = Rdf4jSession.getSession(
-      graphdbType,
-      "localhost",
-      7202,
-      "dba",
-      "mysecret",
-      "repo1",
-      false
-    )
+    val session: Session = graphdbType match
+      case "graphdb" | "virtuoso" =>
+        Rdf4jSession.getSession(
+          graphdbType,
+          "localhost",
+          7202,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
+      case _ =>
+        JdbcSession.getSession(
+          graphdbType,
+          "localhost",
+          7202,
+          "dba",
+          "mysecret",
+          "repo1",
+          false
+        )
     val typeCache: Cache[IO, String, EntityType] = CaffeineCache
       .build[IO, String, EntityType](
         Some(TimeSpec.unsafeFromDuration(1.second)),

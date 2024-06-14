@@ -5,7 +5,6 @@ import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
 import io.circe.parser.parse
 import it.agilelab.dataplatformshaper.domain.common.db.Repository
-import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
@@ -304,7 +303,7 @@ class OntologyL0SearchSpec extends CommonSpec:
 
   "Creating an EntityType instance" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -337,7 +336,7 @@ class OntologyL0SearchSpec extends CommonSpec:
 
   "Creating an instance for an EntityType" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -361,7 +360,7 @@ class OntologyL0SearchSpec extends CommonSpec:
 
   "Searching an instance for an EntityType" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,

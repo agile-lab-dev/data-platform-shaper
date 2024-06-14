@@ -5,7 +5,6 @@ import cats.effect.IO
 import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
 import it.agilelab.dataplatformshaper.domain.common.db.Repository
-import it.agilelab.dataplatformshaper.domain.common.db.interpreter.Rdf4jSession
 import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.mapping.{
@@ -121,7 +120,7 @@ class DomainSpec extends CommonSpec:
 
   "Creating various types of statements" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -182,7 +181,7 @@ class DomainSpec extends CommonSpec:
 
   "Deleting various types of statements" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,
@@ -247,7 +246,7 @@ class DomainSpec extends CommonSpec:
   /* TODO: Make this work for both jdbc and rdf4j
   "Counting final statements" - {
     "works" in {
-      val session = Rdf4jSession[IO](
+      val session = getSession[IO](
         graphdbType,
         "localhost",
         7201,

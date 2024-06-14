@@ -37,8 +37,8 @@ object JdbcSession:
     repositoryId: String,
     tls: Boolean
   ): JdbcSession =
-    val driver = "com.mysql.cj.jdbc.Driver"
-    val url = s"jdbc:$dbType://$host:$port/$repositoryId"
+    val driver = "org.postgresql.Driver"
+    val url = s"jdbc:postgresql://$host:$port/$repositoryId"
     Class.forName(driver)
     ConnectionPool.singleton(url, user, pwd)
     JdbcSession(JdbcConnection(ConnectionPool.borrow()))
