@@ -6,6 +6,7 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
 import it.agilelab.dataplatformshaper.domain.common.db.{Repository, Session}
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
+  DatabaseConfig,
   JdbcRepository,
   JdbcSession,
   Rdf4jRepository,
@@ -56,9 +57,9 @@ class CommonSpec
         container
       case "jdbc" =>
         val container = GenericContainer("postgres:latest")
-        container.withEnv("POSTGRES_USER", "postgres")
+        container.withEnv("POSTGRES_USER", "dba")
         container.withEnv("POSTGRES_PASSWORD", "mysecret")
-        container.withEnv("POSTGRES_DB", "testdb")
+        container.withEnv("POSTGRES_DB", "repo1")
         container.addExposedPort(5432)
         container.setPortBindings(List("0.0.0.0:" + 5432 + ":" + 5432).asJava)
         container
@@ -88,7 +89,6 @@ class CommonSpec
   def getSession[F[_]: Sync](
     dbType: String,
     host: String,
-    port: Int,
     user: String,
     pwd: String,
     repositoryId: String,
@@ -96,8 +96,8 @@ class CommonSpec
   ): Resource[F, Session] =
     dbType match
       case "graphdb" | "virtuoso" =>
-        Rdf4jSession(dbType, host, port, user, pwd, repositoryId, tls)
-      case _ => JdbcSession(dbType, host, port, user, pwd, repositoryId, tls)
+        Rdf4jSession(dbType, host, 7201, user, pwd, repositoryId, tls)
+      case _ => JdbcSession(dbType, host, 5432, user, pwd, repositoryId, tls)
   end getSession
 
   private def createRepository(port: Int): Unit =
@@ -141,15 +141,15 @@ class CommonSpec
   end createRepository
 
   def loadBaseOntologies(): Unit =
-    val session = Rdf4jSession[IO](
-      graphdbType,
-      "localhost",
-      7201,
-      "dba",
-      "mysecret",
-      "repo1",
-      false
-    )
+    val host = "localhost"
+    val user = "dba"
+    val pwd = "mysecret"
+    val repositoryId = "repo1"
+    val port = graphdbType match
+      case "graphdb" | "virtuoso" => 7201
+      case _                      => 5432
+    val session =
+      getSession[IO](graphdbType, host, user, pwd, repositoryId, false)
     session
       .use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
@@ -157,7 +157,15 @@ class CommonSpec
           case rdf4jRepository: Rdf4jRepository[IO] =>
             rdf4jRepository.loadBaseOntologies()
           case jdbcRepository: JdbcRepository[IO] =>
-            IO.unit // TODO actual implementation
+            val url = s"jdbc:postgresql://$host:$port/$repositoryId"
+            val config = DatabaseConfig(
+              url,
+              Some(user),
+              Some(pwd.toCharArray),
+              "flyway",
+              List("db")
+            )
+            jdbcRepository.migrateDb(config).use(_ => IO.unit)
         end match
       }
       .unsafeRunSync()

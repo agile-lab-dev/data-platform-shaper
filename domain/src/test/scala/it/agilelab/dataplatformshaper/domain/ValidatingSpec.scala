@@ -370,7 +370,6 @@ class ValidatingSpec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -394,7 +393,6 @@ class ValidatingSpec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -415,7 +413,6 @@ class ValidatingSpec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -438,7 +435,6 @@ class ValidatingSpec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -480,7 +476,6 @@ class ValidatingSpec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -517,7 +512,6 @@ class ValidatingSpec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -549,7 +543,6 @@ class ValidatingSpec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -583,7 +576,6 @@ class ValidatingSpec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -615,7 +607,6 @@ class ValidatingSpec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",

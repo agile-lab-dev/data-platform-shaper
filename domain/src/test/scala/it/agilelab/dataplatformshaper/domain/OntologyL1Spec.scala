@@ -36,7 +36,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -55,7 +54,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -77,7 +75,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -108,7 +105,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -139,7 +135,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -162,7 +157,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -190,7 +184,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -213,7 +206,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -242,7 +234,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -278,7 +269,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -308,7 +298,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -338,7 +327,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -391,7 +379,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -427,7 +414,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -451,7 +437,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
@@ -489,7 +474,6 @@ class OntologyL1Spec extends CommonSpec:
       val session = getSession[IO](
         graphdbType,
         "localhost",
-        7201,
         "dba",
         "mysecret",
         "repo1",
