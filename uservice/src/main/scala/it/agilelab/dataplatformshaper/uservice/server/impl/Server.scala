@@ -1,7 +1,7 @@
 package it.agilelab.dataplatformshaper.uservice.server.impl
 
 import buildinfo.BuildInfo
-import cats.effect.{Async, Resource}
+import cats.effect.{Async, Resource, Sync}
 import cats.implicits.*
 import com.comcast.ip4s.{Port, ipv4}
 import fs2.io.net.Network
@@ -13,12 +13,18 @@ import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
   Rdf4jRepository,
   Rdf4jSession
 }
-import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
-  InstanceManagementServiceInterpreter,
-  MappingManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
+  InstanceManagementServiceInterpreter as rdf4jInstanceManagementServiceInterpreter,
+  MappingManagementServiceInterpreter as rdf4jMappingManagementServiceInterpreter,
+  TraitManagementServiceInterpreter as rdf4jTraitManagementServiceInterpreter,
+  TypeManagementServiceInterpreter as rdf4jTypeManagementServiceInterpreter
+}
+import it.agilelab.dataplatformshaper.domain.model.EntityType
+import it.agilelab.dataplatformshaper.domain.service.{
+  InstanceManagementService,
+  MappingManagementService,
+  TraitManagementService,
+  TypeManagementService
 }
 import it.agilelab.dataplatformshaper.uservice.Resource as GenResource
 import it.agilelab.dataplatformshaper.uservice.api.intepreter.OntologyManagerHandler
@@ -47,6 +53,53 @@ object Server:
     )
     .mkString("\n")
 
+  private def getManagementServices[F[_]: Sync](
+    repository: Repository[F]
+  )(using cache: Cache[F, String, EntityType]): (
+    TraitManagementService[F],
+    TypeManagementService[F],
+    InstanceManagementService[F],
+    MappingManagementService[F]
+  ) =
+    repository match
+      case jdbcRepository: JdbcRepository[F] => // TODO: Change with real ones
+        val traitManagementService =
+          rdf4jTraitManagementServiceInterpreter[F](repository)
+        val typeManagementService =
+          rdf4jTypeManagementServiceInterpreter[F](traitManagementService)
+        val instanceManagementService =
+          rdf4jInstanceManagementServiceInterpreter[F](typeManagementService)
+        val mappingManagementService =
+          rdf4jMappingManagementServiceInterpreter[F](
+            typeManagementService,
+            instanceManagementService
+          )
+        (
+          traitManagementService,
+          typeManagementService,
+          instanceManagementService,
+          mappingManagementService
+        )
+      case rdf4jRepository: Rdf4jRepository[F] =>
+        val traitManagementService =
+          rdf4jTraitManagementServiceInterpreter[F](repository)
+        val typeManagementService =
+          rdf4jTypeManagementServiceInterpreter[F](traitManagementService)
+        val instanceManagementService =
+          rdf4jInstanceManagementServiceInterpreter[F](typeManagementService)
+        val mappingManagementService =
+          rdf4jMappingManagementServiceInterpreter[F](
+            typeManagementService,
+            instanceManagementService
+          )
+        (
+          traitManagementService,
+          typeManagementService,
+          instanceManagementService,
+          mappingManagementService
+        )
+  end getManagementServices
+
   def server[F[_]: Async: Network](
     session: Session,
     typeCache: Cache[F, String, EntityType]
@@ -59,10 +112,7 @@ object Server:
     val repository: Repository[F] = session match
       case session: JdbcSession  => JdbcRepository[F](session)
       case session: Rdf4jSession => Rdf4jRepository[F](session)
-    val trms = TraitManagementServiceInterpreter[F](repository)
-    val tms = TypeManagementServiceInterpreter[F](trms)
-    val ims = InstanceManagementServiceInterpreter[F](tms)
-    val mms = MappingManagementServiceInterpreter[F](tms, ims)
+    val (trms, tms, ims, mms) = getManagementServices(repository)
 
     val assetsRoutes = resourceServiceBuilder("/").toRoutes
 

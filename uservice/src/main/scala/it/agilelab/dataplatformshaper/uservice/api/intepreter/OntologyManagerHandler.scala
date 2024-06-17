@@ -16,14 +16,12 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.{*, given}
-import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
-  InstanceManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
 import it.agilelab.dataplatformshaper.domain.service.{
+  InstanceManagementService,
   ManagementServiceError,
-  MappingManagementService
+  MappingManagementService,
+  TraitManagementService,
+  TypeManagementService
 }
 import it.agilelab.dataplatformshaper.uservice.Resource.*
 import it.agilelab.dataplatformshaper.uservice.definitions.BulkTraitsCreationResponse.Relationships.First
@@ -54,9 +52,9 @@ import scala.language.implicitConversions
 import scala.util.Try
 
 class OntologyManagerHandler[F[_]: Async](
-  tms: TypeManagementServiceInterpreter[F],
-  ims: InstanceManagementServiceInterpreter[F],
-  trms: TraitManagementServiceInterpreter[F],
+  tms: TypeManagementService[F],
+  ims: InstanceManagementService[F],
+  trms: TraitManagementService[F],
   mms: MappingManagementService[F]
 ) extends Handler[F]
     with StrictLogging:

@@ -4,6 +4,7 @@ import cats.effect.{IO, Resource, Sync}
 import cats.effect.std.Random
 import cats.effect.testing.scalatest.AsyncIOSpec
 import fs2.io.file.Path
+import io.chrisdavenport.mules.Cache
 import it.agilelab.dataplatformshaper.domain.common.db.{Repository, Session}
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
   DatabaseConfig,
@@ -11,6 +12,19 @@ import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
   JdbcSession,
   Rdf4jRepository,
   Rdf4jSession
+}
+import it.agilelab.dataplatformshaper.domain.model.EntityType
+import it.agilelab.dataplatformshaper.domain.service.{
+  InstanceManagementService,
+  MappingManagementService,
+  TraitManagementService,
+  TypeManagementService
+}
+import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
+  TraitManagementServiceInterpreter as rdf4jTraitManagementServiceInterpreter,
+  TypeManagementServiceInterpreter as rdf4jTypeManagementServiceInterpreter,
+  InstanceManagementServiceInterpreter as rdf4jInstanceManagementServiceInterpreter,
+  MappingManagementServiceInterpreter as rdf4jMappingManagementServiceInterpreter
 }
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
@@ -140,6 +154,53 @@ class CommonSpec
     val _ = run.unsafeRunSync()
   end createRepository
 
+  def getManagementServices[F[_]: Sync](
+    repository: Repository[F]
+  )(using cache: Cache[F, String, EntityType]): (
+    TraitManagementService[F],
+    TypeManagementService[F],
+    InstanceManagementService[F],
+    MappingManagementService[F]
+  ) =
+    repository match
+      case jdbcRepository: JdbcRepository[F] => // TODO: Change with real ones
+        val traitManagementService =
+          rdf4jTraitManagementServiceInterpreter[F](repository)
+        val typeManagementService =
+          rdf4jTypeManagementServiceInterpreter[F](traitManagementService)
+        val instanceManagementService =
+          rdf4jInstanceManagementServiceInterpreter[F](typeManagementService)
+        val mappingManagementService =
+          rdf4jMappingManagementServiceInterpreter[F](
+            typeManagementService,
+            instanceManagementService
+          )
+        (
+          traitManagementService,
+          typeManagementService,
+          instanceManagementService,
+          mappingManagementService
+        )
+      case rdf4jRepository: Rdf4jRepository[F] =>
+        val traitManagementService =
+          rdf4jTraitManagementServiceInterpreter[F](repository)
+        val typeManagementService =
+          rdf4jTypeManagementServiceInterpreter[F](traitManagementService)
+        val instanceManagementService =
+          rdf4jInstanceManagementServiceInterpreter[F](typeManagementService)
+        val mappingManagementService =
+          rdf4jMappingManagementServiceInterpreter[F](
+            typeManagementService,
+            instanceManagementService
+          )
+        (
+          traitManagementService,
+          typeManagementService,
+          instanceManagementService,
+          mappingManagementService
+        )
+  end getManagementServices
+
   def loadBaseOntologies(): Unit =
     val host = "localhost"
     val user = "dba"
@@ -165,7 +226,7 @@ class CommonSpec
               "flyway",
               List("db")
             )
-            jdbcRepository.migrateDb(config).use(d => IO.unit)
+            jdbcRepository.migrateDb(config).use(_ => IO.unit)
         end match
       }
       .unsafeRunSync()

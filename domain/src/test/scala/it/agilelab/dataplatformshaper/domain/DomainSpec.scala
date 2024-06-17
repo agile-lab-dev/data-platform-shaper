@@ -12,12 +12,6 @@ import it.agilelab.dataplatformshaper.domain.model.mapping.{
   MappingKey
 }
 import it.agilelab.dataplatformshaper.domain.model.schema.*
-import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
-  InstanceManagementServiceInterpreter,
-  MappingManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -129,11 +123,8 @@ class DomainSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
         (for {
           _ <- EitherT(trservice.create(Trait("Trait1", None)))
           _ <- EitherT(trservice.create(Trait("Trait2", Some("Trait1"))))
@@ -189,11 +180,8 @@ class DomainSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
         (for {
           firstInstances <- EitherT(
             iservice.list(firstType.name, "", false, None)

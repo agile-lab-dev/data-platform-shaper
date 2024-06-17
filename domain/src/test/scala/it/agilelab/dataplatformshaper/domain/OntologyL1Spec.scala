@@ -10,11 +10,6 @@ import it.agilelab.dataplatformshaper.domain.model.Relationship.hasPart
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
-import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
-  InstanceManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
 import org.scalatest.Inside.inside
 
 import scala.concurrent.duration.*
@@ -43,7 +38,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
         trms.exist("NonExistentTrait")
       } asserting (res => res should be(Right(false)))
     }
@@ -61,7 +56,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(trms.create(Trait("ANewTrait", None)))
           res <- EitherT(trms.exist("ANewTrait"))
@@ -82,7 +77,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
 
         val request = BulkTraitsCreationRequest(
           List(Trait("A", None), Trait("B", Some("A")), Trait("C", None)),
@@ -112,7 +107,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
 
         val request = BulkTraitsCreationRequest(
           List(Trait("D", None), Trait("E", Some("G")), Trait("F", None)),
@@ -142,7 +137,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(
             trms.create(Trait("YetAnotherTrait", Some("AMissingTrait")))
@@ -164,7 +159,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(trms.create(Trait("ListTrait1", None)))
           _ <- EitherT(trms.create(Trait("ListTrait2", Some("ListTrait1"))))
@@ -191,7 +186,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(trms.create(Trait("DeleteTrait", None)))
           _ <- EitherT(trms.delete("DeleteTrait"))
@@ -213,7 +208,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(trms.create(Trait("LinkTrait1", None)))
           _ <- EitherT(trms.create(Trait("LinkTrait2", None)))
@@ -248,8 +243,7 @@ class OntologyL1Spec extends CommonSpec:
 
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trms)
+        val (trms, tservice, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(trms.create(Trait("ExampleTrait", None)))
           _ <- EitherT(tservice.create(exampleEntityType))
@@ -277,7 +271,7 @@ class OntologyL1Spec extends CommonSpec:
 
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(trms.create(Trait("FatherExampleTrait", None)))
           _ <- EitherT(
@@ -305,7 +299,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val (trms, _, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(trms.create(Trait("DataProductComponent", None)))
           _ <- EitherT(
@@ -334,9 +328,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tms = TypeManagementServiceInterpreter[IO](trservice)
-        val ims = InstanceManagementServiceInterpreter[IO](tms)
+        val (trservice, tms, ims, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(
             tms.create(
@@ -386,9 +378,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tms = TypeManagementServiceInterpreter[IO](trservice)
-        val ims = InstanceManagementServiceInterpreter[IO](tms)
+        val (trservice, tms, ims, _) = getManagementServices(repository)
         (for {
           dp <- EitherT(ims.create("DataProductType", Tuple1("name" -> "dp1")))
           op1 <- EitherT(ims.create("OutputPortType", Tuple1("name" -> "op1")))
@@ -421,7 +411,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
+        val (trservice, _, _, _) = getManagementServices(repository)
         trservice.unlink("DataProduct", Relationship.hasPart, "OutputPort")
       } asserting (res =>
         res should matchPattern {
@@ -444,9 +434,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tms = TypeManagementServiceInterpreter[IO](trservice)
-        val ims = InstanceManagementServiceInterpreter[IO](tms)
+        val (trservice, tms, ims, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(
             tms.create(
@@ -481,9 +469,7 @@ class OntologyL1Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trs = TraitManagementServiceInterpreter[IO](repository)
-        val tms = TypeManagementServiceInterpreter[IO](trs)
-        val ims = InstanceManagementServiceInterpreter[IO](tms)
+        val (trs, tms, ims, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(trs.create(Trait("Trait1", None)))
           _ <- EitherT(trs.create(Trait("Trait2", None)))

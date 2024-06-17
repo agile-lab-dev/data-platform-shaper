@@ -12,11 +12,6 @@ import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.DataType.JsonType
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
-  InstanceManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
 
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import scala.concurrent.duration.*
@@ -377,8 +372,7 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
         val entityType = EntityType("ValidationDataCollectionType", schema)
         service.create(entityType)
       } asserting (ret =>
@@ -400,9 +394,8 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         iservice.create("ValidationDataCollectionType", tuple)
       } asserting (_ should matchPattern { case Right(_) => })
     }
@@ -420,9 +413,8 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, service, iservice, _) =
+          getManagementServices(repository)
         iservice.create("ValidationDataCollectionType", nonConformingTuple)
       } asserting (_ should matchPattern {
         case Left(ManagementServiceError(errors)) if errors.size.equals(5) =>
@@ -442,9 +434,8 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, service, iservice, _) =
+          getManagementServices(repository)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create("ValidationDataCollectionType", tuple)
@@ -483,9 +474,8 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, service, iservice, _) =
+          getManagementServices(repository)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create("ValidationDataCollectionType", tuple)
@@ -522,8 +512,7 @@ class ValidatingSpec extends CommonSpec:
         EntityType("UpdateDataCollectionType", schemaAfterUpdate)
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
 
         val result = for {
           _ <- service.create(entityType)
@@ -553,8 +542,7 @@ class ValidatingSpec extends CommonSpec:
         EntityType("UpdateDataCollectionType", wrongSchemaAfterUpdate)
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
 
         val result = for {
           _ <- service.create(entityType)
@@ -587,8 +575,7 @@ class ValidatingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
 
         val result = for {
           res <- service.create(entityType)
@@ -624,8 +611,7 @@ class ValidatingSpec extends CommonSpec:
 
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
 
         val result = for {
           _ <- service.create(entityType)

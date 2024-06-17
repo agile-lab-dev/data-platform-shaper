@@ -17,9 +17,7 @@ import it.agilelab.dataplatformshaper.domain.model.schema.Mode.{
 }
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
 import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
-  InstanceManagementServiceInterpreter,
   MappingManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
   TypeManagementServiceInterpreter
 }
 import org.scalactic.Equality
@@ -347,11 +345,8 @@ class MappingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
 
         (for {
           res1 <- EitherT(tservice.create(sourceType))
@@ -391,8 +386,18 @@ class MappingSpec extends CommonSpec:
               )
             )
           )
+          dbSpecificMService = mservice match
+            case interpreter: MappingManagementServiceInterpreter[IO] =>
+              interpreter
+          dbSpecificTService = tservice match
+            case serviceInterpreter: TypeManagementServiceInterpreter[IO] =>
+              serviceInterpreter
           mappers <- EitherT(
-            mservice.getMappingsForEntityType(logger, tservice, "SourceType")
+            dbSpecificMService.getMappingsForEntityType(
+              logger,
+              dbSpecificTService,
+              "SourceType"
+            )
           )
         } yield (
           res1,
@@ -427,11 +432,8 @@ class MappingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
         (for {
           res1 <- EitherT(
             iservice.create(
@@ -540,11 +542,8 @@ class MappingSpec extends CommonSpec:
 
       val s1 = session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
         (for {
           res1 <- EitherT(
             iservice.list(
@@ -568,11 +567,8 @@ class MappingSpec extends CommonSpec:
 
       val s2 = session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
         (for {
           res1 <- EitherT(
             iservice.list(
@@ -596,11 +592,8 @@ class MappingSpec extends CommonSpec:
 
       val s3 = session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
         (for {
           res1 <- EitherT(
             iservice.list(
@@ -638,11 +631,8 @@ class MappingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
         (for {
           res1 <- EitherT(
             iservice.list(
@@ -706,11 +696,8 @@ class MappingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
 
         (for {
           res <- EitherT(
@@ -744,11 +731,8 @@ class MappingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
 
         (for {
           _ <- EitherT(tservice.create(sourceCycleType))
@@ -790,9 +774,19 @@ class MappingSpec extends CommonSpec:
               )
             )
           )
+          dbSpecificMService = mservice match
+            case interpreter: MappingManagementServiceInterpreter[IO] =>
+              interpreter
+          dbSpecificTService = tservice match
+            case serviceInterpreter: TypeManagementServiceInterpreter[IO] =>
+              serviceInterpreter
           mappers <- EitherT(
-            mservice
-              .getMappingsForEntityType(logger, tservice, "SourceCycleType")
+            dbSpecificMService
+              .getMappingsForEntityType(
+                logger,
+                dbSpecificTService,
+                "SourceCycleType"
+              )
           )
         } yield (res1, res2, mappers)).value
 
@@ -819,11 +813,8 @@ class MappingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
 
         (for {
           _ <- EitherT(tservice.create(invalidSourceType))
@@ -840,9 +831,19 @@ class MappingSpec extends CommonSpec:
               )
             )
           )
+          dbSpecificMService = mservice match
+            case interpreter: MappingManagementServiceInterpreter[IO] =>
+              interpreter
+          dbSpecificTService = tservice match
+            case serviceInterpreter: TypeManagementServiceInterpreter[IO] =>
+              serviceInterpreter
           mappers <- EitherT(
-            mservice
-              .getMappingsForEntityType(logger, tservice, "InvalidSourceType")
+            dbSpecificMService
+              .getMappingsForEntityType(
+                logger,
+                dbSpecificTService,
+                "InvalidSourceType"
+              )
           )
         } yield (res1, mappers)).value
 
@@ -867,11 +868,8 @@ class MappingSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-        val mservice =
-          MappingManagementServiceInterpreter[IO](tservice, iservice)
+        val (trservice, tservice, iservice, mservice) =
+          getManagementServices(repository)
         (for {
           _ <- EitherT(tservice.create(updateSourceType))
           _ <- EitherT(tservice.create(updateTargetType))
@@ -936,9 +934,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+          val (trservice, tservice, iservice, _) =
+            getManagementServices(repository)
 
           (for {
             _ <- EitherT(tservice.create(createDirectlyTargetType))
@@ -979,11 +976,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
 
           (for {
             _ <- EitherT(tservice.create(readSourceType))
@@ -1024,11 +1018,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
 
           (for {
             _ <- EitherT(tservice.create(updateMappingSourceType))
@@ -1090,11 +1081,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
 
           (for {
             _ <- EitherT(tservice.create(deleteMappingSourceType))
@@ -1145,11 +1133,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(tservice.create(twoMappedInstancesSourceType))
             _ <- EitherT(tservice.create(twoMappedInstancesTargetType))
@@ -1315,11 +1300,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(tservice.create(repeatedAttributeSourceType))
             _ <- EitherT(tservice.create(repeatedAttributeTargetType))
@@ -1390,11 +1372,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(tservice.create(nullableAttributeSourceType))
             _ <- EitherT(tservice.create(nullableAttributeTargetType))
@@ -1458,11 +1437,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(trservice.create(Trait("FileBasedOutputPort", None)))
             _ <- EitherT(trservice.create(Trait("TableBasedOutputPort", None)))
@@ -1553,11 +1529,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(trservice.create(Trait("NestSource", None)))
             _ <- EitherT(trservice.create(Trait("NestLinked", None)))
@@ -1699,11 +1672,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(trservice.create(Trait("MapNameSource", None)))
             _ <- EitherT(trservice.create(Trait("OtherMapNameSource", None)))
@@ -1808,11 +1778,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(trservice.create(Trait("IsPartSource", None)))
             _ <- EitherT(trservice.create(Trait("IsPartLinked", None)))
@@ -1907,11 +1874,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(trservice.create(Trait("UpdateSource", None)))
             _ <- EitherT(trservice.create(Trait("UpdateLinked", None)))
@@ -2003,11 +1967,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(trservice.create(Trait("ReadSource", None)))
             _ <- EitherT(trservice.create(Trait("FirstReadLinked", None)))
@@ -2067,11 +2028,8 @@ class MappingSpec extends CommonSpec:
       session
         .use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val tservice = TypeManagementServiceInterpreter[IO](trservice)
-          val iservice = InstanceManagementServiceInterpreter[IO](tservice)
-          val mservice =
-            MappingManagementServiceInterpreter[IO](tservice, iservice)
+          val (trservice, tservice, iservice, mservice) =
+            getManagementServices(repository)
           (for {
             _ <- EitherT(tservice.create(wrongPathSourceType))
             _ <- EitherT(tservice.create(wrongPathTargetType))

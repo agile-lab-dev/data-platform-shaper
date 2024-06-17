@@ -11,11 +11,6 @@ import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
-  InstanceManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
 import org.scalatest.Inside.inside
 
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
@@ -457,8 +452,7 @@ class OntologyL0Spec extends CommonSpec:
       val testResult: IO[Either[ManagementServiceError, List[EntityType]]] =
         session.use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val service = TypeManagementServiceInterpreter[IO](trservice)
+          val (trservice, service, _, _) = getManagementServices(repository)
 
           (for {
             _ <- EitherT.liftF(service.create(listEntityTypes1))
@@ -516,8 +510,7 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use(session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
 
         val entityType = EntityType("TestType", schema)
 
@@ -566,8 +559,7 @@ class OntologyL0Spec extends CommonSpec:
 
       session.use(session => {
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
 
         val entityType = EntityType("TestDeleteType", schema)
 
@@ -603,8 +595,7 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
         val entityType = EntityType(
           "FileBasedDataCollectionType",
           Set("DataCollection"),
@@ -632,8 +623,7 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
         val entityType = EntityType(
           "TraitExample",
           Set("NonExistingTrait"),
@@ -688,8 +678,7 @@ class OntologyL0Spec extends CommonSpec:
 
       session.use(session => {
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
 
         val fatherEntityType = EntityType("FatherDeleteEntityType", schema)
 
@@ -743,9 +732,7 @@ class OntologyL0Spec extends CommonSpec:
       ]] =
         session.use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val service = TypeManagementServiceInterpreter[IO](trservice)
-          val ims = InstanceManagementServiceInterpreter[IO](service)
+          val (trservice, service, ims, _) = getManagementServices(repository)
 
           val entityType = EntityType("DataProductType", schema)
 
@@ -783,9 +770,7 @@ class OntologyL0Spec extends CommonSpec:
       ]] =
         session.use { session =>
           val repository: Repository[IO] = getRepository[IO](session)
-          val trservice = TraitManagementServiceInterpreter[IO](repository)
-          val service = TypeManagementServiceInterpreter[IO](trservice)
-          val ims = InstanceManagementServiceInterpreter[IO](service)
+          val (trservice, service, ims, _) = getManagementServices(repository)
 
           val fatherEntityType = EntityType("FatherType", schema)
 
@@ -819,8 +804,7 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use(session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
 
         val entityType =
           EntityType("RepeatedStructTestType", repeatedTypeSchema)
@@ -847,9 +831,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create("RepeatedStructTestType", repeatedTypeTuple)
@@ -905,9 +888,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         iservice.create(
           "MissingDataCollectionType",
           fileBasedDataCollectionTuple
@@ -933,9 +915,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         iservice.create(
           "FileBasedDataCollectionType",
           fileBasedDataCollectionTuple
@@ -956,16 +937,14 @@ class OntologyL0Spec extends CommonSpec:
       )
       val _ = session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         iservice.exist("nonexistent")
       } asserting (_ should matchPattern { case Right(false) => })
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -993,9 +972,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -1029,9 +1007,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         (for {
           uid <- EitherT[IO, ManagementServiceError, String](
             iservice.create(
@@ -1073,8 +1050,7 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
         service.read("FileBasedDataCollectionType")
       } asserting (_.map(et =>
         import cats.syntax.all.*
@@ -1098,9 +1074,8 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         val nonExistentId = "non-existent-id"
 
         (for {
@@ -1130,8 +1105,7 @@ class OntologyL0Spec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
         service.read("FileBasedDataCollectionType")
       }.attempt asserting (_ should matchPattern { case Left(_) => })
     }
@@ -1154,8 +1128,7 @@ class OntologyL0Spec extends CommonSpec:
 
       session.use(session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
 
         val commonEntityType = EntityType("CommonEntityType", commonSchema)
 
@@ -1218,8 +1191,7 @@ class OntologyL0Spec extends CommonSpec:
 
       session.use(session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT[IO, ManagementServiceError, Unit](
             service.create(entityType0)

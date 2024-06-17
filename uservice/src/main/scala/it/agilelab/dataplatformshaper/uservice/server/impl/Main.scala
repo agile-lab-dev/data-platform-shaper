@@ -5,6 +5,7 @@ import io.chrisdavenport.mules.caffeine.CaffeineCache
 import io.chrisdavenport.mules.{Cache, TimeSpec}
 import it.agilelab.dataplatformshaper.domain.common.db.{Repository, Session}
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.{
+  DatabaseConfig,
   JdbcRepository,
   JdbcSession,
   Rdf4jRepository,
@@ -94,6 +95,13 @@ object Main extends IOApp:
   end createRepository
 
   private def loadInitialOntologies(session: Session): IO[Unit] = {
+    val host = "localhost"
+    val user = "dba"
+    val pwd = "mysecret"
+    val repositoryId = "repo1"
+    val port = graphdbType match
+      case "graphdb" | "virtuoso" => 7201
+      case _                      => 5432
     val repository: Repository[IO] = session match
       case session: JdbcSession  => JdbcRepository[IO](session)
       case session: Rdf4jSession => Rdf4jRepository[IO](session)
@@ -101,7 +109,15 @@ object Main extends IOApp:
       case rdf4jRepository: Rdf4jRepository[IO] =>
         rdf4jRepository.loadBaseOntologies()
       case jdbcRepository: JdbcRepository[IO] =>
-        IO.unit // TODO actual implementation
+        val url = s"jdbc:postgresql://$host:$port/$repositoryId"
+        val config = DatabaseConfig(
+          url,
+          Some(user),
+          Some(pwd.toCharArray),
+          "flyway",
+          List("db")
+        )
+        jdbcRepository.migrateDb(config).use(_ => IO.unit)
   }
 
 end Main

@@ -9,11 +9,6 @@ import it.agilelab.dataplatformshaper.domain.model.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError
-import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
-  InstanceManagementServiceInterpreter,
-  TraitManagementServiceInterpreter,
-  TypeManagementServiceInterpreter
-}
 import org.scalactic.Equality
 import org.scalatest.Inside.inside
 
@@ -313,8 +308,7 @@ class OntologyL0SearchSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val service = TypeManagementServiceInterpreter[IO](trservice)
+        val (trservice, service, _, _) = getManagementServices(repository)
         val entityType = EntityType(
           "FileBasedDataCollectionType",
           Set("DataCollection"),
@@ -345,9 +339,7 @@ class OntologyL0SearchSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, _, iservice, _) = getManagementServices(repository)
         iservice.create(
           "FileBasedDataCollectionType",
           fileBasedDataCollectionTuple
@@ -368,9 +360,8 @@ class OntologyL0SearchSpec extends CommonSpec:
       )
       session.use { session =>
         val repository: Repository[IO] = getRepository[IO](session)
-        val trservice = TraitManagementServiceInterpreter[IO](repository)
-        val tservice = TypeManagementServiceInterpreter[IO](trservice)
-        val iservice = InstanceManagementServiceInterpreter[IO](tservice)
+        val (trservice, tservice, iservice, _) =
+          getManagementServices(repository)
         val entityType = "FileBasedDataCollectionType"
 
         val predicate1 =
