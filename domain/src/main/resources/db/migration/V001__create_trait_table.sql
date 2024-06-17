@@ -1,5 +1,5 @@
 CREATE TABLE trait
 (
-    id   BIGINT      NOT NULL PRIMARY KEY,
+    id   SERIAL PRIMARY KEY,
     name VARCHAR(30) NOT NULL
 );

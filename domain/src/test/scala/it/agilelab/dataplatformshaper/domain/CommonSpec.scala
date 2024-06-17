@@ -26,6 +26,12 @@ import it.agilelab.dataplatformshaper.domain.service.interpreter.rdf4j.{
   InstanceManagementServiceInterpreter as rdf4jInstanceManagementServiceInterpreter,
   MappingManagementServiceInterpreter as rdf4jMappingManagementServiceInterpreter
 }
+import it.agilelab.dataplatformshaper.domain.service.interpreter.jdbc.{
+  TraitManagementServiceInterpreter as jdbcTraitManagementServiceInterpreter,
+  TypeManagementServiceInterpreter as jdbcTypeManagementServiceInterpreter,
+  InstanceManagementServiceInterpreter as jdbcInstanceManagementServiceInterpreter,
+  MappingManagementServiceInterpreter as jdbcMappingManagementServiceInterpreter
+}
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.multipart.{Multipart, Multiparts, Part}
 import org.http4s.{EntityEncoder, Method, Request, Uri}
@@ -165,13 +171,13 @@ class CommonSpec
     repository match
       case jdbcRepository: JdbcRepository[F] => // TODO: Change with real ones
         val traitManagementService =
-          rdf4jTraitManagementServiceInterpreter[F](repository)
+          jdbcTraitManagementServiceInterpreter[F](repository)
         val typeManagementService =
-          rdf4jTypeManagementServiceInterpreter[F](traitManagementService)
+          jdbcTypeManagementServiceInterpreter[F](traitManagementService)
         val instanceManagementService =
-          rdf4jInstanceManagementServiceInterpreter[F](typeManagementService)
+          jdbcInstanceManagementServiceInterpreter[F](typeManagementService)
         val mappingManagementService =
-          rdf4jMappingManagementServiceInterpreter[F](
+          jdbcMappingManagementServiceInterpreter[F](
             typeManagementService,
             instanceManagementService
           )

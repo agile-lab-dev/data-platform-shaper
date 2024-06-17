@@ -23,7 +23,7 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 class TraitManagementServiceInterpreter[F[_]: Sync](
-  val genericRepository: Repository[F]
+  genericRepository: Repository[F]
 ) extends TraitManagementService[F]:
 
   @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))

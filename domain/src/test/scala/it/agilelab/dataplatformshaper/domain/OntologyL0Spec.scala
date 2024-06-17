@@ -1100,7 +1100,7 @@ class OntologyL0Spec extends CommonSpec:
         "localhost",
         "non_existing_user",
         "mysecret",
-        "repo1",
+        "wrong_repo",
         false
       )
       session.use { session =>
