@@ -24,7 +24,12 @@ case class JdbcRepository[F[_]: Sync](session: JdbcSession)
 
   def migrateDb(databaseConfig: DatabaseConfig): Resource[IO, MigrateResult] =
     val fly4s = loadDbConfig(databaseConfig)
-    fly4s.evalMap(_.validateAndMigrate.result)
+    fly4s.evalMap { f =>
+      f.migrate.flatMap { result =>
+        if result.success then IO.pure(result)
+        else IO.raiseError(new RuntimeException("Migration failed"))
+      }
+    }
   end migrateDb
 
 end JdbcRepository

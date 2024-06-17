@@ -165,7 +165,7 @@ class CommonSpec
               "flyway",
               List("db")
             )
-            jdbcRepository.migrateDb(config).use(_ => IO.unit)
+            jdbcRepository.migrateDb(config).use(d => IO.unit)
         end match
       }
       .unsafeRunSync()
