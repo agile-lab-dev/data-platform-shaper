@@ -4,7 +4,9 @@ import fly4s.*
 import fly4s.data.*
 import fly4s.implicits.*
 import cats.effect.*
-import it.agilelab.dataplatformshaper.domain.common.db.Repository
+import it.agilelab.dataplatformshaper.domain.common.db.{Connection, Repository}
+
+import java.security.InvalidParameterException
 
 case class JdbcRepository[F[_]: Sync](session: JdbcSession)
     extends Repository[F]:
@@ -21,6 +23,16 @@ case class JdbcRepository[F[_]: Sync](session: JdbcSession)
       )
     )
   end loadDbConfig
+
+  @SuppressWarnings(Array("scalafix:DisableSyntax.throw"))
+  def connectionToJdbcConnection(conn: Connection): JdbcConnection =
+    conn match
+      case jdbcConnection: JdbcConnection => jdbcConnection
+      case _ =>
+        throw new InvalidParameterException(
+          "Expected connection to be JdbcConnection"
+        )
+  end connectionToJdbcConnection
 
   def migrateDb(databaseConfig: DatabaseConfig): Resource[IO, MigrateResult] =
     val fly4s = loadDbConfig(databaseConfig)
