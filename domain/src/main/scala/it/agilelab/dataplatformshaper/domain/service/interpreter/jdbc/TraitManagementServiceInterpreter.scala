@@ -4,6 +4,7 @@ import cats.data.EitherT
 import cats.effect.Sync
 import scalikejdbc.*
 import cats.implicits.*
+import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.common.db.Repository
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.JdbcRepository
 import it.agilelab.dataplatformshaper.domain.model.{
@@ -56,24 +57,31 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       )
       fatherExist <- traitDefinition.inheritsFrom match
         case Some(fatherName) => EitherT(this.exist(fatherName))
-        case None => EitherT.rightT[F, ManagementServiceError](false)
+        case None             => EitherT.rightT[F, ManagementServiceError](true)
 
       fatherId <-
-        if fatherExist then
+        if fatherExist && traitDefinition.inheritsFrom.isDefined then
           EitherT(this.getTraitIdFromName(traitDefinition.inheritsFrom.get))
+        else if traitDefinition.inheritsFrom.isDefined then
+          EitherT.leftT[F, Long](
+            ManagementServiceError(
+              s"Father trait ${traitDefinition.inheritsFrom.getOrElse("")} does not exist"
+            )
+          )
         else EitherT.rightT[F, ManagementServiceError](0L)
 
       _ <- EitherT.liftF(repository.session.withTx { genericConnection =>
         val connection =
           repository.connectionToJdbcConnection(genericConnection)
         implicit val session: DBSession = DBSession(connection.connection)
+        session.connection.setAutoCommit(false)
         val traitId = insertTrait.updateAndReturnGeneratedKey.apply()
-        if fatherExist then
+        if fatherExist && traitDefinition.inheritsFrom.isDefined then
           val insertRelationship =
             sql"""
-              insert into relationship (trait1_id, trait2_id, name)
+              insert into relationship (subject_id, object_id, name)
               values ($traitId, $fatherId, 'subClassOf')
-               """
+            """
           val _ = insertRelationship.update.apply()
 
         traitId
@@ -167,10 +175,46 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   end exist
 
   override def link(
-    trait1Name: String,
+    traitName1: String,
     linkType: Relationship,
     traitName2: String
-  ): F[Either[ManagementServiceError, Unit]] = ???
+  ): F[Either[ManagementServiceError, Unit]] =
+    val result = for {
+      _ <- traceT(
+        s"About to link $traitName1 with $traitName2 using the relationship $linkType"
+      )
+      exist1 <- EitherT(exist(traitName1))
+      exist2 <- EitherT(exist(traitName2))
+      _ <-
+        if exist1 && exist2 then
+          for
+            id1 <- EitherT(this.getTraitIdFromName(traitName1))
+            id2 <- EitherT(this.getTraitIdFromName(traitName2))
+            res <- EitherT.liftF(repository.session.withTx {
+              genericConnection =>
+                val connection =
+                  repository.connectionToJdbcConnection(genericConnection)
+                implicit val session: DBSession =
+                  DBSession(connection.connection)
+                val insertRelationship =
+                  sql"""
+                  insert into relationship (subject_id, object_id, name)
+                  values ($id1, $id2, ${linkType.toString})
+                   """
+                insertRelationship.update.apply()
+            })
+          yield res
+        else if !exist1 then
+          EitherT.leftT[F, Int](
+            ManagementServiceError(s"The trait $traitName1 does not exist")
+          )
+        else
+          EitherT.leftT[F, Int](
+            ManagementServiceError(s"The trait $traitName2 does not exist")
+          )
+    } yield ()
+    result.value
+  end link
 
   override def unlink(
     trait1Name: String,
@@ -181,5 +225,38 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   override def linked(
     traitName: String,
     linkType: Relationship
-  ): F[Either[ManagementServiceError, List[String]]] = ???
+  ): F[Either[ManagementServiceError, List[String]]] =
+    val result =
+      for
+        _ <- traceT(
+          s"Looking for linked traits for trait $traitName and relationship kind $linkType"
+        )
+        exist <- EitherT(this.exist(traitName))
+        res <-
+          if exist then
+            for
+              traitId <- EitherT(this.getTraitIdFromName(traitName))
+              res <- EitherT.liftF(repository.session.withTx {
+                genericConnection =>
+                  val connection =
+                    repository.connectionToJdbcConnection(genericConnection)
+                  implicit val session: DBSession =
+                    DBSession(connection.connection)
+                  val query =
+                    sql"""
+                      select (t.name)
+                      from relationship r
+                      join trait t on t.id = r.object_id
+                      where subject_id = $traitId
+                    """
+                  query.map(rs => rs.string("name")).list.apply()
+              })
+            yield res
+          else
+            EitherT.leftT[F, List[String]](
+              ManagementServiceError(s"The trait $traitName does not exist")
+            )
+      yield res
+    result.value
+  end linked
 end TraitManagementServiceInterpreter

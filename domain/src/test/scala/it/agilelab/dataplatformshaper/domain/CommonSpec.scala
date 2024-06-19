@@ -52,7 +52,7 @@ class CommonSpec
     with Matchers
     with BeforeAndAfterAll:
 
-  val graphdbType = "virtuoso"
+  val graphdbType = "graphdb"
 
   val graphdbContainer: GenericContainer[Nothing] =
     graphdbType match

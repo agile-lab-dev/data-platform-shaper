@@ -59,6 +59,7 @@ class OntologyL1Spec extends CommonSpec:
         val (trms, _, _, _) = getManagementServices(repository)
         (for {
           _ <- EitherT(trms.create(Trait("ANewTrait", None)))
+          _ <- EitherT(trms.create(Trait("Help", Some("ANewTrait"))))
           res <- EitherT(trms.exist("ANewTrait"))
         } yield res).value
       } asserting (res => res should be(Right(true)))
