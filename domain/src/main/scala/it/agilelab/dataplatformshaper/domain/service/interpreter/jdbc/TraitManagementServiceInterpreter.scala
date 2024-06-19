@@ -70,22 +70,28 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
           )
         else EitherT.rightT[F, ManagementServiceError](0L)
 
-      _ <- EitherT.liftF(repository.session.withTx { genericConnection =>
-        val connection =
-          repository.connectionToJdbcConnection(genericConnection)
-        implicit val session: DBSession = DBSession(connection.connection)
-        session.connection.setAutoCommit(false)
-        val traitId = insertTrait.updateAndReturnGeneratedKey.apply()
-        if fatherExist && traitDefinition.inheritsFrom.isDefined then
-          val insertRelationship =
-            sql"""
+      _ <- EitherT(
+        repository.session
+          .withTx { implicit genericConnection =>
+            val connection =
+              repository.connectionToJdbcConnection(genericConnection)
+            implicit val session: DBSession = DBSession(connection.connection)
+            session.connection.setAutoCommit(false)
+            val traitId = insertTrait.updateAndReturnGeneratedKey.apply()
+            if fatherExist && traitDefinition.inheritsFrom.isDefined then
+              val insertRelationship =
+                sql"""
               insert into relationship (subject_id, object_id, name)
               values ($traitId, $fatherId, 'subClassOf')
-            """
-          val _ = insertRelationship.update.apply()
-
-        traitId
-      })
+              """
+              val _ = insertRelationship.update.apply()
+          }
+          .attempt
+          .map {
+            case Right(_) => Right(())
+            case Left(e)  => Left(ManagementServiceError(e.getMessage))
+          }
+      )
     } yield ()).value
   end create
 
