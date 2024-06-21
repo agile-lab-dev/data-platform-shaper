@@ -20,8 +20,6 @@ import it.agilelab.dataplatformshaper.domain.service.{
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
-import java.sql.Connection
-
 class TraitManagementServiceInterpreter[F[_]: Sync](
   genericRepository: Repository[F]
 ) extends TraitManagementService[F]:
@@ -30,8 +28,6 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
   val repository: JdbcRepository[F] = genericRepository match
     case repo: JdbcRepository[F] => repo
     case _ => throw new IllegalArgumentException("Expected JdbcRepository")
-
-  val connection: Connection = repository.session.connection.connection
 
   given logger: Logger[F] = Slf4jLogger.getLogger[F]
 
@@ -99,20 +95,106 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     bulkTraitsCreationRequest: BulkTraitsCreationRequest
   ): F[BulkTraitsCreationResponse] = ???
 
+  private def hasLinkedTraits(
+    traitName: String
+  ): F[Either[ManagementServiceError, Boolean]] =
+    val queryAction = Sync[F].delay {
+      DB.readOnly { implicit session =>
+        sql"""
+          select count(*) as c
+          from trait t
+          join relationship r on t.id = r.subject_id or t.id = r.object_id
+          where t.name = $traitName
+        """.map(rs => rs.int("c")).single.apply().getOrElse(0) > 0
+      }
+    }
+
+    queryAction
+      .map { count =>
+        Right(count)
+      }
+      .handleErrorWith { e =>
+        Sync[F]
+          .delay {
+            logger.trace(e)("Failed to check for linked traits")
+          }
+          .as(Left(ManagementServiceError(e.getMessage)))
+      }
+  end hasLinkedTraits
+
   override def delete(
     traitName: String
-  ): F[Either[ManagementServiceError, Unit]] = ???
+  ): F[Either[ManagementServiceError, Unit]] =
+    val result = for
+      _ <-
+        if traitName.equals("MappingSource") || traitName.equals(
+            "MappingTarget"
+          )
+        then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(s"Cannot delete trait $traitName")
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      exist <- EitherT(this.exist(traitName))
+      _ <-
+        if exist then EitherT.rightT[F, ManagementServiceError](())
+        else
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(s"Trait $traitName does not exist")
+          )
+      // TODO: Create the method entityHasTrait as seen in rdf4j/trms to check if an EntityType has this trait
+      hasLinks <- EitherT(hasLinkedTraits(traitName))
+      _ <-
+        if hasLinks then
+          EitherT.leftT[F, Unit](
+            ManagementServiceError(
+              s"The trait $traitName is part of a relationship"
+            )
+          )
+        else EitherT.rightT[F, ManagementServiceError](())
+      traitID <- EitherT(this.getTraitIdFromName(traitName))
+      _ <- EitherT
+        .liftF(
+          repository.session
+            .withTx { implicit genericConnection =>
+              val connection =
+                repository.connectionToJdbcConnection(genericConnection)
+              implicit val session: DBSession = DBSession(connection.connection)
+              session.connection.setAutoCommit(false)
+              val removeFatherRelationshipAction =
+                sql"""
+            delete from relationship
+            where subject_id = $traitID and name = 'subClassOf'
+             """.update.apply()
+              val removeTraitAction =
+                sql"""
+            delete from trait
+            where name = $traitName
+             """.update.apply()
+              (removeFatherRelationshipAction, removeTraitAction)
+            }
+            .attempt
+            .map {
+              case Right(_) => Right(())
+              case Left(e)  => Left(ManagementServiceError(e.getMessage))
+            }
+        )
+        .void
+    yield ()
+    result.value
+  end delete
 
   private def getTraitIdFromName(
     name: String
   ): F[Either[ManagementServiceError, Long]] =
     val queryAction: F[Set[String]] = Sync[F].delay {
-      implicit val session: DBSession = DBSession(connection)
-      sql"""
-        select id
-        from trait
-        where name = $name
-      """.map(rs => rs.string("id")).list.apply().toSet
+      DB.readOnly { implicit session =>
+        sql"""
+          select id
+          from trait
+          where name = $name
+        """.map(rs => rs.string("id")).list.apply().toSet
+      }
     }
 
     queryAction.map { ids =>
@@ -127,12 +209,13 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     traitName: String
   ): F[Either[ManagementServiceError, Boolean]] =
     val queryAction: F[Option[String]] = Sync[F].delay {
-      implicit val session: DBSession = DBSession(connection)
-      sql"""
+      DB.readOnly { implicit session =>
+        sql"""
           select name
           from trait
           where name = $traitName
         """.map(rs => rs.string("name")).single.apply()
+      }
     }
 
     for
@@ -150,18 +233,40 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     yield result
   end exist
 
-  override def list(): F[Either[ManagementServiceError, List[String]]] = ???
+  override def list(): F[Either[ManagementServiceError, List[String]]] =
+    val queryAction: F[List[String]] = Sync[F].delay {
+      DB.readOnly { implicit session =>
+        sql"""
+          select name
+          from trait
+        """.map(rs => rs.string("name")).list.apply()
+      }
+    }
+
+    queryAction
+      .map { names =>
+        Right(names)
+      }
+      .handleErrorWith { e =>
+        Sync[F]
+          .delay {
+            logger.trace(e)("Failed to list traits")
+          }
+          .as(Left(ManagementServiceError(e.getMessage)))
+      }
+  end list
 
   override def exist(
     traitNames: Set[String]
   ): F[Either[ManagementServiceError, Set[(String, Boolean)]]] =
     val queryAction: F[Set[String]] = Sync[F].delay {
-      implicit val session: DBSession = DBSession(connection)
-      sql"""
-        select name
-        from trait
-        where name in (${traitNames.mkString(", ")})
-      """.map(rs => rs.string("name")).list.apply().toSet
+      DB.readOnly { implicit session =>
+        sql"""
+          select name
+          from trait
+          where name in (${traitNames.map(name => s"'$name'").mkString(", ")})
+        """.map(rs => rs.string("name")).list.apply().toSet
+      }
     }
 
     for
@@ -202,6 +307,7 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
                   repository.connectionToJdbcConnection(genericConnection)
                 implicit val session: DBSession =
                   DBSession(connection.connection)
+                session.connection.setAutoCommit(false)
                 val insertRelationship =
                   sql"""
                   insert into relationship (subject_id, object_id, name)
@@ -242,20 +348,17 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
           if exist then
             for
               traitId <- EitherT(this.getTraitIdFromName(traitName))
-              res <- EitherT.liftF(repository.session.withTx {
-                genericConnection =>
-                  val connection =
-                    repository.connectionToJdbcConnection(genericConnection)
-                  implicit val session: DBSession =
-                    DBSession(connection.connection)
+              res <- EitherT.liftF(Sync[F].delay {
+                DB.readOnly { implicit session =>
                   val query =
                     sql"""
-                      select (t.name)
+                      select t.name
                       from relationship r
                       join trait t on t.id = r.object_id
                       where subject_id = $traitId
                     """
                   query.map(rs => rs.string("name")).list.apply()
+                }
               })
             yield res
           else
