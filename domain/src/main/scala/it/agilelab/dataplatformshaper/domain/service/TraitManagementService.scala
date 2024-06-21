@@ -1,5 +1,7 @@
 package it.agilelab.dataplatformshaper.domain.service
 
+import cats.effect.Sync
+import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.model.{
   BulkTraitsCreationRequest,
   BulkTraitsCreationResponse,
@@ -7,13 +9,48 @@ import it.agilelab.dataplatformshaper.domain.model.{
   Trait
 }
 
-trait TraitManagementService[F[_]]:
+trait TraitManagementService[F[_]: Sync]:
 
   def create(traitDefinition: Trait): F[Either[ManagementServiceError, Unit]]
 
   def create(
     bulkTraitsCreationRequest: BulkTraitsCreationRequest
-  ): F[BulkTraitsCreationResponse]
+  ): F[BulkTraitsCreationResponse] =
+
+    val x: F[List[(Trait, Option[String])]] = bulkTraitsCreationRequest.traits
+      .map(traitDefinition =>
+        this
+          .create(traitDefinition)
+          .map((traitDefinition, _))
+      )
+      .sequence
+      .map(_.map {
+        case (traitDefinition, Left(error)) =>
+          (traitDefinition, Some(error.errors.mkString(",")))
+        case (traitDefinition, Right(_)) =>
+          (traitDefinition, None)
+      })
+
+    val y: F[List[((String, Relationship, String), Option[String])]] =
+      bulkTraitsCreationRequest.relationships
+        .map(rel =>
+          this
+            .link(rel(0), rel(1), rel(2))
+            .map(((rel(0), rel(1): Relationship, rel(2)), _))
+        )
+        .sequence
+        .map(_.map {
+          case (linkDefinition, Left(error)) =>
+            (linkDefinition, Some(error.errors.mkString(",")))
+          case (linkDefinition, Right(_)) =>
+            (linkDefinition, None)
+        })
+
+    for {
+      xr <- x
+      yr <- y
+    } yield BulkTraitsCreationResponse(xr, yr)
+  end create
 
   def delete(traitName: String): F[Either[ManagementServiceError, Unit]]
 

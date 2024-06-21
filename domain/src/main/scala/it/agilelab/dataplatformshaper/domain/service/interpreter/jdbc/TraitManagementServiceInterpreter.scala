@@ -7,12 +7,7 @@ import cats.implicits.*
 import it.agilelab.dataplatformshaper.domain.common.EitherTLogging.traceT
 import it.agilelab.dataplatformshaper.domain.common.db.Repository
 import it.agilelab.dataplatformshaper.domain.common.db.interpreter.JdbcRepository
-import it.agilelab.dataplatformshaper.domain.model.{
-  BulkTraitsCreationRequest,
-  BulkTraitsCreationResponse,
-  Relationship,
-  Trait
-}
+import it.agilelab.dataplatformshaper.domain.model.{Relationship, Trait}
 import it.agilelab.dataplatformshaper.domain.service.{
   ManagementServiceError,
   TraitManagementService
@@ -90,10 +85,6 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
       )
     } yield ()).value
   end create
-
-  override def create(
-    bulkTraitsCreationRequest: BulkTraitsCreationRequest
-  ): F[BulkTraitsCreationResponse] = ???
 
   private def hasLinkedTraits(
     traitName: String

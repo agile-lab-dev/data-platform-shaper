@@ -93,45 +93,6 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     } yield ()).value
   end create
 
-  def create(
-    bulkTraitsCreationRequest: BulkTraitsCreationRequest
-  ): F[BulkTraitsCreationResponse] =
-
-    val x: F[List[(Trait, Option[String])]] = bulkTraitsCreationRequest.traits
-      .map(traitDefinition =>
-        this
-          .create(traitDefinition)
-          .map((traitDefinition, _))
-      )
-      .sequence
-      .map(_.map {
-        case (traitDefinition, Left(error)) =>
-          (traitDefinition, Some(error.errors.mkString(",")))
-        case (traitDefinition, Right(_)) =>
-          (traitDefinition, None)
-      })
-
-    val y: F[List[((String, Relationship, String), Option[String])]] =
-      bulkTraitsCreationRequest.relationships
-        .map(rel =>
-          this
-            .link(rel(0), rel(1), rel(2))
-            .map(((rel(0), rel(1): Relationship, rel(2)), _))
-        )
-        .sequence
-        .map(_.map {
-          case (linkDefinition, Left(error)) =>
-            (linkDefinition, Some(error.errors.mkString(",")))
-          case (linkDefinition, Right(_)) =>
-            (linkDefinition, None)
-        })
-
-    for {
-      xr <- x
-      yr <- y
-    } yield BulkTraitsCreationResponse(xr, yr)
-  end create
-
   override def delete(
     traitName: String
   ): F[Either[ManagementServiceError, Unit]] =
