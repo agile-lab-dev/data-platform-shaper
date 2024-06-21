@@ -400,6 +400,39 @@ class OntologyL1Spec extends CommonSpec:
     }
   }
 
+  "Unlinking two traits" - {
+    "works" in {
+      val session = getSession[IO](
+        graphdbType,
+        "localhost",
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+      session
+        .use { session =>
+          val repository: Repository[IO] = getRepository[IO](session)
+          val (trservice, _, _, _) = getManagementServices(repository)
+          (for {
+            _ <- EitherT(trservice.create(Trait("FirstLinkTrait", None)))
+            _ <- EitherT(trservice.create(Trait("SecondLinkTrait", None)))
+            _ <- EitherT(
+              trservice.link("FirstLinkTrait", dependsOn, "SecondLinkTrait")
+            )
+            _ <- EitherT(
+              trservice.unlink("FirstLinkTrait", dependsOn, "SecondLinkTrait")
+            )
+            res <- EitherT(trservice.linked("FirstLinkTrait", dependsOn))
+          } yield res).value
+        }
+        .asserting {
+          case Right(List()) => succeed
+          case _             => fail("Unlinking the traits failed")
+        }
+    }
+  }
+
   "Unlinking two traits that have associated linked instances should trigger an error" - {
     "works" in {
       val session = getSession[IO](

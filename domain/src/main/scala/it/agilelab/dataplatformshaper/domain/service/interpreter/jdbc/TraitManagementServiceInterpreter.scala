@@ -323,7 +323,31 @@ class TraitManagementServiceInterpreter[F[_]: Sync](
     trait1Name: String,
     linkType: Relationship,
     trait2Name: String
-  ): F[Either[ManagementServiceError, Unit]] = ???
+  ): F[Either[ManagementServiceError, Unit]] =
+    val result = for
+      trait1ID <- EitherT(this.getTraitIdFromName(trait1Name))
+      trait2ID <- EitherT(this.getTraitIdFromName(trait2Name))
+      _ <- EitherT.liftF(
+        repository.session
+          .withTx { implicit genericConnection =>
+            val connection =
+              repository.connectionToJdbcConnection(genericConnection)
+            implicit val session: DBSession = DBSession(connection.connection)
+            session.connection.setAutoCommit(false)
+            sql"""
+               delete from relationship
+               where subject_id = $trait1ID and name = ${linkType.toString} and object_id = $trait2ID
+             """.update.apply()
+          }
+          .attempt
+          .map {
+            case Right(_) => Right(())
+            case Left(e)  => Left(ManagementServiceError(e.getMessage))
+          }
+      )
+    yield ()
+    result.value
+  end unlink
 
   override def linked(
     traitName: String,
