@@ -2,7 +2,10 @@ package it.agilelab.dataplatformshaper.domain.model.schema
 
 import cats.*
 import cats.implicits.*
-import io.circe.{ACursor, Json, ParsingFailure}
+import io.circe.*
+import io.circe.syntax.*
+import io.circe.generic.auto.*
+import io.circe.parser.*
 import it.agilelab.dataplatformshaper.domain.model.schema.*
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
 import it.agilelab.dataplatformshaper.domain.model.schema.parsing.FoldingPhase
@@ -936,6 +939,16 @@ def tupleToJsonChecked(tuple: Tuple, schema: Schema): Json =
   )
 end tupleToJsonChecked
 
+def schemaToJson(schema: Schema): Json =
+  schema.asJson
+end schemaToJson
+
+def jsonToSchema(json: String): Either[ParsingFailure, Schema] =
+  decode[Schema](json).left.map(err =>
+    ParsingFailure("Failed to convert json to Schema", err)
+  )
+end jsonToSchema
+
 def jsonToTuple(json: Json, schema: Schema): Either[ParsingFailure, Tuple] =
   Try(jsonToTupleChecked(json, schema)) match
     case Failure(ex) =>
@@ -1012,4 +1025,168 @@ given Eq[StructType] with
     val ret = c1.foldLeft(true)((b, p) => b && c2(p(0)) === p(1))
     ret
   end eqv
+end given
+
+given Encoder[Mode] with
+  def apply(a: Mode): Json = a match
+    case Required => Json.fromString("Required")
+    case Nullable => Json.fromString("Nullable")
+    case Repeated => Json.fromString("Repeated")
+  end apply
+end given
+
+given Decoder[Mode] with
+  def apply(c: HCursor): Decoder.Result[Mode] =
+    c.as[String].flatMap {
+      case "Required" => Right(Required)
+      case "Nullable" => Right(Nullable)
+      case "Repeated" => Right(Repeated)
+      case other => Left(DecodingFailure(s"Unknown mode: $other", c.history))
+    }
+  end apply
+end given
+
+given Encoder[DataType] with
+  def apply(a: DataType): Json = a match
+    case IntType(mode, constraints) =>
+      Json.obj(
+        ("type", Json.fromString("IntType")),
+        ("mode", mode.asJson),
+        ("constraints", constraints.asJson)
+      )
+    case LongType(mode, constraints) =>
+      Json.obj(
+        ("type", Json.fromString("LongType")),
+        ("mode", mode.asJson),
+        ("constraints", constraints.asJson)
+      )
+    case FloatType(mode, constraints) =>
+      Json.obj(
+        ("type", Json.fromString("FloatType")),
+        ("mode", mode.asJson),
+        ("constraints", constraints.asJson)
+      )
+    case DoubleType(mode, constraints) =>
+      Json.obj(
+        ("type", Json.fromString("DoubleType")),
+        ("mode", mode.asJson),
+        ("constraints", constraints.asJson)
+      )
+    case SqlDecimal(mode, constraints) =>
+      Json.obj(
+        ("type", Json.fromString("SqlDecimal")),
+        ("mode", mode.asJson),
+        ("constraints", constraints.asJson)
+      )
+    case BooleanType(mode, constraints) =>
+      Json.obj(
+        ("type", Json.fromString("BooleanType")),
+        ("mode", mode.asJson),
+        ("constraints", constraints.asJson)
+      )
+    case StringType(mode, constraints) =>
+      Json.obj(
+        ("type", Json.fromString("StringType")),
+        ("mode", mode.asJson),
+        ("constraints", constraints.asJson)
+      )
+    case TimestampType(mode, constraints) =>
+      Json.obj(
+        ("type", Json.fromString("TimestampType")),
+        ("mode", mode.asJson),
+        ("constraints", constraints.asJson)
+      )
+    case DateType(mode, constraints) =>
+      Json.obj(
+        ("type", Json.fromString("DateType")),
+        ("mode", mode.asJson),
+        ("constraints", constraints.asJson)
+      )
+    case JsonType(mode) =>
+      Json.obj(("type", Json.fromString("JsonType")), ("mode", mode.asJson))
+    case StructType(records, mode) =>
+      Json.obj(
+        ("type", Json.fromString("StructType")),
+        ("mode", mode.asJson),
+        (
+          "records",
+          Json.arr(records.map { case (name, dataType) =>
+            Json.obj(
+              ("name", Json.fromString(name)),
+              ("dataType", dataType.asJson)
+            )
+          }*)
+        )
+      )
+  end apply
+end given
+
+given Decoder[DataType] with
+  def apply(c: HCursor): Decoder.Result[DataType] =
+    c.downField("type").as[String].flatMap {
+      case "IntType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          constraints <- c.downField("constraints").as[Option[String]]
+        } yield IntType(mode, constraints)
+      case "LongType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          constraints <- c.downField("constraints").as[Option[String]]
+        } yield LongType(mode, constraints)
+      case "FloatType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          constraints <- c.downField("constraints").as[Option[String]]
+        } yield FloatType(mode, constraints)
+      case "DoubleType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          constraints <- c.downField("constraints").as[Option[String]]
+        } yield DoubleType(mode, constraints)
+      case "SqlDecimal" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          constraints <- c.downField("constraints").as[Option[String]]
+        } yield SqlDecimal(mode, constraints)
+      case "BooleanType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          constraints <- c.downField("constraints").as[Option[String]]
+        } yield BooleanType(mode, constraints)
+      case "StringType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          constraints <- c.downField("constraints").as[Option[String]]
+        } yield StringType(mode, constraints)
+      case "TimestampType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          constraints <- c.downField("constraints").as[Option[String]]
+        } yield TimestampType(mode, constraints)
+      case "DateType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          constraints <- c.downField("constraints").as[Option[String]]
+        } yield DateType(mode, constraints)
+      case "JsonType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+        } yield JsonType(mode)
+      case "StructType" =>
+        for {
+          mode <- c.downField("mode").as[Mode]
+          records <- c.downField("records").as[List[Json]]
+          decodedRecords = records.map { record =>
+            for {
+              name <- record.hcursor.downField("name").as[String]
+              dataType <- record.hcursor.downField("dataType").as[DataType]
+            } yield (name, dataType)
+          }
+          finalRecords <- decodedRecords.sequence
+        } yield StructType(finalRecords, mode)
+      case other =>
+        Left(DecodingFailure(s"Unknown data type: $other", c.history))
+    }
+  end apply
 end given

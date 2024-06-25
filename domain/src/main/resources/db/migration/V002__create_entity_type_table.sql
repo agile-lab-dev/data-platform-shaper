@@ -1,5 +1,6 @@
 CREATE TABLE entity_type
 (
-    id   BIGINT NOT NULL PRIMARY KEY,
-    data JSONB  NOT NULL
+    id   SERIAL PRIMARY KEY,
+    name VARCHAR(30) NOT NULL,
+    data JSONB       NOT NULL
 );
