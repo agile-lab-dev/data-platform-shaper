@@ -470,9 +470,6 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
         sourceEntityType.name,
         targetEntityType.name
       )
-      additionalReferencesWithIds <- EitherT.liftF(
-        this.readAdditionalReferencesWithIds(firstMappingKey)
-      )
       firstMappingDefinition = MappingDefinition(firstMappingKey, mapper)
       _ <- EitherT(
         deleteMappedInstances(
@@ -481,7 +478,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           typeManagementService,
           firstMappingDefinition,
           mapperId,
-          additionalReferencesWithIds
+          readAdditionalReferencesWithIds
         )
       )
       _ <- EitherT(
@@ -489,7 +486,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           logger,
           repository,
           mappingKey.targetEntityTypeName,
-          typeManagementService
+          typeManagementService,
+          readAdditionalReferencesWithIds
         )
       )
       _ <- EitherT.liftF(logger.trace(s"Selected mapping last string:"))

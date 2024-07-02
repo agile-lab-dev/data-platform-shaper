@@ -1161,8 +1161,7 @@ class MappingSpec extends CommonSpec:
               mservice.create(
                 MappingDefinition(
                   secondMappingKey,
-                  secondMapperTuple,
-                  Map("sourceAlias" -> "source")
+                  secondMapperTuple
                 )
               )
             )
