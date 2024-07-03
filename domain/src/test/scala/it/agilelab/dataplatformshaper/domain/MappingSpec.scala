@@ -1158,12 +1158,8 @@ class MappingSpec extends CommonSpec:
               )
             )
             _ <- EitherT(
-              mservice.create(
-                MappingDefinition(
-                  secondMappingKey,
-                  secondMapperTuple
-                )
-              )
+              mservice
+                .create(MappingDefinition(secondMappingKey, secondMapperTuple))
             )
             _ <- EitherT(
               iservice.create(

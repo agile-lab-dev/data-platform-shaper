@@ -276,6 +276,47 @@ class OntologyL1Spec extends CommonSpec:
     }
   }
 
+  "Connecting a trait using a relationship with itself and creating an instance" - {
+    "works" in {
+      val session = Session[IO](
+        graphdbType,
+        "localhost",
+        7201,
+        "dba",
+        "mysecret",
+        "repo1",
+        false
+      )
+
+      session.use { session =>
+        val repository = Rdf4jKnowledgeGraph[IO](session)
+        val trms = TraitManagementServiceInterpreter[IO](repository)
+        val tms = TypeManagementServiceInterpreter[IO](trms)
+        val ims = InstanceManagementServiceInterpreter[IO](tms)
+        val selfTrait = Trait("SelfTrait", None)
+        val exampleEntityType = EntityType(
+          "ExampleSelfEntityType",
+          Set(selfTrait.traitName),
+          StructType(List("name" -> StringType())): Schema
+        )
+        (for {
+          _ <- EitherT(trms.create(selfTrait))
+          _ <- EitherT(
+            trms.link(selfTrait.traitName, hasPart, selfTrait.traitName)
+          )
+          _ <- EitherT(tms.create(exampleEntityType))
+          id <- EitherT(
+            ims.create(exampleEntityType.name, Tuple1("name", "Example"))
+          )
+          _ <- EitherT(ims.link(id, hasPart, id))
+        } yield ()).value
+      } asserting {
+        case Left(ManagementServiceError(e)) => fail(s"$e")
+        case _                               => succeed
+      }
+    }
+  }
+
   "Deleting a trait while another trait is its subClass" - {
     "works" in {
       val session = Session[IO](
