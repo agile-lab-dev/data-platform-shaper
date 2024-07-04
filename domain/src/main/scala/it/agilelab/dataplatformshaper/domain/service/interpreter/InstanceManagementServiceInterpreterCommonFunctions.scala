@@ -930,7 +930,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                       mapper
                     )
 
-                    deleteMappedInstances(
+                    deleteMapping(
                       logger,
                       repository,
                       typeManagementService,
@@ -956,7 +956,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     loop()
   end recursiveDelete
 
-  def deleteMappedInstances(
+  def deleteMapping(
     logger: Logger[F],
     repository: KnowledgeGraph[F],
     typeManagementService: TypeManagementService[F],
@@ -1045,7 +1045,7 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
           .map(Right[ManagementServiceError, Unit])
       )
     } yield res).value
-  end deleteMappedInstances
+  end deleteMapping
 
   def getMappingsForEntity(
     logger: Logger[F],

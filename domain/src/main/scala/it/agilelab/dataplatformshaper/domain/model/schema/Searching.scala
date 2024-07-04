@@ -275,7 +275,8 @@ def generateSearchPredicate(
                   instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[AnyVal]]
-              case b: SqlLiteral if List("true", "false").contains(b.toValue) =>
+              case b: SqlLiteral
+                  if Set("true", "false")(b.toValue.toLowerCase) =>
                 generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =:= generateCode(
                   instancePlaceHolder,
@@ -296,6 +297,13 @@ def generateSearchPredicate(
               case _: SqlNumericLiteral =>
                 generateCode(instancePlaceHolder, operand1)
                   .asInstanceOf[SearchPredicateAttribute] =!= generateCode(
+                  instancePlaceHolder,
+                  operand2
+                ).asInstanceOf[SearchPredicateValue[AnyVal]]
+              case b: SqlLiteral
+                  if Set("true", "false")(b.toValue.toLowerCase) =>
+                generateCode(instancePlaceHolder, operand1)
+                  .asInstanceOf[SearchPredicateAttribute] =:= generateCode(
                   instancePlaceHolder,
                   operand2
                 ).asInstanceOf[SearchPredicateValue[AnyVal]]
@@ -373,7 +381,7 @@ def generateSearchPredicate(
           try num.toString.toLong
           catch case _ => num.toString.toDouble
         SearchPredicateValue[AnyVal](value)
-      case b: SqlLiteral if List("true", "false").contains(b.toValue) =>
+      case b: SqlLiteral if Set("true", "false")(b.toValue.toLowerCase) =>
         SearchPredicateValue[String](s"""${b.toString.replaceAll("'", "")}""")
       case _ =>
         throw IllegalStateException()

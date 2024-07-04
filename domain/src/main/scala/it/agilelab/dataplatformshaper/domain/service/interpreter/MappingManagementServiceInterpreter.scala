@@ -472,7 +472,7 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       )
       firstMappingDefinition = MappingDefinition(firstMappingKey, mapper)
       _ <- EitherT(
-        deleteMappedInstances(
+        deleteMapping(
           logger,
           repository,
           typeManagementService,
