@@ -1123,6 +1123,13 @@ class MappingSpec extends CommonSpec:
         "DeleteMappingMidType",
         "DeleteMappingTargetType"
       )
+      val firstMapperTuple =
+        (
+          "field1" -> "secondSourceAlias.get('field1')",
+          "field2" -> "sourceAlias.get('field2')"
+        )
+      val secondMapperTuple =
+        ("field1" -> "source.get('field1')", "field2" -> "source.get('field2')")
 
       session
         .use { session =>
@@ -1139,10 +1146,20 @@ class MappingSpec extends CommonSpec:
             _ <- EitherT(tservice.create(deleteMappingMidType))
             _ <- EitherT(tservice.create(deleteMappingTargetType))
             _ <- EitherT(
-              mservice.create(MappingDefinition(firstMappingKey, mapperTuple))
+              mservice.create(
+                MappingDefinition(
+                  firstMappingKey,
+                  firstMapperTuple,
+                  Map(
+                    "sourceAlias" -> "source",
+                    "secondSourceAlias" -> "source"
+                  )
+                )
+              )
             )
             _ <- EitherT(
-              mservice.create(MappingDefinition(secondMappingKey, mapperTuple))
+              mservice
+                .create(MappingDefinition(secondMappingKey, secondMapperTuple))
             )
             _ <- EitherT(
               iservice.create(

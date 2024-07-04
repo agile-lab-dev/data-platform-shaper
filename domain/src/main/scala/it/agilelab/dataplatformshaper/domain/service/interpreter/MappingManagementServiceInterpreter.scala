@@ -198,6 +198,34 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
     } yield res).value
   end create
 
+  private def readAdditionalReferencesWithIds(
+    mappingKey: MappingKey
+  ): F[List[(String, String, String)]] =
+    val query =
+      s"""
+         | PREFIX ns: <${ns.getName}>
+         | PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+         | SELECT DISTINCT ?referenceId ?referenceName ?referenceExpression WHERE {
+         | <${ns.getName}mappedTo#${mappingKey.mappingName}> ns:withNamedInstanceReferenceExpression ?referenceId .
+         | ?referenceId ns:instanceReferenceName ?referenceName .
+         | ?referenceId ns:instanceReferenceExpression ?referenceExpression
+         | }
+         |""".stripMargin
+    val res = logger.trace(
+      s"Reading the additional references of mapping with name ${mappingKey.mappingName}"
+    ) *> repository.evaluateQuery(query)
+    res
+      .map(_.map(bs =>
+        val referenceName = bs.getValue("referenceName").stringValue()
+        val referenceExpression =
+          bs.getValue("referenceExpression").stringValue()
+        val referenceId =
+          iri(ns, bs.getValue("referenceId").stringValue()).getLocalName
+        (referenceId, referenceName, referenceExpression)
+      ))
+      .map(_.toList)
+  end readAdditionalReferencesWithIds
+
   private def readAdditionalReferences(
     mappingKey: MappingKey
   ): F[Map[String, String]] =
@@ -437,17 +465,20 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
       }
       (mappingName, sourceEntityType, targetEntityType, mapper, mapperId) =
         filteredMappings.head
-      firstMappingDefinition = MappingDefinition(
-        MappingKey(mappingName, sourceEntityType.name, targetEntityType.name),
-        mapper
+      firstMappingKey = MappingKey(
+        mappingName,
+        sourceEntityType.name,
+        targetEntityType.name
       )
+      firstMappingDefinition = MappingDefinition(firstMappingKey, mapper)
       _ <- EitherT(
-        deleteMappedInstances(
+        deleteMapping(
           logger,
           repository,
           typeManagementService,
           firstMappingDefinition,
-          mapperId
+          mapperId,
+          readAdditionalReferencesWithIds
         )
       )
       _ <- EitherT(
@@ -455,7 +486,8 @@ class MappingManagementServiceInterpreter[F[_]: Sync](
           logger,
           repository,
           mappingKey.targetEntityTypeName,
-          typeManagementService
+          typeManagementService,
+          readAdditionalReferencesWithIds
         )
       )
       _ <- EitherT.liftF(logger.trace(s"Selected mapping last string:"))

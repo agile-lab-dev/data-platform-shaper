@@ -151,6 +151,7 @@ class OntologyL0SearchSpec extends CommonSpec:
         List(
           "nest1" -> StringType(),
           "nest2" -> StringType(),
+          "nest3" -> BooleanType(),
           "intList" -> IntType(Repeated)
         )
       ),
@@ -293,6 +294,7 @@ class OntologyL0SearchSpec extends CommonSpec:
     "struct" -> (
       "nest1" -> "ciccio1",
       "nest2" -> "ciccio2",
+      "nest3" -> true,
       "intList" -> List(1, 2, 3)
     ),
     "optionalStruct" -> Some(("nest1" -> "ciccio1", "nest2" -> "ciccio2")),
@@ -386,6 +388,9 @@ class OntologyL0SearchSpec extends CommonSpec:
         val predicate2 =
           " organization <> 'HR' "
 
+        val predicate3 =
+          " struct / nest3 = true "
+
         for {
           resp1 <- iservice.list(
             entityType,
@@ -399,12 +404,19 @@ class OntologyL0SearchSpec extends CommonSpec:
             returnEntities = false,
             None
           )
-        } yield (resp1, resp2)
+          resp3 <- iservice.list(
+            entityType,
+            predicate3,
+            returnEntities = false,
+            None
+          )
+        } yield (resp1, resp2, resp3)
 
       } asserting (resp =>
-        inside(resp) { case (Right(list1), Right(list2)) =>
+        inside(resp) { case (Right(list1), Right(list2), Right(list3)) =>
           val _ = assert(list1.size === 1)
-          assert(list2.size === 0)
+          val _ = assert(list2.size === 0)
+          assert(list3.size === 1)
         }
       )
     }

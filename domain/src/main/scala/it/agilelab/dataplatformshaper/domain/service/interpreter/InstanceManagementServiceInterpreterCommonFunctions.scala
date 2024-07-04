@@ -892,7 +892,8 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     logger: Logger[F],
     repository: KnowledgeGraph[F],
     entityTypeName: String,
-    typeManagementService: TypeManagementService[F]
+    typeManagementService: TypeManagementService[F],
+    getAdditionalReferences: MappingKey => F[List[(String, String, String)]]
   ): F[Either[ManagementServiceError, Unit]] =
     val stack = scala.collection.mutable.Stack(entityTypeName)
 
@@ -929,12 +930,13 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
                       mapper
                     )
 
-                    deleteMappedInstances(
+                    deleteMapping(
                       logger,
                       repository,
                       typeManagementService,
                       firstMappingDefinition,
-                      mapperId
+                      mapperId,
+                      getAdditionalReferences
                     ).map(Right(_))
 
                 case Left(error) => Left(error).pure[F]
@@ -954,12 +956,13 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
     loop()
   end recursiveDelete
 
-  def deleteMappedInstances(
+  def deleteMapping(
     logger: Logger[F],
     repository: KnowledgeGraph[F],
     typeManagementService: TypeManagementService[F],
     mappingDefinition: MappingDefinition,
-    mapperId: String
+    mapperId: String,
+    getAdditionalReferences: MappingKey => F[List[(String, String, String)]]
   ): F[Either[ManagementServiceError, Unit]] =
     val key = mappingDefinition.mappingKey
     val mapper = mappingDefinition.mapper
@@ -996,6 +999,34 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
 
     (for {
       ttype <- EitherT(typeManagementService.read(key.targetEntityTypeName))
+      additionalReferencesWithIds <- EitherT.liftF(
+        getAdditionalReferences(mappingDefinition.mappingKey)
+      )
+      additionalReferenceStatements =
+        additionalReferencesWithIds.flatMap(reference =>
+          val namedIri = iri(ns, reference._1)
+          val namedInstanceTriple = triple(
+            iri(
+              mappedTo.getNamespace,
+              s"${mappedTo: String}#${key.mappingName}"
+            ),
+            NS.WITHNAMEDINSTANCEREFERENCEEXPRESSION,
+            namedIri
+          )
+          val referenceName =
+            triple(namedIri, NS.INSTANCEREFERENCENAME, literal(reference._2))
+          val referenceExpression =
+            triple(
+              namedIri,
+              NS.INSTANCEREFERENCEEXPRESSION,
+              literal(reference._3)
+            )
+          List(
+            statement(namedInstanceTriple, L2),
+            statement(referenceName, L2),
+            statement(referenceExpression, L2)
+          )
+        )
       stmts <- EitherT(
         emitStatementsForEntity(
           mapperId,
@@ -1009,12 +1040,12 @@ trait InstanceManagementServiceInterpreterCommonFunctions[F[_]: Sync]:
         repository
           .removeAndInsertStatements(
             List.empty[Statement],
-            initialStatementsL2 ::: initialStatementsL3 ::: stmts
+            initialStatementsL2 ::: initialStatementsL3 ::: stmts ::: additionalReferenceStatements
           )
           .map(Right[ManagementServiceError, Unit])
       )
     } yield res).value
-  end deleteMappedInstances
+  end deleteMapping
 
   def getMappingsForEntity(
     logger: Logger[F],
