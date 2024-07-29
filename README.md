@@ -27,7 +27,7 @@ It's a Scala 3 project based on the [sbt building](https://www.scala-sbt.org) to
 
 You also need to have [Cue](https://cuelang.org/docs/introduction/installation/) installed.
 
-### Build and Test
+### Build and test
 
 This is a Scala-based project; we used [Scala 3](https://www.scala-lang.org) in combination with the [Typelevel libraries](https://typelevel.org), in particular, [Cats Effect](https://typelevel.org/cats-effect/) for managing effect using the tag-less final pattern. 
 ```
@@ -36,13 +36,30 @@ cd data-platform-shaper
 sbt compile test
 ```
 
+### Build the scoverage-report
+
+The project supports building an (code-coverage) [scoverage-report][]. To generate one you need to run ...
+
+```
+sbt clean coverage test coverageAggregate coverageReport
+```
+
+Afterwards you can look at the generated report with ...
+
+```
+google-chrome ./target/scala-3.3.3/scoverage-report/index.html
+```
+
 ### Build the documentation
 
 ```
 sbt paradox previewSite
 ```
+
 Then open this [URL](http://localhost:4000/paradox/site/main/).
+
 ### Run everything
+
 You can run GraphDB and the microservice together using a docker-compose file, so first build the image locally:
 
 ```
@@ -456,3 +473,4 @@ This project is the result of a collaborative effort:
 | Paolo Platter             | Big Data Laboratory, AgileLab S.r.L. (Italy)                                          |
 
 [build-badge]: https://github.com/agile-lap-dev/data-platform-shaper/actions/workflows/test.yml/badge.svg
+[scoverage-report]: https://github.com/scoverage
