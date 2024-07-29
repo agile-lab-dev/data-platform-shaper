@@ -55,4 +55,5 @@ jobs:
         with:
           path: ./target/scala-3.3.3/scoverage-report
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
