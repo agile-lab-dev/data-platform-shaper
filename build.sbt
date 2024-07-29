@@ -48,7 +48,8 @@ lazy val userviceClientGenerated = (project in file("uservice-client-generated")
   libraryDependencies                    := Dependencies.Jars.uservice,
   Compile / scalacOptions                := Seq(),
   Compile / guardrailTasks               += ScalaClient(clientInterfaceFile, pkg=s"it.agilelab.dataplatformshaper.uservice", framework="http4s"),
-  Compile / packageDoc / publishArtifact := false
+  Compile / packageDoc / publishArtifact := false,
+  coverageEnabled                        := false
 )
 
 lazy val userviceGenerated = (project in file("uservice-generated")).settings(
@@ -56,7 +57,8 @@ lazy val userviceGenerated = (project in file("uservice-generated")).settings(
   libraryDependencies                    := Dependencies.Jars.uservice,
   Compile / scalacOptions                := Seq(),
   Compile / guardrailTasks               += ScalaServer(file(interfaceSpecFile), pkg=s"it.agilelab.dataplatformshaper.uservice", framework="http4s"),
-  Compile / packageDoc / publishArtifact := false
+  Compile / packageDoc / publishArtifact := false,
+  coverageEnabled                        := false
 )
 
 lazy val uservice = (project in file("uservice")).settings(
