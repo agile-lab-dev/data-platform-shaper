@@ -21,6 +21,8 @@ The project is currently based on the [rdf4j](https://rdf4j.org) library and the
 
 It's a Scala 3 project based on the [sbt building](https://www.scala-sbt.org) tool that needs to be previously installed; for running the tests, you need to have a docker daemon up and running, please check that the docker daemon is accessible from a non-root user. The tests are performed using a GraphDB instance running in a container. A docker-compose file is provided for running GraphDB and the microservice together.
 
+You also need to have [Cue](https://cuelang.org/docs/introduction/installation/) installed.
+
 ### Build and Test
 This is a Scala-based project; we used [Scala 3](https://www.scala-lang.org) in combination with the [Typelevel libraries](https://typelevel.org), in particular, [Cats Effect](https://typelevel.org/cats-effect/) for managing effect using the tag-less final pattern. 
 ```
