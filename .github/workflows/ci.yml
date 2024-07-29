@@ -17,6 +17,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install asdf
+        uses: asdf-vm/actions/install@v3
+      - name: Install cue
+        run: |
+          asdf plugin add cue
+          asdf install cue 0.9.2
+          asdf global cue 0.9.2
       - name: Create scoverage-report
         run: sbt clean coverage test coverageAggregate coverageReport
 
