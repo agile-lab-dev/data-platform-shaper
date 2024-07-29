@@ -24,6 +24,11 @@ jobs:
           asdf plugin add cue
           asdf install cue 0.9.2
           asdf global cue 0.9.2
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
       - name: Create scoverage-report
         run: sbt clean coverage test coverageAggregate coverageReport
 
