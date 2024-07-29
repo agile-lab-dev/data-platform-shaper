@@ -455,4 +455,4 @@ This project is the result of a collaborative effort:
 | Nicolò Bidotti            | Big Data Laboratory, AgileLab S.r.L. (Italy)                                          |
 | Paolo Platter             | Big Data Laboratory, AgileLab S.r.L. (Italy)                                          |
 
-[build-badge]: https://github.com/agile-lap-dev/data=platform-shaper/actions/workflows/test.yml/badge.svg
+[build-badge]: https://github.com/agile-lap-dev/data-platform-shaper/actions/workflows/test.yml/badge.svg
