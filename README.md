@@ -1,6 +1,9 @@
+![build-badge][]
+
 # Data Platform Shaper: An RDF-based specialized catalog system for defining and managing data platform assets.
 
 ## Introduction
+
 The design and management of modern big data platforms are highly complex. 
 It requires carefully integrating multiple storage and computational platforms and implementing approaches to protect and audit data access. 
 
@@ -17,25 +20,46 @@ This project aims to implement an RDF-based catalog supporting a novel approach 
 This catalog should be the base for defining data platform assets and ontologies capable of describing data collection, data mesh, and data products, i.e., the typical items that compose a modern data platform.
 
 ## How to build and run the project
+
 The project is currently based on the [rdf4j](https://rdf4j.org) library and the [GraphDB](https://graphdb.ontotext.com) knowledge graph from Ontotext.
 
 It's a Scala 3 project based on the [sbt building](https://www.scala-sbt.org) tool that needs to be previously installed; for running the tests, you need to have a docker daemon up and running, please check that the docker daemon is accessible from a non-root user. The tests are performed using a GraphDB instance running in a container. A docker-compose file is provided for running GraphDB and the microservice together.
 
 You also need to have [Cue](https://cuelang.org/docs/introduction/installation/) installed.
 
-### Build and Test
+### Build and test
+
 This is a Scala-based project; we used [Scala 3](https://www.scala-lang.org) in combination with the [Typelevel libraries](https://typelevel.org), in particular, [Cats Effect](https://typelevel.org/cats-effect/) for managing effect using the tag-less final pattern. 
 ```
 git clone https://github.com/agile-lab-dev/data-platform-shaper.git
 cd data-platform-shaper
 sbt compile test
 ```
+
+### Build the scoverage-report
+
+The project supports building an (code-coverage) [scoverage-report][]. To generate one you need to run ...
+
+```
+sbt clean coverage test coverageAggregate coverageReport
+```
+
+Afterwards you can look at the generated report with ...
+
+```
+google-chrome ./target/scala-3.3.3/scoverage-report/index.html
+```
+
 ### Build the documentation
+
 ```
 sbt paradox previewSite
 ```
+
 Then open this [URL](http://localhost:4000/paradox/site/main/).
+
 ### Run everything
+
 You can run GraphDB and the microservice together using a docker-compose file, so first build the image locally:
 
 ```
@@ -159,6 +183,7 @@ curl -X 'GET' \
 ```
 
 ### A more complex example
+
 In this example, we will create two traits and link them to show how the trait relationship is automatically inherited by the instances of types linked to those traits.
 
 Let's create the first trait, representing a data collection: 
@@ -408,6 +433,7 @@ That's all!
 **After a run with ```docker compose up``` you should always run ```docker compose rm``` to clean up everything.**
 
 #Attention
+
 It's still a work in progress; more documentation explaining the overall model and the internal APIs will be written.
 You can look at the various tests to get a better understanding of its internal working:
 
@@ -433,6 +459,7 @@ uservice/src/test/scala/it/agilelab/dataplatformshaper/uservice/api/ApiSpec.scal
 ```
 
 #Credits
+
 This project is the result of a collaborative effort:
 
 | Name                      | Affiliation                                                                           |
@@ -444,3 +471,6 @@ This project is the result of a collaborative effort:
 | David Greco               | Big Data Laboratory, AgileLab S.r.L. (Italy)                                          |
 | Nicolò Bidotti            | Big Data Laboratory, AgileLab S.r.L. (Italy)                                          |
 | Paolo Platter             | Big Data Laboratory, AgileLab S.r.L. (Italy)                                          |
+
+[build-badge]: https://github.com/agile-lap-dev/data-platform-shaper/actions/workflows/test.yml/badge.svg
+[scoverage-report]: https://github.com/scoverage

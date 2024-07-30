@@ -1,0 +1,31 @@
+name: Run all tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install asdf
+        uses: asdf-vm/actions/setup@v3
+      - name: Install cue
+        run: |
+          asdf plugin add cue
+          asdf install cue 0.9.2
+          asdf global cue 0.9.2
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Run test(s)
+        run: |
+          sbt clean
+          sbt compile
+          sbt test
