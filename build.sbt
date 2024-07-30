@@ -80,7 +80,8 @@ lazy val uservice = (project in file("uservice")).settings(
     ExecCmd("RUN", "rm", "cue.tar.gz"),
     ExecCmd("RUN", "ln", "-sf", "/usr/local/cue/cue", "/usr/local/bin")
   ),
-  Docker / dockerExposedPorts             := Seq(8093)
+  Docker / dockerExposedPorts             := Seq(8093),
+  coverageEnabled                         := true
 ).dependsOn(domain, userviceGenerated, userviceClientGenerated % "test->compile").enablePlugins(JavaAppPackaging).setupBuildInfo
 
 lazy val docs = (project in file("docs")).
