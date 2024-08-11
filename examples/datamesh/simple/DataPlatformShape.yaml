@@ -84,7 +84,7 @@ mappingDefinitions:
     mapper: 
       table: "source.get('name')"
       database: "dataproduct.get('domain') += '.' += dataproduct.get('name')"
-      dataPath: "s3folder.get('path')"
+      dataPath: "s3folder.get('path') += '/' += 'outputport' += '/' += source.get('name')"
     additionalSourcesReferences:
       dataproduct: "source/partOf/DataProductType"
       s3folder: "source/dependsOn/FileBasedOutputPortType/mappedTo/S3FolderType"

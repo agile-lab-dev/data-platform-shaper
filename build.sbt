@@ -39,9 +39,9 @@ def clientInterfaceFile: File = {
 }
 
 lazy val domain = (project in file("domain")).settings(
-  name                     := "dataplatform.shaper.domain",
-  libraryDependencies      := Dependencies.Jars.domain,
-  coverageEnabled          := true
+  name                      := "dataplatform.shaper.domain",
+  libraryDependencies       := Dependencies.Jars.domain,
+  Test / coverageEnabled    := true,
 )
 
 lazy val userviceClientGenerated = (project in file("uservice-client-generated")).settings(
@@ -82,7 +82,7 @@ lazy val uservice = (project in file("uservice")).settings(
     ExecCmd("RUN", "ln", "-sf", "/usr/local/cue/cue", "/usr/local/bin")
   ),
   Docker / dockerExposedPorts             := Seq(8093),
-  coverageEnabled                         := true
+  Test / coverageEnabled                  := true
 ).dependsOn(domain, userviceGenerated, userviceClientGenerated % "test->compile").enablePlugins(JavaAppPackaging).setupBuildInfo
 
 lazy val docs = (project in file("docs")).
