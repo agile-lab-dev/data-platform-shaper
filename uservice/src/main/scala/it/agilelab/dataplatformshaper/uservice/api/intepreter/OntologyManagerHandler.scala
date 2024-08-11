@@ -1065,7 +1065,8 @@ class OntologyManagerHandler[F[_]: Async](
                 mappingDefinition.mappingKey.sourceEntityTypeName,
                 mappingDefinition.mappingKey.targetEntityTypeName
               ),
-              _
+              _,
+              mappingDefinition.additionalSourcesReferences
             )
           )
           .pure[F]
