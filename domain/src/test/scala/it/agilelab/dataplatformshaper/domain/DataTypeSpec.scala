@@ -2,9 +2,12 @@ package it.agilelab.dataplatformshaper.domain
 
 import io.circe.*
 import io.circe.parser.*
-import it.agilelab.dataplatformshaper.domain.model.schema.DynamicTuple
 import it.agilelab.dataplatformshaper.domain.model.schema.Mode.*
-import it.agilelab.dataplatformshaper.domain.model.schema.{*, given}
+import it.agilelab.dataplatformshaper.domain.model.schema.{
+  DynamicTuple,
+  *,
+  given
+}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

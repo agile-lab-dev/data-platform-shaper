@@ -16,7 +16,6 @@ import it.agilelab.dataplatformshaper.domain.knowledgegraph.interpreter.{
 import it.agilelab.dataplatformshaper.domain.model.EntityType
 import it.agilelab.dataplatformshaper.uservice.definitions.Mode.members.Required
 import it.agilelab.dataplatformshaper.uservice.{
-  BulkCreationYamlResponse,
   Client,
   CreateEntityByYamlResponse,
   CreateEntityResponse,
@@ -35,8 +34,7 @@ import it.agilelab.dataplatformshaper.uservice.{
   UnlinkEntityResponse,
   UnlinkTraitResponse,
   UpdateEntityByYamlResponse,
-  UpdateEntityResponse,
-  UpdateTypeConstraintsResponse
+  UpdateEntityResponse
 }
 import it.agilelab.dataplatformshaper.uservice.definitions.{
   AttributeTypeName,

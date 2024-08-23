@@ -18,7 +18,6 @@ import it.agilelab.dataplatformshaper.domain.model.schema.{
   validateMappingTuple
 }
 import it.agilelab.dataplatformshaper.domain.model.{*, given}
-import it.agilelab.dataplatformshaper.domain.service.ManagementServiceError.*
 import it.agilelab.dataplatformshaper.domain.service.{
   InstanceManagementService,
   ManagementServiceError,
