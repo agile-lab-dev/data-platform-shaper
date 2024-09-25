@@ -6,7 +6,7 @@ import java.nio.file.Files
 import scala.io.Codec.UTF8
 import scala.io.Source
 
-ThisBuild / scalaVersion             := "3.3.3"
+ThisBuild / scalaVersion             := "3.3.4"
 ThisBuild / organization             := "it.agilelab"
 ThisBuild / organizationName         := "AgileLab S.r.L."
 ThisBuild / dependencyOverrides     ++= Dependencies.Jars.overrides
