@@ -2,7 +2,7 @@ ThisBuild / libraryDependencySchemes ++= Seq(
   "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 )
 
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.12.1")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.13.0")
 
 addSbtPlugin("org.typelevel" % "sbt-tpolecat" % "0.5.2")
 
