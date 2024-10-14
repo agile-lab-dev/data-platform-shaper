@@ -20,7 +20,7 @@ jobs:
           asdf install cue 0.9.2
           asdf global cue 0.9.2
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
