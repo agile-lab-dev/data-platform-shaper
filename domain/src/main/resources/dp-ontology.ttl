@@ -1,31 +1,76 @@
+@prefix : <https://w3id.org/agile-dm/ontology/> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
 @prefix ns: <https://w3id.org/agile-dm/ontology/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix doap: <http://usefulinc.com/ns/doap#> .
 @prefix part: <http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@base <http://www.w3.org/2002/07/owl#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@base <https://w3id.org/agile-dm/ontology/> .
 
-[ rdf:type owl:Ontology ;
-   owl:imports <http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl>
- ] .
+<https://w3id.org/agile-dm/ontology/> rdf:type owl:Ontology ;
+                                       owl:imports <http://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/part.owl> ;
+                                       dc:description "An ontology for representing agile data models and their relationships." ;
+                                       dc:rights """
+Licensed under the Apache License, Version 2.0 (the \"License\");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an \"AS IS\" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.""" ;
+                                       dc:title "Agile Data Model Ontology" ;
+                                       dcterms:license <http://www.apache.org/licenses/LICENSE-2.0> ;
+                                       vann:preferredNamespacePrefix "agile-dm" ;
+                                       vann:preferredNamespaceUri "https://w3id.org/agile-dm/ontology/" ;
+                                       doap:license <http://www.apache.org/licenses/LICENSE-2.0> ;
+                                       rdfs:comment "This ontology defines concepts and relationships for agile data modeling, including entity types, attributes, and their relationships." ;
+                                       rdfs:seeAlso <http://www.apache.org/licenses/LICENSE-2.0> ;
+                                       owl:versionInfo "1.0.0" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/elements/1.1/description
+dc:description rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/rights
+dc:rights rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/title
+dc:title rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/terms/license
+dcterms:license rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/vocab/vann/preferredNamespacePrefix
+vann:preferredNamespacePrefix rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/vocab/vann/preferredNamespaceUri
+vann:preferredNamespaceUri rdf:type owl:AnnotationProperty .
+
+
+###  http://usefulinc.com/ns/doap#license
+doap:license rdf:type owl:AnnotationProperty .
+
 
 #################################################################
 #    Object Properties
 #################################################################
-
-###  https://w3id.org/agile-dm/ontology/dependencyOf
-ns:dependencyOf rdf:type owl:ObjectProperty ;
-                owl:inverseOf ns:dependsOn ;
-                rdf:type owl:TransitiveProperty .
-
-
-###  https://w3id.org/agile-dm/ontology/dependsOn
-ns:dependsOn rdf:type owl:ObjectProperty ;
-             owl:inverseOf ns:dependencyOf ;
-             rdf:type owl:TransitiveProperty .
-
 
 ###  http://www.w3.org/2000/01/rdf-schema#subClassOf
 rdfs:subClassOf rdf:type owl:ObjectProperty .
@@ -38,6 +83,17 @@ ns:classifies rdf:type owl:ObjectProperty ;
               rdfs:range ns:Entity .
 
 
+###  https://w3id.org/agile-dm/ontology/dependencyOf
+ns:dependencyOf rdf:type owl:ObjectProperty ;
+                owl:inverseOf ns:dependsOn ;
+                rdf:type owl:TransitiveProperty .
+
+
+###  https://w3id.org/agile-dm/ontology/dependsOn
+ns:dependsOn rdf:type owl:ObjectProperty ,
+                      owl:TransitiveProperty .
+
+
 ###  https://w3id.org/agile-dm/ontology/hasATrait
 ns:hasATrait rdf:type owl:ObjectProperty ;
              rdfs:subPropertyOf rdfs:subClassOf ;
@@ -47,10 +103,12 @@ ns:hasATrait rdf:type owl:ObjectProperty ;
 
 
 ###  https://w3id.org/agile-dm/ontology/hasAttributeType
-ns:hasAttributeType rdf:type owl:ObjectProperty ,
-                             owl:TransitiveProperty ;
-                    rdfs:domain ns:EntityType ,
-                                ns:StructType ;
+ns:hasAttributeType rdf:type owl:ObjectProperty ;
+                    rdfs:domain [ rdf:type owl:Class ;
+                                  owl:unionOf ( ns:EntityType
+                                                ns:StructType
+                                              )
+                                ] ;
                     rdfs:range ns:AttributeType .
 
 
@@ -72,8 +130,11 @@ ns:isATraitFor rdf:type owl:ObjectProperty ;
 ###  https://w3id.org/agile-dm/ontology/isAttributeTypeOf
 ns:isAttributeTypeOf rdf:type owl:ObjectProperty ;
                      rdfs:domain ns:AttributeType ;
-                     rdfs:range ns:EntityType ,
-                                ns:StructType .
+                     rdfs:range [ rdf:type owl:Class ;
+                                  owl:unionOf ( ns:EntityType
+                                                ns:StructType
+                                              )
+                                ] .
 
 
 ###  https://w3id.org/agile-dm/ontology/isClassifiedBy
@@ -88,24 +149,27 @@ ns:isInheritedBy rdf:type owl:ObjectProperty ,
                  rdfs:domain ns:EntityType ;
                  rdfs:range ns:EntityType .
 
-###  https://w3id.org/agile-dm/ontology/mappedTo
-ns:mappedTo rdf:type owl:ObjectProperty ;
-            rdf:type owl:TransitiveProperty ;  
-            rdfs:domain ns:MappingSource ;
-            rdfs:range ns:MappingTarget .
 
 ###  https://w3id.org/agile-dm/ontology/mappedBy
 ns:mappedBy rdf:type owl:ObjectProperty ;
             rdfs:range ns:Entity .
 
-###  https://w3id.org/agile-dm/ontology/withNamedInstanceReferenceExpression
-ns:withNamedInstanceReferenceExpression rdf:type owl:ObjectProperty ;
-            rdfs:range ns:NamedInstanceReferenceExpression .
+
+###  https://w3id.org/agile-dm/ontology/mappedTo
+ns:mappedTo rdf:type owl:ObjectProperty ;
+            rdfs:domain ns:MappingSource ;
+            rdfs:range ns:MappingTarget .
+
 
 ###  https://w3id.org/agile-dm/ontology/mode
 ns:mode rdf:type owl:ObjectProperty ;
         rdfs:domain ns:AttributeType ;
         rdfs:range ns:Mode .
+
+
+###  https://w3id.org/agile-dm/ontology/withNamedInstanceReferenceExpression
+ns:withNamedInstanceReferenceExpression rdf:type owl:ObjectProperty ;
+                                        rdfs:range ns:NamedInstanceReferenceExpression .
 
 
 #################################################################
@@ -118,20 +182,23 @@ ns:constraints rdf:type owl:DatatypeProperty ;
                rdfs:range xsd:string .
 
 
+###  https://w3id.org/agile-dm/ontology/instanceReferenceExpression
+ns:instanceReferenceExpression rdf:type owl:DatatypeProperty ;
+                               rdfs:domain ns:NamedInstanceReferenceExpression ;
+                               rdfs:range xsd:string .
+
+
+###  https://w3id.org/agile-dm/ontology/instanceReferenceName
+ns:instanceReferenceName rdf:type owl:DatatypeProperty ;
+                         rdfs:domain ns:NamedInstanceReferenceExpression ;
+                         rdfs:range xsd:string .
+
+
 ###  https://w3id.org/agile-dm/ontology/typeName
 ns:typeName rdf:type owl:DatatypeProperty ;
             rdfs:domain ns:EntityType ;
             rdfs:range xsd:string .
 
-###  https://w3id.org/agile-dm/ontology/additionalInstanceReferenceName
-ns:instanceReferenceName rdf:type owl:DatatypeProperty ;
-                         rdfs:domain ns:NamedInstanceReferenceExpression ;
-                         rdfs:range xsd:string .
-
-###  https://w3id.org/agile-dm/ontology/additionalInstanceReferenceExpression
-ns:instanceReferenceExpression rdf:type owl:DatatypeProperty ;
-                               rdfs:domain ns:NamedInstanceReferenceExpression ;
-                               rdfs:range xsd:string .
 
 #################################################################
 #    Classes
@@ -202,6 +269,10 @@ ns:Mode rdf:type owl:Class ;
                             ] .
 
 
+###  https://w3id.org/agile-dm/ontology/NamedInstanceReferenceExpression
+ns:NamedInstanceReferenceExpression rdf:type owl:Class .
+
+
 ###  https://w3id.org/agile-dm/ontology/SqlDecimalAttributeType
 ns:SqlDecimalAttributeType rdf:type owl:Class ;
                            rdfs:subClassOf ns:AttributeType .
@@ -229,8 +300,6 @@ ns:TimestampAttributeType rdf:type owl:Class ;
 ###  https://w3id.org/agile-dm/ontology/Trait
 ns:Trait rdf:type owl:Class .
 
-###  https://w3id.org/agile-dm/ontology/NamedInstanceReferenceExpression
-ns:NamedInstanceReferenceExpression rdf:type owl:Class .
 
 #################################################################
 #    Individuals
@@ -261,4 +330,4 @@ ns:Required rdf:type owl:NamedIndividual ,
                      ns:Mode .
 
 
-###  Generated by the OWL API (version 4.5.26.2023-07-17T20:34:13Z) https://github.com/owlcs/owlapi
+###  Generated by the OWL API (version 4.5.25.2023-02-15T19:15:49Z) https://github.com/owlcs/owlapi
